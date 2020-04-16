@@ -65,3 +65,79 @@ if [ $1 == cat_barcodes ] ; then
     done
 fi
 	
+if [ $1 == demux_v3 ] ; then
+    calldir=~/data/ncov/initial-clinical/v3_run1/20200405_0422_GA30000_FAN30842_00fb1614
+
+    mkdir -p $calldir/barcodes
+    
+    guppy_barcoder \
+	-i $calldir/fastq_pass \
+	-s $calldir/guppy_demux \
+	-t 4 \
+	-q 0 \
+	--trim_barcodes \
+	--barcode_kits "EXP-NBD104" \
+	-x "cuda:0"
+fi
+
+if [ $1 == demux_count ] ; then
+    calldir=~/data/ncov/initial-clinical/v3_run1/20200405_0422_GA30000_FAN30842_00fb1614
+    touch $calldir/guppy_demux/counts.csv
+    for i in 01 02 03 04 05 06 07 08 09 10 11 12 ;
+    do
+	numlines=`wc -l $calldir/guppy_demux/barcode$i/*fastq | cut -d ' ' -f 1 `
+	numreads=`expr $numlines / 4`
+	echo barcode$i,$numreads >> $calldir/guppy_demux/counts.csv
+    done
+    uclines=`wc -l $calldir/guppy_demux/unclassified/*fastq | cut -d ' ' -f 1 `
+    ucreads=`expr $uclines / 4`
+    echo unclassified,$ucreads >> $calldir/guppy_demux/counts.csv
+fi
+
+if [ $1 == dmux_test ] ; then
+    calldir=~/data/ncov/initial-clinical
+
+    for i in 20200405_0422_GA30000_FAN30842_00fb1614  20200410_2018_X4_FAN32204_327837a0 ;
+    do
+	guppy_barcoder \
+	    -i $calldir/$i/fastq_pass \
+	    -s $calldir/$i/guppy_demux \
+	    -t 4 \
+	    -q 0 \
+	    --trim_barcodes \
+	    --barcode_kits "EXP-NBD104" \
+	    -x "cuda:0"
+
+	guppy_barcoder \
+	    -i $calldir/$i/fastq_pass \
+	    -s $calldir/$i/guppy_demux_both \
+	    -t 4 \
+	    -q 0 \
+	    --trim_barcodes \
+	    --require_barcodes_both_ends \
+	    --barcode_kits "EXP-NBD104" \
+	    -x "cuda:0"
+
+    done
+fi
+
+if [ $1 == dmux_test_count ] ; then
+    calldir=~/data/ncov/initial-clinical
+
+    for run in 20200405_0422_GA30000_FAN30842_00fb1614  20200410_2018_X4_FAN32204_327837a0 ;
+    do
+	for mode in guppy_demux guppy_demux_both
+	do
+	    touch $calldir/$run/$mode/counts.csv
+	    for i in 01 02 03 04 05 06 07 08 09 10 11 12 ;
+	    do
+		numlines=`wc -l $calldir/$run/$mode/barcode$i/*fastq | cut -d ' ' -f 1 `
+		numreads=`expr $numlines / 4`
+		echo barcode$i,$numreads >> $calldir/$run/$mode/counts.csv
+	    done
+	    uclines=`wc -l $calldir/$run/$mode/unclassified/*fastq | cut -d ' ' -f 1 `
+	    ucreads=`expr $uclines / 4`
+	    echo unclassified,$ucreads >> $calldir/$run/$mode/counts.csv
+	done
+    done
+fi
