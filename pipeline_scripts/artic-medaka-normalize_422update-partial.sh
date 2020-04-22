@@ -19,12 +19,12 @@ echo_log() {
 # the sequencing run ID - update*
 runID=$1
 
-logfile=/home/idies/workspace/Temporary/ernluaw1/scratch/log_${runID}-submit.txt
+# run logfile
+logfile=/home/idies/workspace/Temporary/ernluaw1/scratch/log_${runID}-normalize.txt
 
 # input sequecing directory
 sequencing_run="/home/idies/workspace/covid19/sequencing_runs/${runID}"
 
-# location of programs used by pipeline
 software_path=/home/idies/workspace/covid19/code
 
 # location for primer schemes
@@ -33,56 +33,59 @@ scheme_dir=${software_path}/artic-ncov2019/primer_schemes
 # primer protocol
 protocol=$(awk '/primers/{ print $2 }' "${sequencing_run}/run_config.txt")
 
+# where results will go - update*
+working_dir=$2
+
 # Have these files be in the sequencing run directory - update*
 barcode_file=$(awk '/barcoding/{ print $2 }' "${sequencing_run}/run_config.txt")
-manifest=${sequencing_run}/manifest.txt
+manifest=${sequencing_run}/manifest_original.txt
 fastq_dir=${sequencing_run}/fastq_pass
 
 # Output directories
 pipeline_label=hac-medaka-norm200
-demux_dir=${sequencing_run}/1-barcode-demux
-gather_dir=${sequencing_run}/2-length-filter
-normalize_dir=${sequencing_run}/3-normalization
-consensus_dir=${sequencing_run}/4-draft-consensus
+demux_dir=${working_dir}/1-guppy-barcoder
+gather_dir=${working_dir}/2-guppyplex
+normalize_dir=${working_dir}/3-normalization_update
+consensus_dir=${working_dir}/4-draft-consensus_update
 
 echo -e "$(date +"%F %T") sequencing run start $runID"
 
 # module 1 ################################################################################
 
 # need to fix hardcoded path to software
-guppy_barcoder_path=/home/idies/workspace/Storage/ernluaw1/persistent/bin/ont-guppy-cpu/bin
+#guppy_barcoder_path=/home/idies/workspace/covid19/code/ont-guppy-cpu/bin
 
-echo_log "Starting guppy demux"
+#echo_log "Starting guppy demux"
 
-$guppy_barcoder_path/guppy_barcoder \
-	--require_barcodes_both_ends \
-	-i "$fastq_dir" \
-	-s "$demux_dir" \
-	--arrangements_files $barcode_file
+#$guppy_barcoder_path/guppy_barcoder \
+#	--require_barcodes_both_ends \
+#	-i "$fastq_dir" \
+#	-s "$demux_dir" \
+#	--arrangements_files $barcode_file
 	
 
 
 # module 2 #################################################################################
 
-echo_log "Starting artic guppyplex"
-mkdir -p $gather_dir
+#echo_log "Starting artic guppyplex"
+#mkdir -p $gather_dir
 
-while read barcode name; do
-echo_log "${name}_${barcode}"
-artic guppyplex \
-	--skip-quality-check \
-	--min-length 400 \
-	--max-length 700 \
-	--directory "$demux_dir"/"$barcode" \
-    --prefix "$gather_dir"/"$name"
-done < "$manifest"
+#while read barcode name; do
+#echo_log "${name}_${barcode}"
+#artic guppyplex \
+#	--skip-quality-check \
+#	--min-length 400 \
+#	--max-length 700 \
+#	--directory "$demux_dir"/"$barcode" \
+ #   --prefix "$gather_dir"/"$name"
+#done < "$manifest"
 
 
 # module 3 ################################################################################
 
 echo_log "Starting normalize"
 
-# software
+# software - need to move java software and samtools over to code directory
 JAVA_PATH="${software_path}/jdk-14.0.1/bin"
 samtools_path="${software_path}/samtools-1.10/bin"
 NormalizeCoveragePath="${software_path}/CoverageNormalization"
@@ -100,12 +103,12 @@ minimap2 -a \
 -x map-ont \
 -t 32 \
 $scheme_dir/$protocol/nCoV-2019.reference.fasta \
-$gather_dir/${name}_${barcode}.fastq > $normalize_dir/${name}_${barcode}/$align_out
+$gather_dir/20200405-${name}_${barcode}.fastq > $normalize_dir/${name}_${barcode}/$align_out
 
 # normalization,.txt file output went to working directory
 out_sam=$normalize_dir/${name}_${barcode}/${name}_${barcode}.covfiltered.sam
 
-$JAVA_PATH/java -cp $NormalizeCoveragePath/src NormalizeCoverage input=$normalize_dir/${name}_${barcode}/$align_out --qual_sort
+$JAVA_PATH/java -cp $NormalizeCoveragePath/src NormalizeCoverage input=$normalize_dir/${name}_${barcode}/$align_out coverage_threshold=150 --qual_sort
 
 # fastq conversion
 $samtools_path/samtools fastq $out_sam > $normalize_dir/${name}_${barcode}/${name}_${barcode}.covfiltered.fq
@@ -140,7 +143,7 @@ read_count () {
 }
 
 # create summary file
-summary_csv="${sequencing_run}/summary.csv"
+summary_csv="${working_dir}/summary_update.csv"
 
 
 # header for summary file
@@ -179,4 +182,9 @@ done < "$manifest"
 # End ######################################################################################
 
 echo_log "run complete"
-chgrp -R 5102 $demux_dir $gather_dir $normalize_dir $consensus_dir 
+
+# threw an error
+#chgrp -R 5102 $demux_dir $gather_dir $normalize_dir $consensus_dir 
+
+
+
