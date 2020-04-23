@@ -106,11 +106,21 @@ def mask_consensus_sites(consensus,bamfile,depth_threshold,outdir,prefix):
     
     assert len(cons)==len(cov)
     
+    # mask sites at the beginning and end where amplicons do not cover
     # change basecalls to N if coverage is below threshold
     # save list of newly-masked bases
     ambig=[]
     newmask=[]
     for pos,base in enumerate(cons):
+        
+        # mask beginning and end
+        # remember zero indexing
+        if (0<=pos<=53) | (29836<=pos<=29902):
+            cons[pos] = 'N'
+            continue
+        
+        # save bases that were already 'N'
+        # mask based on coverage
         if base=='N':
             ambig.append(pos)
             continue
@@ -143,9 +153,6 @@ def snp_in_nextstrain(pos,ref,alt,vcf_nextstrain,ns_snp_threshold):
     Function that returns true if a SNP has been seen in published sequences
     Requires the SNP to be found in a specific number of published sequences
     to avoid confounding with SNPs that may be a result of sequencing errors in other samples
-    
-    Currently the occurence is based on all alternative alleles in published sequences
-    Soon to be updated using the occurence of a particular allele
     """
     
     # read in the nextstrain vcf as a dataframe
@@ -282,6 +289,15 @@ def refine_variant_calls(vcffile,bamfile,ntc_bamfile,consensus,coverage_flag,dep
             # add a flag if the snp has not previously been seen before
             if not snp_in_nextstrain(pos, ref, alt, vcf_nextstrain, ns_snp_threshold):
                 pos_data['new_flag'] = 'not in nextstrain'
+                
+            # add a variant caller flag if the snp is discordant across variant calling methods
+            # assumes medaka is the first variant caller and samtools is the second
+            # need to update the flag language assuming nanopolish is the gold standard
+            supp_vec = record.INFO['SUPP_VEC'][0]
+            if supp_vec == '01':
+                pos_data['vc_flag'] = 'mismatch: variant called by samtools only'
+            if supp_vec == '10':
+                pos_data['vc_flag'] = 'mismatch: variant called by medaka only'
             
             # after checking for all flags
             # add a few values and then append this dictionary to the data list
@@ -298,11 +314,11 @@ def refine_variant_calls(vcffile,bamfile,ntc_bamfile,consensus,coverage_flag,dep
     df = pd.DataFrame(var_data)
     
     # add any missing columns for consistency
-    for colname in ['pos','ref','alt','consensus_var','depth','depth_thresh','alleles','depth_flag','maf_flag','ntc_flag','new_flag']:
+    for colname in ['pos','ref','alt','consensus_var','depth','depth_thresh','alleles','depth_flag','maf_flag','ntc_flag','new_flag','vc_flag']:
         if colname not in df:
             df[colname] = np.nan
     
-    df['flags'] = df[['depth_flag','maf_flag','ntc_flag','new_flag']].apply(lambda x: '; '.join(x.dropna()), axis=1)
+    df['flags'] = df[['depth_flag','maf_flag','ntc_flag','new_flag','vc_flag']].apply(lambda x: '; '.join(x.dropna()), axis=1)
     df['depth_thresh'] = depth_threshold
     df = df[['pos','ref','alt','consensus_var','depth','depth_thresh','alleles','flags']]
     
