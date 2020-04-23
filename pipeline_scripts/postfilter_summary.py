@@ -5,6 +5,7 @@ import argparse
 import pandas as pd
 import numpy as np
 from Bio import SeqIO
+pd.options.mode.chained_assignment = None
 
 
 def is_complete(rundir,prefix):
@@ -36,7 +37,7 @@ def status_by_flags(flagstr,consensus_var):
     and whether or not it passes the complete genome threshold
     """
     
-    # flag keywords are 'depth','MAF','nextstrain,'NTC','mistmatch'
+    # flag keywords are 'depth','MAF','nextstrain','NTC','mismatch'
     # these are unique words to each type of flag
     # flags other than MAF only in called bases put a genome in the maybe category
     # mismatch flags in uncalled bases put a genome in the yes* category
@@ -69,6 +70,7 @@ def generate_postfilter_summary(rundir):
     coverage = []
     status = []
     snps = []
+    num_flagged = []
     
     # loop through the variant data files in the postfilter run directory
     for entry in os.scandir(rundir):
@@ -89,6 +91,16 @@ def generate_postfilter_summary(rundir):
                 
                 # get all the flags (for status determination)
                 # and get only flags to print
+                
+                # replace flags with abbreviated versions
+                for colname in ['depth_flag','maf_flag','ntc_flag','new_flag']:
+                    if not pd.isna(tmp[colname].values[0]):
+                        tmp.loc[tmp[colname].str.contains('depth'), colname] = 'depth'
+                        tmp.loc[tmp[colname].str.contains('MAF'), colname] = 'MAF'
+                        tmp.loc[tmp[colname].str.contains('NTC'), colname] = 'NTC'
+                        tmp.loc[tmp[colname].str.contains('nextstrain'), colname] = 'new'
+                        
+                
                 allflag = tmp[['depth_flag','maf_flag','ntc_flag','new_flag','vc_flag']].apply(lambda x: ', '.join(str(pos)+':'+x.dropna()), axis=1).values[0]
                 stat.append(status_by_flags(allflag, tmp.consensus_var.values[0]))
                 
@@ -129,27 +141,41 @@ def generate_postfilter_summary(rundir):
             else:
                 alpha.append('No')
             
-            # hide the flags and snps for discarded genomes
-            if complete:
-                # join the flags
-                flagstr = ', '.join(printflag)
-                flags.append(flagstr)
-            
-                # join the snps
+            # make the flags look nice
+            if not printflag:
+                flags.append('')
+                num_flagged.append(0)
                 snps.append(', '.join(snp))
             else:
-                flags.append('see full output')
-                snps.append('see full output')
-            
-            
+                # join the flags
+                flagstr = ', '.join(printflag)
+                
+                # format the flags
+                flaglist=[item.split(":") for item in flagstr.split(", ")]
+                flagdict={}
+                
+                for key,val in flaglist:
+                    flagdict.setdefault(key, []).append(val)
+                
+                flagstr=', '.join("{!s}={!r}".format(key,val) for (key,val) in flagdict.items())
+                flagstr=flagstr.replace('\'','')
+                
+                num_flagged.append(len(flagdict))
+                
+                if not complete:
+                    flags.append('see full output')
+                    snps.append('see full output')
+                else:
+                    # add the flags
+                    flags.append(flagstr)
+                    snps.append(', '.join(snp))
             
             # join this dataframe to all the others
             var['sample']=samplename
             alldata = pd.concat([alldata,var],ignore_index=True)
-            
     
     # make the dataframe
-    df = pd.DataFrame({'Sample':samplenames,'Coverage':coverage,'Variants':snps,'Flags':flags,'Alpha':alpha,'Status':status})
+    df = pd.DataFrame({'Sample':samplenames,'Coverage':coverage,'Variants':snps,'Flags':flags,'Flagged Positions':num_flagged,'Alpha':alpha,'Status':status})
     df.to_csv(os.path.join(rundir,'postfilt_summary.txt'),sep='\t',index=False)
     
     # output the large table

@@ -303,9 +303,9 @@ def refine_variant_calls(vcffile,bamfile,ntc_bamfile,consensus,coverage_flag,dep
             supp_vec = info['SUPP_VEC']
             #supp_vec = record.INFO['SUPP_VEC'][0]
             if supp_vec == '01':
-                pos_data['vc_flag'] = 'mismatch samtools only'
+                pos_data['vc_flag'] = 'mismatch(s)'
             if supp_vec == '10':
-                pos_data['vc_flag'] = 'mismatch medaka only'
+                pos_data['vc_flag'] = 'mismatch(m)'
             
             # after checking for all flags
             # add a few values and then append this dictionary to the data list
