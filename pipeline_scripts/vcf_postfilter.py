@@ -138,7 +138,7 @@ def mask_consensus_sites(consensus,bamfile,depth_threshold,outdir,prefix):
     return(filepath)
     
 
-def snp_in_nextstrain(pos,alt,vcf_nextstrain,ns_snp_threshold):
+def snp_in_nextstrain(pos,ref,alt,vcf_nextstrain,ns_snp_threshold):
     """
     Function that returns true if a SNP has been seen in published sequences
     Requires the SNP to be found in a specific number of published sequences
@@ -151,7 +151,7 @@ def snp_in_nextstrain(pos,alt,vcf_nextstrain,ns_snp_threshold):
     # read in the nextstrain vcf as a dataframe
     # note: the header is hard-coded and will need to be updated if the header is altered
     ns_snps = pd.read_csv(vcf_nextstrain,sep='\t',skiprows=3)
-    ns_snps = ns_snps[['POS','ALT','TOTAL_SAMPLES','OCCURENCES']]
+    ns_snps = ns_snps[['POS','REF','ALT','TOTAL_SAMPLES','OCCURENCES']]
     
     # if the position has not been variable before, return false
     if pos not in ns_snps.POS.values:
@@ -161,6 +161,7 @@ def snp_in_nextstrain(pos,alt,vcf_nextstrain,ns_snp_threshold):
     # check if the specific allele has been found
     else:
         tmp = ns_snps[ns_snps.POS==pos]
+        assert ref == tmp.REF.values[0]
         alleles = tmp.ALT.values[0].split(',')
         
         if alt not in alleles:
@@ -168,8 +169,9 @@ def snp_in_nextstrain(pos,alt,vcf_nextstrain,ns_snp_threshold):
         else:
             # if the alternate allele has been found before
             # check if it has been found enough times
-            #counts = [x.split(',') if ',' in str(x) else x for x in tmp.OCCURENCES.values]
-            if tmp.OCCURENCES.values[0] >= ns_snp_threshold:
+            idx = alleles.index(alt)
+            counts = [x.split(',') if ',' in str(x) else x for x in tmp.OCCURENCES.values][0]
+            if int(counts[idx]) >= ns_snp_threshold:
                 return(True)
             else:
                 return(False)
@@ -230,6 +232,7 @@ def refine_variant_calls(vcffile,bamfile,ntc_bamfile,consensus,coverage_flag,dep
             # get the position and alternate allele for this snp
             pos = record.POS + i # this will just be the position if there is only one snp
             alt = str(record.ALT[0])[i]
+            ref = record.REF[i]
             
             # get read depth and pileup at this read position
             pileup = collect_position_pileup(bamfile, pos)
@@ -277,14 +280,14 @@ def refine_variant_calls(vcffile,bamfile,ntc_bamfile,consensus,coverage_flag,dep
                         pos_data['maf_flag'] = 'MAF>%.2f' % float(maf_flag/100)
             
             # add a flag if the snp has not previously been seen before
-            if not snp_in_nextstrain(pos, alt, vcf_nextstrain, ns_snp_threshold):
+            if not snp_in_nextstrain(pos, ref, alt, vcf_nextstrain, ns_snp_threshold):
                 pos_data['new_flag'] = 'not in nextstrain'
             
             # after checking for all flags
             # add a few values and then append this dictionary to the data list
             pos_data['pos'] = pos
             pos_data['alt'] = alt
-            pos_data['ref'] = record.REF[i]
+            pos_data['ref'] = ref
             pos_data['depth'] = depth
             pos_data['alleles'] = get_allele_counts(pileup,depth)
             var_data.append(pos_data)
