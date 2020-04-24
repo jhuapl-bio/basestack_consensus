@@ -1,0 +1,3 @@
+[submodule "pipeline_scripts/VariantValidator"]
+	path = pipeline_scripts/VariantValidator
+	url = git@github.com:mkirsche/VariantValidator.git
