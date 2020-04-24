@@ -36,36 +36,37 @@ usage() {
 	echo -e "   -6      post-filter folder (default: ${CYAN}<run-folder>/artic-pipeline/4-post-filter${NC})"
 	echo -e ""
 }
-#---------------------------------------------------------------------------------------------------
+
+#===================================================================================================
+# SET DEFAULT VALUES
+#===================================================================================================
+
 # set default values here
 logfile="/dev/null"
 tempdir="/tmp"
 
 # report current hash of miseq-analysis git repo
+bin_path="$(dirname $0)"
 #script_path=$(dirname $(readlink -f $0))
-#GIT_DIR="$script_path/.git"
-#export GIT_DIR
-#hash=$(git rev-parse --short HEAD)
+GIT_DIR="$script_path/../.git"
+export GIT_DIR
+hash=$(git rev-parse --short HEAD)
 
-#echo $GIT_DIR
-
-#base_path="/sciserver/vc_crypt/covid19/vc1/sequencing_runs"
-#base_path="/home/idies/workspace/covid19/sequencing_runs"
-#bin_path="$base_path/../code/ncov/pipeline_scripts"
-
-primerscheme_path="$base_path/../code/artic-ncov2019/primer_schemes"
+primerscheme_path="$bin_path/../../artic-ncov2019/primer_schemes"
 protocol="nCoV-2019/V3"
 reference="$primerscheme_path/$protocol/nCoV-2019.reference.fasta"
-ref_header=$(head -n1 "$reference" | cut -c2-)
-ref_length=$("$bin_path/fix_fasta.sh" "$reference" | tail -n1 | awk '{print length($1)}')
 
 stats_base="artic-pipeline/run_stats"
 demux_base="artic-pipeline/1-guppy-barcoder"
 lengthfilter_base="artic-pipeline/2-guppyplex"
-draftconsensus_base="artic-pipeline/3-hac-medaka-norm200"
-postfilter_base="artic-pipeline/4-post-filter"
+normalize_base="artic-pipeline/3-normalization_update"
+draftconsensus_base="artic-pipeline/4-draft-consensus_update"
+postfilter_base="artic-pipeline/5-post-filter_update"
 
-#---------------------------------------------------------------------------------------------------
+#===================================================================================================
+# PARSE INPUT ARGUMENTS
+#===================================================================================================
+
 # parse input arguments
 while getopts "hi:b:p:r:o:1:2:3:4:5:6:" OPTION
 do
@@ -90,11 +91,99 @@ done
 # QUALITY CHECKING
 #===================================================================================================
 
-stats_base="artic-pipeline/run_stats"
-demux_base="artic-pipeline/1-guppy-barcoder"
-lengthfilter_base="artic-pipeline/2-guppyplex"
-draftconsensus_base="artic-pipeline/3-hac-medaka-norm200"
-postfilter_base="artic-pipeline/4-post-filter"
+if ! [[ -d "$run_path" ]]; then
+	echo -e "${RED}Error: run path ${CYAN}$run_path${RED} does not exist.${NC}"
+	usage
+	exit
+fi
+
+manifest="$run_path/manifest.txt"
+if ! [[ -s "$manifest" ]]; then
+	echo -e "${RED}Error: manifest file ${CYAN}$manifest${RED} does not exist.${NC}"
+	usage
+	exit
+fi
+
+if ! [[ -s "$reference" ]]; then
+	echo -e "${RED}Error: reference sequence ${CYAN}$reference${RED} does not exist.${NC}"
+	usage
+	exit
+else
+	ref_header=$(head -n1 "$reference" | cut -c2-)
+	ref_length=$("$bin_path/fix_fasta.sh" "$reference" | tail -n1 | awk '{print length($1)}')
+fi
+
+if ! [[ -d "$bin_path" ]]; then
+	echo -e "${RED}Error: reference sequence ${CYAN}$reference${RED} does not exist.${NC}"
+	usage
+	exit
+fi
+vcfigv_repo_path="$bin_path/../../vcfigv"
+if ! [[ -d "$vcfigv_repo_path" ]]; then
+	echo -e "${RED}Error: vcfigv repository ${CYAN}$vcfigv_repo_path${RED} does not exist.${NC}"
+	usage
+	exit
+fi
+
+if [[ -z "$stats_path" ]]; then
+	stats_path="$run_path/$stats_base"
+fi
+if ! [[ -d "$stats_path" ]]; then
+	echo -e "${RED}Error: output path ${CYAN}$stats_path${RED} does not exist.${NC}"
+	usage
+	exit
+fi
+if [[ -z "$demux_path" ]]; then
+	demux_path="$run_path/$demux_base"
+fi
+if ! [[ -d "$demux_path" ]]; then
+	echo -e "${RED}Error: demux path ${CYAN}$demux_path${RED} does not exist.${NC}"
+	usage
+	exit
+fi
+if ! [[ -s "$demux_path/barcoding_summary.txt" ]]; then
+	echo -e "${RED}Error: demux summary ${CYAN}$demux_path/barcoding_summary.txt${RED} does not exist.${NC}"
+	usage
+	exit
+fi
+if [[ -z "$lengthfilter_path" ]]; then
+	lengthfilter_path="$run_path/$lengthfilter_base"
+fi
+if ! [[ -d "$lengthfilter_path" ]]; then
+	echo -e "${RED}Error: length filter path ${CYAN}$lengthfilter_path${RED} does not exist.${NC}"
+	usage
+	exit
+fi
+if [[ -z "$normalize_path" ]]; then
+	normalize_path="$run_path/$normalize_base"
+fi
+if ! [[ -d "$normalize_path" ]]; then
+	echo -e "${RED}Error: normalization path ${CYAN}$normalize_path${RED} does not exist.${NC}"
+	usage
+	exit
+fi
+if [[ -z "$draftconsensus_path" ]]; then
+	draftconsensus_path="$run_path/$draftconsensus_base"
+fi
+if ! [[ -d "$draftconsensus_path" ]]; then
+	echo -e "${RED}Error: draft consensus path ${CYAN}$draftconsensus_path${RED} does not exist.${NC}"
+	usage
+	exit
+fi
+if [[ -z "$postfilter_path" ]]; then
+	postfilter_path="$run_path/$postfilter_base"
+fi
+if ! [[ -d "$postfilter_path" ]]; then
+	echo -e "${RED}Error: post-filter path ${CYAN}$postfilter_path${RED} does not exist.${NC}"
+	usage
+	exit
+fi
+postfilt_summary="$postfilter_path/postfilt_summary.txt"
+if ! [[ -s "$postfilt_summary" ]]; then
+	echo -e "${RED}Error: post-filter summary ${CYAN}$postfilt_summary${RED} does not exist.${NC}"
+	usage
+	exit
+fi
 
 #===================================================================================================
 # DEFINE FUNCTIONS
@@ -124,11 +213,18 @@ echo_log() {
 # MAIN BODY
 #===================================================================================================
 
+outfile="$stats_path/summary.txt"
+demuxfile="$stats_path/demux_count.txt"
+depthfile="$stats_path/depth-all.txt"
+mutations_pos="$stats_path/mutations-pos.txt"
+mutations_all="$stats_path/mutations-all.txt"
+mutations_table="$stats_path/mutations-table.txt"
+
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
 # create directory to hold temporary files
 runtime=$(date +"%Y%m%d%H%M%S%N")
-workdir="$tempdir/build_krakendb-$runtime"
+workdir="$tempdir/report_summary_table-$runtime"
 mkdir -m 775 -p "$workdir"
 
 echo_log "recording software version numbers"
@@ -136,66 +232,73 @@ echo_log "current git hash: $hash"
 echo_log "  guppy barcoder: "
 echo_log "input arguments"
 echo_log "  sequencing run folder: ${CYAN}$run_path${NC}"
+echo_log "    1)    barcode demux: ├──${CYAN}${demux_path#$run_path}${NC}"
+echo_log "    2)    length filter: ├──${CYAN}${lengthfilter_path#$run_path}${NC}"
+echo_log "    3)    normalization: ├──${CYAN}${normalize_path#$run_path}${NC}"
+echo_log "    4)  draft consensus: ├──${CYAN}${draftconsensus_path#$run_path}${NC}"
+echo_log "    5)       nextstrain: ├──${CYAN}${nextstrain_path#$run_path}${NC}"
+echo_log "    6)      post-filter: └──${CYAN}${postfilter_path#$run_path}${NC}"
+echo_log "  manifest: ${CYAN}$manifest${NC}"
+echo_log "  reference sequence: ${CYAN}$reference${NC}"
 echo_log "  working directory: ${CYAN}$workdir${NC}"
 echo_log "  threads: ${CYAN}1${NC}"
 echo_log "output arguments"
 echo_log "  log file: ${CYAN}$logfile${NC}"
-echo_log "  summary file: ${CYAN}$summary${NC}"
-echo_log "  depth file: ${CYAN}$summary${NC}"
-echo_log "  mutation file: ${CYAN}$summary${NC}"
+echo_log "  summary file: ${CYAN}${summary#$run_path}${NC}"
+echo_log "  demux file: ${CYAN}${demuxfile#$run_path}${NC}"
+echo_log "  depth file: ${CYAN}${depthfile#$run_path}${NC}"
+echo_log "  mutation file: ${CYAN}${mutations_table#$run_path}${NC}"
 echo_log "------ processing pipeline output ------"
-
-exit
-
-outfile="$run_path/$stats_path/summary.txt"
 
 if ! [[ -s "$outfile" ]]; then
 	make_new_outfile="true"
 else
+	echo_log "Summary file already present - will not overwrite it"
 	make_new_outfile="false"
 fi
 if [[ "$make_new_outfile" == "true" ]]; then
 	printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
 		"Sample" \
 		"Barcode" \
-		"Demultiplexed Reads" \
+		"Raw Reads" \
 		"Length filter" \
 		"SARS-CoV-2 Aligned" \
-		"Consensus coverage" \
+		"Coverage" \
 		"Consensus" > "$outfile"
 fi
 
-if ! [[ -s "$run_path/$stats_path/demux_count.txt" ]]; then
-	tail -n+2 "$run_path/$demux_path/barcoding_summary.txt" | cut -f2 | sort | uniq -c > "$run_path/$stats_path/demux_count.txt"
+if ! [[ -s "$stats_path/demux_count.txt" ]]; then
+	echo_log "Pulling barcode demux stats"
+	tail -n+2 "$demux_path/barcoding_summary.txt" | cut -f2 | sort | uniq -c > "$demuxfile"
+else
+	echo_log "Demux count already present - will not overwrite it"
 fi
 
+echo_log "Reading manifest"
 while read barcode label; do
 
 	echo_log "  $barcode"
 
-	demux_reads=$(grep "$barcode" "$run_path/$stats_path/demux_count.txt" | sed 's/^ \+//' | cut -d" " -f1)
-	gather=$(find "$run_path/$lengthfilter_path" -name "*$barcode.fastq")
+	demux_reads=$(grep "$barcode" "$stats_path/demux_count.txt" | sed 's/^ \+//' | cut -d" " -f1)
+	gather=$(find "$lengthfilter_path" -name "*$barcode.fastq")
+	echo_log "    FASTQ file: $gather"
 	length_filter=$(($(wc -l < "$gather") / 4))
-	alignment=$(find "$run_path/$draftconsensus_path" -name "*$barcode*.sorted.bam" ! -name "*trimmed*")
+	echo_log "      number of reads: $length_filter"
+#	alignment=$(find "$draftconsensus_path" -name "*${barcode}*.sorted.bam" ! -name "*trimmed*")
+	alignment=$(find "$normalize_path" -name "*$barcode.sam" | samtools sort | samtools depth -d 10000000 -)
+	echo_log "    full alignment: $alignment"
 	aligned_reads=$(samtools idxstats "$alignment" | grep "$ref_header" | cut -f3)
-	draft_consensus=$(find "$run_path/$draftconsensus_path" -name "*$barcode*.consensus.fasta")
+	echo_log "      aligned reads: $aligned_reads"
+	draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.consensus.fasta")
+	echo_log "    draft consensus: $draft_consensus"
 	consensus_length=$(($ref_length - $(tail -n+2 "$draft_consensus" | grep -o N | wc -l)))
-	post_filter=$(find "$run_path/$postfilter_path" -name "*$barcode*.variant_data.txt")
-	if [[ "$consensus_length" -lt 25000 ]]; then
-		flag="No"
-	elif ! [[ -s "$post_filter" ]]; then
-		flag="No"
-	else
-		flag=$(tail -n+2 "$post_filter" | awk -F $'\t' '
-			BEGIN{out="Yes"} {
-				if($8 == "MAF>0.10" && out=="Yes"){ out="Yes*"; }
-				if(length($8) > 0 && $8 != "MAF>0.10"){out="Maybe";}
-			} END {
-				print out;
-			}')
-	fi
+	echo_log "      unambiguous consensus: $consensus_length"
+	post_filter=$(find "$postfilter_path" -name "*$barcode*.variant_data.txt")
+	echo_log "    variant file: $post_filter"
 
 	if [[ "$make_new_outfile" == "true" ]]; then
+		echo_log "  adding line to summary file"
+		flag=$(grep "^$label" "$postfilt_summary" | cut -d$'\t' -f6)
 		printf "%s\t%s\t%'d\t%'d\t%'d\t%'d (%s %%)\t%s\n" \
 			"$label" \
 			"$barcode" \
@@ -207,14 +310,17 @@ while read barcode label; do
 			"$flag" >> "$outfile"
 	fi
 
-	depth_outfile="$run_path/$stats_path/depth-${label}-${barcode}.txt"
+	depth_outfile="$stats_path/depth-${label}_${barcode}.txt"
 	if ! [[ -s "$depth_outfile" ]]; then
+		echo_log "  creating depth file"
 		samtools depth -d 0 -a "$alignment" > "$depth_outfile"
 	fi
 
-	mutations_outfile="$run_path/$stats_path/mutations-${label}-${barcode}.txt"
+	mutations_outfile="$stats_path/mutations-${label}_${barcode}.txt"
 	if ! [[ -s "$mutations_outfile" ]]; then
-		final_consensus=$(find "$run_path/$postfilter_path" -name "*$barcode*.complete.fasta")
+		echo_log "  creating mutations file"
+		final_consensus=$(find "$postfilter_path" -name "*$barcode*.complete.fasta")
+		echo_log "    final consensus: $final_consensus"
 		if [[ -s "$final_consensus" ]]; then
 			"$bin_path/mutations.sh" \
 				$("$bin_path/fix_fasta.sh" "$reference" | tail -n1) \
@@ -223,23 +329,50 @@ while read barcode label; do
 		fi
 	fi
 
-done < "$run_path/manifest.txt"
+	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.primertrimmed.rg.sorted.bam")
+	echo_log "    primer trimmed alignment: $trimmed_alignment"
+	vcf=$(find "$draftconsensus_path/VariantValidator" -name "*${barcode}*.merged.vcf" ! -name "*medaka*")
+	outPrefix=$(basename "${vcf%.merged.vcf}")
+
+	if [[ -s "$vcf" && -s "$trimmed_alignment" ]]; then
+
+		igv_out_path="$stats_path/igv"
+		mkdir -p "$igv_out_path"
+
+		java -cp "$vcfigv_repo_path/src" \
+			Vcf2Bat \
+			--squish \
+			--nocombine \
+			--svg \
+			aln="$trimmed_alignment" \
+			var="$vcf" \
+			genome="$reference" \
+			outprefix="$outPrefix"
+
+		mv "$outPrefix.bat" "$outPrefix"
+		mv "$outPrefix" "$igv_out_path"
+
+		"$vcfigv_repo_path/xvfb-run" \
+			--auto-servernum "$vcfigv_repo_path/IGV_2.3.98/igv.sh" \
+			-b "$pipelinepath/$outPrefix/$outPrefix.bat"
+
+	fi
+
+done < "$manifest"
 
 if [[ "$make_new_outfile" == "true" ]]; then
-	printf "\tuncalled\t%'d\tNA\tNA\tNA\n" $(grep unclassified "$run_path/$stats_path/demux_count.txt" | sed 's/^ \+//' | cut -d" " -f1) >> "$outfile"
+	printf "\tuncalled\t%'d\tNA\tNA\tNA\tNA\n" $(grep unclassified "$stats_path/demux_count.txt" | sed 's/^ \+//' | cut -d" " -f1) >> "$outfile"
 fi
 
 echo_log "Calculating depth"
-find "$run_path/$stats_path" -name "depth-*.txt" -print0 | while read -d $'\0' f; do
+find "$stats_path" -name "depth-*.txt" ! -name "depth-all.txt" -print0 | while read -d $'\0' f; do
 	base="${f%.txt}"
-	awk -v BASE="${base#depth-}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
-done > "$run_path/$stats_path/depth-all.txt"
+	awk -v BASE=$(basename "${base#depth-}") '{printf("%s\t%s\n", BASE, $0);}' "$f"
+done > "$depthfile"
 
 echo_log "Identifying mutations"
-mutations_pos="$run_path/$stats_path/mutations-pos.txt"
-mutations_all="$run_path/$stats_path/mutations-all.txt"
-mutations_table="$run_path/$stats_path/mutations-table.txt"
-find "$run_path/$stats_path" -name "mutations-*.txt" | while read fn; do
+rm "$mutations_all"
+find "$stats_path" -name "mutations-*.txt" ! -name "mutations-pos.txt" ! -name "mutations-all.txt" ! -name "mutations-table.txt" | while read fn; do
 	base=$(basename "${fn%.txt}")
 	base="${base#mutations-}"
 	awk -v BASE="$base" 'BEGIN{ printf("%s", BASE); } {
@@ -272,5 +405,7 @@ awk '{
 	}
 	printf("\n");
 }' "$mutations_pos" "$mutations_all" > "$mutations_table"
+
+cp "$postfilt_summary" "$stats_path"
 
 echo_log "${GREEN}Done${NC}"
