@@ -43,7 +43,7 @@ def status_by_flags(flagstr,consensus_var):
     # mismatch flags in uncalled bases put a genome in the yes* category
     
     if consensus_var == True:
-        if ('nextstrain' in flagstr) or ('depth' in flagstr) or ('NTC' in flagstr) or ('mismatch' in flagstr):
+        if ('new' in flagstr) or ('depth' in flagstr) or ('NTC' in flagstr) or ('mismatch' in flagstr):
             return('Maybe')
         elif ('MAF' in flagstr):
             return('Yes*')
@@ -110,7 +110,7 @@ def generate_postfilter_summary(rundir):
                     if pd.isna(tmp.vc_flag.values[0]):
                         snp.append(''.join([tmp.ref.values[0],str(pos),tmp.alt.values[0]]))
                     else:
-                        if not 'samtools only' in tmp.vc_flag.values[0]:
+                        if not 'mismatch(s)' in tmp.vc_flag.values[0]:
                             snp.append(''.join([tmp.ref.values[0],str(pos),tmp.alt.values[0]]))
                             # NEED TO UPDATE WITH NANOPOLISH
                             
