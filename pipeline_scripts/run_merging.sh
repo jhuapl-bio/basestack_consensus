@@ -14,40 +14,42 @@ DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/3-hac-med
 REF="$BINDIR/VariantValidator/nCoV-2019.reference.fasta"
 
 # make and save output directory
-outdir="/home/idies/workspace/Temporary/mkirsche/scratch/covid/$RUN/"
+outdir="/home/idies/workspace/Storage/mkirsche/persistent/covid/$RUN"
 if [ ! -d $outdir ]; then
-	mkdir $outdir
+    mkdir $outdir
 fi
 
 for consfile in $DIR/*.consensus.fasta; do
 
-	sample=${consfile##*/}
-	samplename=${sample%%_*}
+    sample=${consfile##*/}
+    samplename=${sample%%_*}
 
-	# loop through all NTC samples
-	if [ ! "$samplename" = "NTC" ]; then
+    # loop through all non-NTC samples
+    if [ ! "$samplename" = "NTC" ]; then
 
-		echo $samplename
+        echo $samplename
 
-		nanopolishvcffile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus-nanopolish/$samplename*.pass.vcf.gz"
+        nanopolishvcffile=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus-nanopolish/$samplename*.pass.vcf.gz`
         nanopolishvcfunzipped=${nanopolishvcffile::-3}
         if [ ! -r $nanopolishvcfunzipped ]
         then
+            echo 'Unzipping '$nanopolishvcffile
             gunzip -c $nanopolishvcffile > $nanopolishvcfunzipped          
         fi
 
-		medakavcffile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus_update/$samplename*.pass.vcf.gz"
+        medakavcffile=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus_update/$samplename*.pass.vcf.gz`
         medakavcfunzipped=${medakavcffile::-3}
         if [ ! -r $medakavcfunzipped ]
         then
+            echo 'Unzipping '$medakavcffile
             gunzip -c $medakavcffile > $medakavcfunzipped          
         fi
 
-		bamfile="$DIR/$samplename*.primertrimmed.rg.sorted.bam"
-		consensus="$DIR/$samplename*.consensus.fasta"
-		prefix=`echo $consensus`
-		prefix=${prefix##*/}
-		prefix=${prefix%%.*}
+        bamfile=`ls $DIR/$samplename*.primertrimmed.rg.sorted.bam`
+        consensus=`ls $DIR/$samplename*.consensus.fasta`
+        prefix=`echo $consensus`
+        prefix=${prefix##*/}
+        prefix=${prefix%%.*}
 
         echo 'Running merging'
         echo 'Reference: '$REF
@@ -56,8 +58,8 @@ for consfile in $DIR/*.consensus.fasta; do
         echo 'Medaka VCF: '$medakavcfunzipped
         echo 'Out prefix: '$outdir/$prefix
 
-		# run script
-		$BINDIR/VariantValidator/run.sh $REF $bamfile $nanopolishvcfunzipped,$medakavcfunzipped $outdir/$prefix
-	fi
+	# run script
+        $BINDIR/VariantValidator/run.sh $REF $bamfile $nanopolishvcfunzipped,$medakavcfunzipped $outdir/$prefix
+    fi
 done
 
