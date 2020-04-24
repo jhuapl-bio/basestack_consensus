@@ -207,7 +207,9 @@ def refine_variant_calls(vcffile,bamfile,ntc_bamfile,consensus,coverage_flag,dep
     """
     
     # read vcf
-    vcf_sample = vcf.Reader(filename=vcffile)
+    #vcf_sample = vcf.Reader(filename=vcffile)
+    header = ['CHROM','POS','EXTRA','REF','ALT','QUAL','FILTER','INFO','FORMAT','SAMPLE']
+    vcf_sample = pd.read_csv(vcffile,sep='\t',skiprows=1,names=header)
     
     # load current consensus sequence
     cons = list(SeqIO.parse(open(consensus),"fasta"))[0]
@@ -221,11 +223,11 @@ def refine_variant_calls(vcffile,bamfile,ntc_bamfile,consensus,coverage_flag,dep
     lowend = depth_threshold - (depth_threshold*frac)
     highend = depth_threshold + (depth_threshold*frac)
     
-    for record in vcf_sample:
+    for idx,record in vcf_sample.iterrows():
         
         # ignore indels
         # print a warning if indels are found in the input vcf
-        if len(record.REF) != len(record.ALT[0]):
+        if len(record.REF) != len(record.ALT):
             warnings.warn('Indel found at position %d\n Please note that indels are not carried over to the final VCF' % record.POS, Warning)
             continue
         
@@ -237,21 +239,26 @@ def refine_variant_calls(vcffile,bamfile,ntc_bamfile,consensus,coverage_flag,dep
             pos_data = {}
             
             # get the position and alternate allele for this snp
-            pos = record.POS + i # this will just be the position if there is only one snp
-            alt = str(record.ALT[0])[i]
+            pos = int(record.POS) + i # this will just be the position if there is only one snp
+            alt = str(record.ALT)[i]
             ref = record.REF[i]
+            info = dict(item.split("=") for item in record.INFO.split(";")) # fix the info field to mirror a real VCF
             
             # get read depth and pileup at this read position
             pileup = collect_position_pileup(bamfile, pos)
             depth = pileup[0]
             pileup = pileup[1:]
+            
+            # ignore this position if the depth is too low
+            if depth < depth_threshold:
+                continue
 
             # check if coverage is close to depth threshold
             if lowend<depth<highend:
                 pos_data['depth_flag'] = 'depth within %s%% of threshold' % (coverage_flag)
                     
             # check if this position is called in the consensus genome
-            if cons[pos]=='N':
+            if cons[pos-1]=='N':
                 pos_data['consensus_var'] = False
             else:
                 pos_data['consensus_var'] = True
@@ -273,7 +280,7 @@ def refine_variant_calls(vcffile,bamfile,ntc_bamfile,consensus,coverage_flag,dep
                     # if this position does not pass the stringent coverage filter
                     else:
                         # change this base to 'N' in the consensus genome
-                        cons[pos] = 'N'
+                        cons[pos-1] = 'N'
                         pos_data['consensus_var'] = False
                         pos_data['ntc_flag'] = 'allele in NTC'
                     
@@ -293,11 +300,12 @@ def refine_variant_calls(vcffile,bamfile,ntc_bamfile,consensus,coverage_flag,dep
             # add a variant caller flag if the snp is discordant across variant calling methods
             # assumes medaka is the first variant caller and samtools is the second
             # need to update the flag language assuming nanopolish is the gold standard
-            supp_vec = record.INFO['SUPP_VEC'][0]
+            supp_vec = info['SUPP_VEC']
+            #supp_vec = record.INFO['SUPP_VEC'][0]
             if supp_vec == '01':
-                pos_data['vc_flag'] = 'mismatch: variant called by samtools only'
+                pos_data['vc_flag'] = 'mismatch(s)'
             if supp_vec == '10':
-                pos_data['vc_flag'] = 'mismatch: variant called by medaka only'
+                pos_data['vc_flag'] = 'mismatch(m)'
             
             # after checking for all flags
             # add a few values and then append this dictionary to the data list
@@ -318,9 +326,10 @@ def refine_variant_calls(vcffile,bamfile,ntc_bamfile,consensus,coverage_flag,dep
         if colname not in df:
             df[colname] = np.nan
     
-    df['flags'] = df[['depth_flag','maf_flag','ntc_flag','new_flag','vc_flag']].apply(lambda x: '; '.join(x.dropna()), axis=1)
+    #df['flags'] = df[['depth_flag','maf_flag','ntc_flag','new_flag','vc_flag']].apply(lambda x: '; '.join(x.dropna()), axis=1)
     df['depth_thresh'] = depth_threshold
-    df = df[['pos','ref','alt','consensus_var','depth','depth_thresh','alleles','flags']]
+    #df = df[['pos','ref','alt','consensus_var','depth','depth_thresh','alleles','flags']]
+    df = df[['pos','ref','alt','consensus_var','depth','depth_thresh','alleles','depth_flag','maf_flag','ntc_flag','new_flag','vc_flag']]
     
     filepath = os.path.join(outdir,prefix+'.variant_data.txt')
     df.to_csv(filepath,sep='\t',index=False)
