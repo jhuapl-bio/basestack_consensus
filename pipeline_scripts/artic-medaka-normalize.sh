@@ -40,17 +40,17 @@ fastq_dir=${sequencing_run}/fastq_pass
 
 # Output directories
 pipeline_label=hac-medaka-norm200
-demux_dir=${sequencing_run}/1-barcode-demux
-gather_dir=${sequencing_run}/2-length-filter
-normalize_dir=${sequencing_run}/3-normalization
-consensus_dir=${sequencing_run}/4-draft-consensus
+demux_dir=${sequencing_run}/artic/1-barcode-demux
+gather_dir=${sequencing_run}/artic/2-length-filter
+normalize_dir=${sequencing_run}/artic/3-normalization
+consensus_dir=${sequencing_run}/artic/4-draft-consensus
 
 echo -e "$(date +"%F %T") sequencing run start $runID"
 
 # module 1 ################################################################################
 
 # need to fix hardcoded path to software
-guppy_barcoder_path=/home/idies/workspace/Storage/ernluaw1/persistent/bin/ont-guppy-cpu/bin
+guppy_barcoder_path=${software_path}/ont-guppy-cpu/bin
 
 echo_log "Starting guppy demux"
 
@@ -82,7 +82,9 @@ done < "$manifest"
 
 echo_log "Starting normalize"
 
-# software
+echo_log "Starting normalize"
+
+# software - need to move java software and samtools over to code directory
 JAVA_PATH="${software_path}/jdk-14.0.1/bin"
 samtools_path="${software_path}/samtools-1.10/bin"
 NormalizeCoveragePath="${software_path}/CoverageNormalization"
@@ -105,13 +107,12 @@ $gather_dir/${name}_${barcode}.fastq > $normalize_dir/${name}_${barcode}/$align_
 # normalization,.txt file output went to working directory
 out_sam=$normalize_dir/${name}_${barcode}/${name}_${barcode}.covfiltered.sam
 
-$JAVA_PATH/java -cp $NormalizeCoveragePath/src NormalizeCoverage input=$normalize_dir/${name}_${barcode}/$align_out --qual_sort
+$JAVA_PATH/java -cp $NormalizeCoveragePath/src NormalizeCoverage input=$normalize_dir/${name}_${barcode}/$align_out coverage_threshold=150 --qual_sort
 
 # fastq conversion
 $samtools_path/samtools fastq $out_sam > $normalize_dir/${name}_${barcode}/${name}_${barcode}.covfiltered.fq
 
-done < "$manifest"
-
+done < "${manifest}"
 
 # module 4 ##################################################################################
 
@@ -140,7 +141,7 @@ read_count () {
 }
 
 # create summary file
-summary_csv="${sequencing_run}/summary.csv"
+summary_csv="${sequencing_run}/artic-pipeline/summary.csv"
 
 
 # header for summary file
