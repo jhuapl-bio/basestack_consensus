@@ -31,21 +31,21 @@ def is_complete(rundir,prefix):
         return(False,29903-ambig)
     
 
-def status_by_flags(flagstr,consensus_var):
+def status_by_flags(flagstr,unambig):
     """
     Determine the genome status for a sample from the combined flag string
     and whether or not it passes the complete genome threshold
     """
     
-    # flag keywords are 'depth','MAF','nextstrain','NTC','mismatch'
+    # flag keywords are 'depth','MAF','nextstrain','NTC','mismatch','key'
     # these are unique words to each type of flag
     # flags other than MAF only in called bases put a genome in the maybe category
     # mismatch flags in uncalled bases put a genome in the yes* category
     
-    if consensus_var == True:
+    if unambig == True:
         if ('new' in flagstr) or ('depth' in flagstr) or ('NTC' in flagstr) or ('mismatch' in flagstr):
             return('Maybe')
-        elif ('MAF' in flagstr):
+        elif ('MAF' in flagstr) or ('key' in flagstr):
             return('Yes*')
         else:
             return('Yes')
@@ -93,37 +93,41 @@ def generate_postfilter_summary(rundir):
                 # and get only flags to print
                 
                 # replace flags with abbreviated versions
-                for colname in ['depth_flag','maf_flag','ntc_flag','new_flag']:
+                for colname in ['depth_flag','maf_flag','ntc_flag','new_flag','key_flag']:
                     if not pd.isna(tmp[colname].values[0]):
                         tmp.loc[tmp[colname].str.contains('depth'), colname] = 'depth'
                         tmp.loc[tmp[colname].str.contains('MAF'), colname] = 'MAF'
                         tmp.loc[tmp[colname].str.contains('NTC'), colname] = 'NTC'
                         tmp.loc[tmp[colname].str.contains('nextstrain'), colname] = 'new'
+                        tmp.loc[tmp[colname].str.contains('key'), colname] = 'key'
                         
                 
-                allflag = tmp[['depth_flag','maf_flag','ntc_flag','new_flag','vc_flag']].apply(lambda x: ', '.join(str(pos)+':'+x.dropna()), axis=1).values[0]
-                stat.append(status_by_flags(allflag, tmp.consensus_var.values[0]))
+                allflag = tmp[['depth_flag','maf_flag','ntc_flag','new_flag','vc_flag','key_flag']].apply(lambda x: ', '.join(str(pos)+':'+x.dropna()), axis=1).values[0]
+                stat.append(status_by_flags(allflag, tmp.unambig.values[0]))
                 
-                if tmp.consensus_var.values[0] == True:
+                if tmp.unambig.values[0] == True:
                     if not allflag=='':
                         printflag.append(allflag)
                     if pd.isna(tmp.vc_flag.values[0]):
                         snp.append(''.join([tmp.ref.values[0],str(pos),tmp.alt.values[0]]))
                     else:
-                        if not 'mismatch(s)' in tmp.vc_flag.values[0]:
+                        # values that mean this position is not actually a snp in the consensus
+                        no_snp = ['mismatch(m)','mismatch(s)','mismatch(m+s)']
+                        if any(mismatch_snp in tmp.vc_flag.values[0] for mismatch_snp in no_snp)==False:
                             snp.append(''.join([tmp.ref.values[0],str(pos),tmp.alt.values[0]]))
-                            # NEED TO UPDATE WITH NANOPOLISH
                             
                 else:
                     if not pd.isna(tmp.vc_flag.values[0]):
                         printflag.append(str(pos)+':'+tmp.vc_flag.values[0])
                     if not pd.isna(tmp.depth_flag.values[0]):
                         printflag.append(str(pos)+':'+tmp.depth_flag.values[0])
+                    if not pd.isna(tmp.key_flag.values[0]):
+                        printflag.append(str(pos)+':'+tmp.key_flag.values[0])
                     snp.append(''.join([tmp.ref.values[0],str(pos),'N']))
             
             # get the percent coverage for this sample
-            complete,unambig = is_complete(rundir,prefix)
-            coverage.append('{:.2%}'.format(unambig/29903.0))
+            complete,nt = is_complete(rundir,prefix)
+            coverage.append('{:.2%}'.format(nt/29903.0))
             
             # get the status for this genome
             if not complete:
@@ -157,7 +161,7 @@ def generate_postfilter_summary(rundir):
                 for key,val in flaglist:
                     flagdict.setdefault(key, []).append(val)
                 
-                flagstr=', '.join("{!s}={!r}".format(key,val) for (key,val) in flagdict.items())
+                flagstr='; '.join("{!s}={!r}".format(key,val) for (key,val) in flagdict.items())
                 flagstr=flagstr.replace('\'','')
                 
                 num_flagged.append(len(flagdict))
