@@ -29,15 +29,15 @@ for consfile in $DIR/*.consensus.fasta; do
 
         echo $samplename
 
-        nanopolishvcffile=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus-nanopolish/$samplename*.pass.vcf.gz`
-        nanopolishvcfunzipped=${nanopolishvcffile::-3}
-        if [ ! -r $nanopolishvcfunzipped ]
-        then
-            echo 'Unzipping '$nanopolishvcffile
-            gunzip -c $nanopolishvcffile > $nanopolishvcfunzipped          
-        fi
+        nanopolishvcfunzipped=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus-nanopolish/$samplename*.merged.vcf`
+        #nanopolishvcfunzipped=${nanopolishvcffile::-3}
+        #if [ ! -r $nanopolishvcfunzipped ]
+        #then
+        #    echo 'Unzipping '$nanopolishvcffile
+        #    gunzip -c $nanopolishvcffile > $nanopolishvcfunzipped          
+        #fi
 
-        medakavcffile=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus_update/$samplename*.pass.vcf.gz`
+        medakavcffile=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus_update/$samplename*.merged.vcf.gz`
         medakavcfunzipped=${medakavcffile::-3}
         if [ ! -r $medakavcfunzipped ]
         then
