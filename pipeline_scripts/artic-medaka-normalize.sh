@@ -40,10 +40,10 @@ fastq_dir=${sequencing_run}/fastq_pass
 
 # Output directories
 pipeline_label=hac-medaka-norm200
-demux_dir=${sequencing_run}/artic/1-barcode-demux
-gather_dir=${sequencing_run}/artic/2-length-filter
-normalize_dir=${sequencing_run}/artic/3-normalization
-consensus_dir=${sequencing_run}/artic/4-draft-consensus
+demux_dir=${sequencing_run}/artic-pipeline/1-barcode-demux
+gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
+normalize_dir=${sequencing_run}/artic-pipeline/3-normalization
+consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
 
 echo -e "$(date +"%F %T") sequencing run start $runID"
 
@@ -73,14 +73,16 @@ artic guppyplex \
 	--skip-quality-check \
 	--min-length 400 \
 	--max-length 700 \
-	--directory "$demux_dir"/"$barcode" \
-    --prefix "$gather_dir"/"$name"
+	--directory "$demux_dir"/"${barcode/NB/barcode}" \
+    --prefix "$gather_dir"/"${name}_${barcode}"
+    
+mv "$gather_dir"/"${name}_${barcode}_${barcode/NB/barcode}.fastq" \
+"$gather_dir"/"${name}_${barcode}.fastq"    
+
 done < "$manifest"
 
 
 # module 3 ################################################################################
-
-echo_log "Starting normalize"
 
 echo_log "Starting normalize"
 
