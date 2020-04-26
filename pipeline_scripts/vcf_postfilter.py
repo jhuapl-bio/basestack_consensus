@@ -167,7 +167,7 @@ def depth_near_threshold(depth,pileup,depth_threshold,coverage_flag):
         return(np.nan)
 
 
-def high_minor_allele_freq(depth,pileup,ref,maf_flag):
+def high_minor_allele_freq(depth,pileup,alt,maf_flag):
     """
     Function that returns a MAF flag string if the cumulative minor allele frequency
     at a position is higher than a pre-specified value
@@ -176,7 +176,7 @@ def high_minor_allele_freq(depth,pileup,ref,maf_flag):
     # flag this position if the cumulative minor allele frequency is high
     # here the minor allele is everything except the called ALT base
     # this can include deletions
-    maf = float( (depth - pileup.count(ref)) / depth ) * 100
+    maf = float( (depth - pileup.count(alt)) / depth ) * 100
     if maf >= maf_flag:
         return('MAF>%.2f' % float(maf_flag/100))
     else:
@@ -428,7 +428,7 @@ def main():
         
         # add flags to this record
         data['depth_flag'] = depth_near_threshold(depth,pileup,depth_threshold,args.coverage_flag)
-        data['maf_flag'] = high_minor_allele_freq(depth, pileup, data['ref'], args.maf_flag)
+        data['maf_flag'] = high_minor_allele_freq(depth, pileup, data['alt'], args.maf_flag)
         data['new_flag'] = snp_in_nextstrain(pos, data['ref'], data['alt'], args.vcf_nextstrain, args.ns_snp_threshold)
         data['vc_flag'] = variant_caller_mismatch(info['SUPP_VEC'])
         data['ntc_flag'] = allele_in_ntc(pos, data['alt'], depth, args.ntc_bamfile, args.snp_depth_factor)
