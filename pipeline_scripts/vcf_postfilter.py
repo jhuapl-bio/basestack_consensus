@@ -392,7 +392,7 @@ def main():
     
     # set up the dataframe to store results
     df = pd.DataFrame(
-        columns=['pos','ref','alt','unambig','depth','depth_thresh','alleles','depth_flag','maf_flag','ntc_flag','new_flag','vc_flag','key_flag'])
+        columns=['pos','ref','alt','in_consensus','unambig','depth','depth_thresh','alleles','depth_flag','maf_flag','ntc_flag','new_flag','vc_flag','key_flag'])
         
     # loop through all positions
     for pos in vcf_sample.pos:
@@ -444,6 +444,13 @@ def main():
         
         # mark which positions are unambiguous in the consensus
         data['unambig'] = [False if cons[pos-1]=='N' else True][0]
+        
+        # mark which variants are actually in the consensus genome
+        if (data['unambig']==True) and (info['SUPP_VEC'] in ['111','110','101','100']):
+            assert cons[pos-1]==data['alt']
+            data['in_consensus'] = True
+        else:
+            data['in_consensus'] = False
         
         # after adding all the flags
         # add this record to the final dataframe
