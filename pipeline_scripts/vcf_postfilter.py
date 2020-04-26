@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import os
-import vcf
+import sys
 import argparse
 import pandas as pd
 import numpy as np
@@ -43,6 +43,7 @@ def collect_depths(bamfile):
     # close file and return depth vector
     bamFile.close()
     return depths
+
 
 
 def collect_position_pileup(bamfile,position):
@@ -148,9 +149,61 @@ def mask_consensus_sites(consensus,bamfile,depth_threshold,outdir,prefix):
     return(filepath)
     
 
+def depth_near_threshold(depth,pileup,depth_threshold,coverage_flag):
+    """
+    Function that returns a depth flag string if the read depth at a position is
+    within a pre-specified percentage of the depth threshold
+    """
+    
+    # get the coverage flag threshold
+    frac = float(coverage_flag/100)
+    lowend = depth_threshold - (depth_threshold*frac)
+    highend = depth_threshold + (depth_threshold*frac)
+    
+    # check if coverage is close to depth threshold
+    if lowend<depth<highend:
+        return('depth within %s%% of threshold' % (coverage_flag))
+    else:
+        return(np.nan)
+
+
+def high_minor_allele_freq(depth,pileup,ref,maf_flag):
+    """
+    Function that returns a MAF flag string if the cumulative minor allele frequency
+    at a position is higher than a pre-specified value
+    """
+    
+    # flag this position if the cumulative minor allele frequency is high
+    # here the minor allele is everything except the called ALT base
+    # this can include deletions
+    maf = float( (depth - pileup.count(ref)) / depth ) * 100
+    if maf >= maf_flag:
+        return('MAF>%.2f' % float(maf_flag/100))
+    else:
+        return(np.nan)
+
+
+def allele_in_ntc(pos,alt,depth,ntc_bamfile,snp_depth_factor):
+    """ 
+    Function that returns a flag string if the alternate allele is present in the negative control
+    and the coverage in the sample is not more than snp_depth_factor * coverage in negative control
+    """
+    
+    # get the pileup at this position in the negative control
+    ntc_pileup = collect_position_pileup(ntc_bamfile, pos)
+    
+    if alt in ntc_pileup:
+        # require coverage at this sample to be some multiple of the negative control
+        if depth <= (snp_depth_factor * ntc_pileup[0]):
+            return('allele in NTC')
+    
+    # if alt not in negative control or depth is high enough
+    return(np.nan)
+
+
 def snp_in_nextstrain(pos,ref,alt,vcf_nextstrain,ns_snp_threshold):
     """
-    Function that returns true if a SNP has been seen in published sequences
+    Function that returns a flag string if a SNP has not been seen in published sequences
     Requires the SNP to be found in a specific number of published sequences
     to avoid confounding with SNPs that may be a result of sequencing errors in other samples
     """
@@ -162,7 +215,7 @@ def snp_in_nextstrain(pos,ref,alt,vcf_nextstrain,ns_snp_threshold):
     
     # if the position has not been variable before, return false
     if pos not in ns_snps.POS.values:
-        return(False)
+        return('not in nextstrain')
     
     # if the position has been variable before
     # check if the specific allele has been found
@@ -172,16 +225,99 @@ def snp_in_nextstrain(pos,ref,alt,vcf_nextstrain,ns_snp_threshold):
         alleles = tmp.ALT.values[0].split(',')
         
         if alt not in alleles:
-            return(False)
+            return('not in nextstrain')
         else:
             # if the alternate allele has been found before
             # check if it has been found enough times
             idx = alleles.index(alt)
             counts = [x.split(',') if ',' in str(x) else x for x in tmp.OCCURENCES.values][0]
             if int(counts[idx]) >= ns_snp_threshold:
-                return(True)
+                return(np.nan)
             else:
-                return(False)
+                return('not in nextstrain')
+
+
+def variant_caller_mismatch(supp_vec):
+    """
+    Function that returns a flag string if a variant has not been detected by all callers
+    Currently assumes callers are: nanopolish, medaka, samtools (in that order)
+    """
+    
+    # return different codes for different mismatch strings
+    if supp_vec == '111':
+        return(np.nan)
+    elif supp_vec == '100':
+        return('mismatch(n)')
+    elif supp_vec == '010':
+        return('mismatch(m)')
+    elif supp_vec == '001':
+        return('mismatch(s)')
+    elif supp_vec == '110':
+        return('mismatch(n+m)')
+    elif supp_vec == '101':
+        return('mismatch(n+s)')
+    elif supp_vec == '011':
+        return('mismatch(m+s)')
+    else:
+        sys.exit('%s is not a valid support vector' % supp_vec)
+
+
+def ambig_in_key_position(pos,vcf_nextstrain,cons):
+    """ 
+    Function that returns a flag string if a position is at an important site
+    but is an ambiguous base ('N') in the consensus genome
+    """
+    
+    # read in the nextstrain vcf as a dataframe
+    # note: the header is hard-coded and will need to be updated if the header is altered
+    ns_snps = pd.read_csv(vcf_nextstrain,sep='\t',skiprows=3)
+    ns_snps = ns_snps[['POS','CONF_FLAG']]
+    
+    key_snps = ns_snps[ns_snps['CONF_FLAG']=='YES']
+    key_snps = list(key_snps.POS.values)
+    
+    # no flag needed if this position is not one of the important ones
+    if pos not in key_snps:
+        return(np.nan)
+    
+    # if it is an important position
+    else:
+        if cons[pos-1]=='N':
+            return('ambig in key position')
+        else:
+            return(np.nan)
+
+
+def add_key_ambiguous_positions(variants,cons,vcf_nextstrain):
+    """ 
+    Function that returns a dataframe of positions not called as variants in a sample
+    but that are ambiguous at key positions
+    """
+    
+    # read in the nextstrain vcf as a dataframe
+    # note: the header is hard-coded and will need to be updated if the header is altered
+    ns_snps = pd.read_csv(vcf_nextstrain,sep='\t',skiprows=3)
+    ns_snps = ns_snps[['POS','REF','CONF_FLAG']]
+    
+    key_snps = ns_snps[ns_snps['CONF_FLAG']=='YES']
+    key_snps = list(key_snps.POS.values)
+    
+    # create a dataframe in which to store any new values
+    df = pd.DataFrame()
+    
+    # loop through important snps
+    for pos in key_snps:
+        if (pos not in variants) & (cons[pos-1]=='N'):
+            data={}
+            data['pos']=pos
+            data['ref']=ns_snps[ns_snps.POS==pos].REF.values[0]
+            data['alt']='N'
+            data['unambig']=False
+            data['key_flag']='ambig in key position'
+            data = pd.DataFrame([data], columns=data.keys())
+            df = pd.concat([df,data],ignore_index=True)
+    
+    return(df)
 
 
 def get_allele_counts(pileup,depth):
@@ -197,149 +333,7 @@ def get_allele_counts(pileup,depth):
     return(allele_string)
 
 
-def refine_variant_calls(vcffile,bamfile,ntc_bamfile,consensus,coverage_flag,depth_threshold,maf_flag,snp_depth_factor,vcf_nextstrain,ns_snp_threshold,outdir,prefix):
-    """
-    Annotate VCF with information about confidence in variant calls:
-        - note if a variant is present in the consensus genome (y/n)
-        - flag a variant if the read depth at this variant position is close to the depth threshold
-        - flag a variant if the cumulative frequency of all minor alleles is greater than maf_flag percent
-    Additionally, impose more stringent read depth requirements on any variants also present in the negative control
-    """
-    
-    # read vcf
-    #vcf_sample = vcf.Reader(filename=vcffile)
-    header = ['CHROM','POS','EXTRA','REF','ALT','QUAL','FILTER','INFO','FORMAT','SAMPLE']
-    vcf_sample = pd.read_csv(vcffile,sep='\t',skiprows=1,names=header)
-    
-    # load current consensus sequence
-    cons = list(SeqIO.parse(open(consensus),"fasta"))[0]
-    cons = list(cons.seq.upper())
-    
-    # save list of all variant flag data
-    var_data = []
-    
-    # get the coverage flag threshold
-    frac = float(coverage_flag/100)
-    lowend = depth_threshold - (depth_threshold*frac)
-    highend = depth_threshold + (depth_threshold*frac)
-    
-    for idx,record in vcf_sample.iterrows():
-        
-        # ignore indels
-        # print a warning if indels are found in the input vcf
-        if len(record.REF) != len(record.ALT):
-            warnings.warn('Indel found at position %d\n Please note that indels are not carried over to the final VCF' % record.POS, Warning)
-            continue
-        
-        # deal with multiple consecutive snps
-        # for example at position 28881
-        for i in range(len(record.REF)):
-            
-            # initialize an empty dictionary that we will fill in
-            pos_data = {}
-            
-            # get the position and alternate allele for this snp
-            pos = int(record.POS) + i # this will just be the position if there is only one snp
-            alt = str(record.ALT)[i]
-            ref = record.REF[i]
-            info = dict(item.split("=") for item in record.INFO.split(";")) # fix the info field to mirror a real VCF
-            
-            # get read depth and pileup at this read position
-            pileup = collect_position_pileup(bamfile, pos)
-            depth = pileup[0]
-            pileup = pileup[1:]
-            
-            # ignore this position if the depth is too low
-            if depth < depth_threshold:
-                continue
-
-            # check if coverage is close to depth threshold
-            if lowend<depth<highend:
-                pos_data['depth_flag'] = 'depth within %s%% of threshold' % (coverage_flag)
-                    
-            # check if this position is called in the consensus genome
-            if cons[pos-1]=='N':
-                pos_data['consensus_var'] = False
-            else:
-                pos_data['consensus_var'] = True
-                    
-                # apply different filters depending on whether alt allele is found in negative control
-                ntc_pileup = collect_position_pileup(ntc_bamfile, pos)
-                if alt in ntc_pileup:
-                        
-                    # require coverage at this sample to be some multiple of the negative control
-                    if depth >= (snp_depth_factor * ntc_pileup[0]):
-                        pos_data['consensus_var'] = True
-                        # flag this position if the cumulative minor allele frequency is high
-                        # here the minor allele is everything except the called ALT base
-                        # this can include deletions
-                        maf = float( (depth - pileup.count(alt)) / depth ) * 100
-                        if maf >= maf_flag:
-                            pos_data['maf_flag'] = 'MAF>%.2f' % float(maf_flag/100)
-                        
-                    # if this position does not pass the stringent coverage filter
-                    else:
-                        # change this base to 'N' in the consensus genome
-                        cons[pos-1] = 'N'
-                        pos_data['consensus_var'] = False
-                        pos_data['ntc_flag'] = 'allele in NTC'
-                    
-                # if the allele is not the in negative control
-                else:
-                    # flag this position if the cumulative minor allele frequency is high
-                    # here the minor allele is everything except the called ALT base
-                    # this can include deletions
-                    maf = float( (depth - pileup.count(alt)) / depth ) * 100
-                    if maf >= maf_flag:
-                        pos_data['maf_flag'] = 'MAF>%.2f' % float(maf_flag/100)
-            
-            # add a flag if the snp has not previously been seen before
-            if not snp_in_nextstrain(pos, ref, alt, vcf_nextstrain, ns_snp_threshold):
-                pos_data['new_flag'] = 'not in nextstrain'
-                
-            # add a variant caller flag if the snp is discordant across variant calling methods
-            # assumes medaka is the first variant caller and samtools is the second
-            # need to update the flag language assuming nanopolish is the gold standard
-            supp_vec = info['SUPP_VEC']
-            #supp_vec = record.INFO['SUPP_VEC'][0]
-            if supp_vec == '01':
-                pos_data['vc_flag'] = 'mismatch(s)'
-            if supp_vec == '10':
-                pos_data['vc_flag'] = 'mismatch(m)'
-            
-            # after checking for all flags
-            # add a few values and then append this dictionary to the data list
-            pos_data['pos'] = pos
-            pos_data['alt'] = alt
-            pos_data['ref'] = ref
-            pos_data['depth'] = depth
-            pos_data['alleles'] = get_allele_counts(pileup,depth)
-            var_data.append(pos_data)
-    
-    # after looping through all positions
-    
-    # output a data frame with positions and flags
-    df = pd.DataFrame(var_data)
-    
-    # add any missing columns for consistency
-    for colname in ['pos','ref','alt','consensus_var','depth','depth_thresh','alleles','depth_flag','maf_flag','ntc_flag','new_flag','vc_flag']:
-        if colname not in df:
-            df[colname] = np.nan
-    
-    #df['flags'] = df[['depth_flag','maf_flag','ntc_flag','new_flag','vc_flag']].apply(lambda x: '; '.join(x.dropna()), axis=1)
-    df['depth_thresh'] = depth_threshold
-    #df = df[['pos','ref','alt','consensus_var','depth','depth_thresh','alleles','flags']]
-    df = df[['pos','ref','alt','consensus_var','depth','depth_thresh','alleles','depth_flag','maf_flag','ntc_flag','new_flag','vc_flag']]
-    
-    filepath = os.path.join(outdir,prefix+'.variant_data.txt')
-    df.to_csv(filepath,sep='\t',index=False)
-
-
-def make_final_fasta(consensus,prefix,unambig_thresh,outdir):
-    
-    # load current consensus sequence
-    cons = list(SeqIO.parse(open(consensus),"fasta"))[0]
-    cons = list(cons.seq.upper())
+def make_final_fasta(cons,prefix,unambig_thresh,outdir):
     
     assert len(cons)==29903
     
@@ -379,11 +373,92 @@ def parse_arguments():
    args = parser.parse_args()
    return(args)
 
-if __name__ == "__main__":
+
+def main():
     
     args = parse_arguments()
     
     depth_threshold = max(20,calculate_depth_threshold(args.ntc_bamfile, args.call_depth_factor))
     mask_cons = mask_consensus_sites(args.consensus, args.bamfile, depth_threshold, args.outdir, args.prefix)
-    refine_variant_calls(args.vcffile, args.bamfile, args.ntc_bamfile, mask_cons, args.coverage_flag, depth_threshold, args.maf_flag, args.snp_depth_factor, args.vcf_nextstrain, args.ns_snp_threshold, args.outdir,args.prefix)
-    make_final_fasta(mask_cons, args.prefix, args.unambig_threshold, args.outdir)
+    
+    # read vcf as text file
+    vcf_sample = pd.read_csv(args.vcffile,sep='\t',skiprows=1)
+    vcf_sample = vcf_sample[['POS','REF','ALT','INFO']]
+    vcf_sample.columns = ['pos','ref','alt','info']
+    
+    # load current consensus sequence
+    cons = list(SeqIO.parse(open(mask_cons),"fasta"))[0]
+    cons = list(cons.seq.upper())
+    
+    # set up the dataframe to store results
+    df = pd.DataFrame(
+        columns=['pos','ref','alt','unambig','depth','depth_thresh','alleles','depth_flag','maf_flag','ntc_flag','new_flag','vc_flag','key_flag'])
+        
+    # loop through all positions
+    for pos in vcf_sample.pos:
+        
+        tmp = vcf_sample[vcf_sample.pos==pos]
+        
+        # ignore indels
+        # print a warning if indels are found in the input vcf
+        if len(tmp.ref.values[0]) != len(tmp.alt.values[0]):
+            warnings.warn('Indel found at position %d\n indels are not carried over to the final VCF!' % pos)
+            continue
+        
+        # start a dictionary to store data for this sample
+        data = tmp.to_dict('records')[0]
+        
+        # store information from info column and remove it from dictionary
+        info = dict(item.split("=") for item in data['info'].split(";"))
+        del data['info']
+        
+        # get read depth and pileup at this read position
+        pileup = collect_position_pileup(args.bamfile, pos)
+        depth = pileup[0]
+        pileup = pileup[1:]
+            
+        # ignore this position if the depth is too low
+        if depth < depth_threshold:
+            continue
+        
+        # add basic data to this record
+        data['depth'] = depth
+        data['depth_thresh'] = depth_threshold
+        data['alleles'] = get_allele_counts(pileup,depth)
+        
+        # add flags to this record
+        data['depth_flag'] = depth_near_threshold(depth,pileup,depth_threshold,args.coverage_flag)
+        data['maf_flag'] = high_minor_allele_freq(depth, pileup, data['ref'], args.maf_flag)
+        data['new_flag'] = snp_in_nextstrain(pos, data['ref'], data['alt'], args.vcf_nextstrain, args.ns_snp_threshold)
+        data['vc_flag'] = variant_caller_mismatch(info['SUPP_VEC'])
+        data['ntc_flag'] = allele_in_ntc(pos, data['alt'], depth, args.ntc_bamfile, args.snp_depth_factor)
+        
+        # modify consensus genome based on ntc flag
+        # remember consensus is zero-indexed but we are dealing with 1-indexed positions
+        if not pd.isna(data['ntc_flag']):
+            cons[pos-1]='N'
+            
+        # add a flag if a key position is ambiguous in the consensus
+        # must happen after any masking that occurs due to NTC flags
+        data['key_flag'] = ambig_in_key_position(pos, args.vcf_nextstrain, cons)
+        
+        # mark which positions are unambiguous in the consensus
+        data['unambig'] = [False if cons[pos-1]=='N' else True][0]
+        
+        # after adding all the flags
+        # add this record to the final dataframe
+        data = pd.DataFrame([data], columns=data.keys())
+        df = pd.concat([df,data],ignore_index=True,sort=False)
+    
+    # after looping through all positions
+    # add positions at key snps if not in variant list
+    df = pd.concat([df,add_key_ambiguous_positions(list(df.pos.values), cons, args.vcf_nextstrain)],ignore_index=True,sort=False)
+    filepath = os.path.join(args.outdir,args.prefix+'.variant_data.txt')
+    df.to_csv(filepath,sep='\t',index=False)
+    
+    # then make the final consensus
+    make_final_fasta(cons,args.prefix,args.unambig_threshold,args.outdir)
+
+
+if __name__ == "__main__":
+    main()
