@@ -307,7 +307,7 @@ def add_key_ambiguous_positions(variants,cons,vcf_nextstrain):
     
     # loop through important snps
     for pos in key_snps:
-        if (pos not in variants) & (cons[pos-1]=='N'):
+        if (pos not in variants) and (cons[pos-1]=='N'):
             data={}
             data['pos']=pos
             data['ref']=ns_snps[ns_snps.POS==pos].REF.values[0]
