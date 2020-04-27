@@ -8,15 +8,25 @@ fi
 # specify a sequencing run directory
 RUN=$1
 
+# get known directory names
+DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/5-post-filter_nanopolish"
+
 # make and save output directory
-outdir="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/5-post-filter_nanopolish"
-if [ ! -d $outdir ]; then
-    mkdir $outdir
-fi
+outdir=$DIR
 
-table=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/5-post-filter_nanopolish/postfilt_all.txt`
+for table in $DIR/*.variant_data.txt; do
 
-# run script
-prefix='postfilt'
-$BINDIR/VariantValidator/parsetable.sh $table $outdir/$prefix
+    sample=${table##*/}
+    samplename=${sample%%.*}
+
+    # loop through all non-NTC samples
+    if [ ! "$samplename" = "NTC" ]; then
+
+        echo 'Table file: '$table
+        echo 'Out prefix: '$outdir/$samplename
+
+	# run script
+        $BINDIR/VariantValidator/parsetable.sh $table $outdir/$samplename
+    fi
+done
 
