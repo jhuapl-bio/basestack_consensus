@@ -1,0 +1,10 @@
+name: jhu-ncov
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3
+  - biopython=1.74
+  - pysam=0.15.3
+  - pyvcf=0.6.8=py36_0
