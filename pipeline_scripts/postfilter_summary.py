@@ -86,6 +86,9 @@ def generate_postfilter_summary(rundir):
             snp = []
             stat = []
             
+            # replace '.' empty values with np.nan
+            var = var.replace('.',np.nan)
+            
             for pos in var.pos:
                 tmp = var[var.pos==pos]
                 

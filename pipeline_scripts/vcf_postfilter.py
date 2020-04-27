@@ -164,7 +164,7 @@ def depth_near_threshold(depth,pileup,depth_threshold,coverage_flag):
     if lowend<depth<highend:
         return('depth within %s%% of threshold' % (coverage_flag))
     else:
-        return(np.nan)
+        return('.')
 
 
 def high_minor_allele_freq(depth,pileup,alt,maf_flag):
@@ -180,7 +180,7 @@ def high_minor_allele_freq(depth,pileup,alt,maf_flag):
     if maf >= maf_flag:
         return('MAF>%.2f' % float(maf_flag/100))
     else:
-        return(np.nan)
+        return('.')
 
 
 def allele_in_ntc(pos,alt,depth,ntc_bamfile,snp_depth_factor):
@@ -198,7 +198,7 @@ def allele_in_ntc(pos,alt,depth,ntc_bamfile,snp_depth_factor):
             return('allele in NTC')
     
     # if alt not in negative control or depth is high enough
-    return(np.nan)
+    return('.')
 
 
 def snp_in_nextstrain(pos,ref,alt,vcf_nextstrain,ns_snp_threshold):
@@ -232,7 +232,7 @@ def snp_in_nextstrain(pos,ref,alt,vcf_nextstrain,ns_snp_threshold):
             idx = alleles.index(alt)
             counts = [x.split(',') if ',' in str(x) else x for x in tmp.OCCURENCES.values][0]
             if int(counts[idx]) >= ns_snp_threshold:
-                return(np.nan)
+                return('.')
             else:
                 return('not in nextstrain')
 
@@ -245,7 +245,7 @@ def variant_caller_mismatch(supp_vec):
     
     # return different codes for different mismatch strings
     if supp_vec == '111':
-        return(np.nan)
+        return('.')
     elif supp_vec == '100':
         return('mismatch(n)')
     elif supp_vec == '010':
@@ -278,14 +278,14 @@ def ambig_in_key_position(pos,vcf_nextstrain,cons):
     
     # no flag needed if this position is not one of the important ones
     if pos not in key_snps:
-        return(np.nan)
+        return('.')
     
     # if it is an important position
     else:
         if cons[pos-1]=='N':
             return('ambig in key position')
         else:
-            return(np.nan)
+            return('.')
 
 
 def add_key_ambiguous_positions(variants,cons,vcf_nextstrain):
@@ -360,9 +360,11 @@ def parse_arguments():
    parser.add_argument('--bamfile', type=str, help='path to bam file of sample')
    parser.add_argument('--consensus', type=str, help='path to fasta file of sample consensus sequence')
    parser.add_argument('--ntc-bamfile', type=str, help='path to bam file of negative control')
-   parser.add_argument('--outdir', '-o', type=str, help='directory name to write output files to')
    parser.add_argument('--vcf-nextstrain', type=str, help='path to vcf containing all nextstrain snps')
+   
+   parser.add_argument('--outdir', '-o', type=str, help='directory name to write output files to')
    parser.add_argument('--prefix', type=str, default='sample', help='prefix of all saved output files')
+   
    parser.add_argument('--coverage-flag', type=int, default=20, help='flag variants with depth within this percentage of threshold')
    parser.add_argument('--maf-flag', type=int, default=10, help='flag variants with minor allele frequency with at least this value')
    parser.add_argument('--call-depth-factor', type=int, default=2, help='factor by which depth must exceed median NTC depth to call a base')
@@ -383,8 +385,8 @@ def main():
     
     # read vcf as text file
     vcf_sample = pd.read_csv(args.vcffile,sep='\t',skiprows=1)
-    vcf_sample = vcf_sample[['POS','REF','ALT','INFO']]
-    vcf_sample.columns = ['pos','ref','alt','info']
+    vcf_sample = vcf_sample[['#CHROM','POS','REF','ALT','INFO']]
+    vcf_sample.columns = ['chrom','pos','ref','alt','info']
     
     # load current consensus sequence
     cons = list(SeqIO.parse(open(mask_cons),"fasta"))[0]
@@ -392,7 +394,7 @@ def main():
     
     # set up the dataframe to store results
     df = pd.DataFrame(
-        columns=['pos','ref','alt','in_consensus','unambig','depth','depth_thresh','alleles','depth_flag','maf_flag','ntc_flag','new_flag','vc_flag','key_flag'])
+        columns=['chrom','pos','ref','alt','in_consensus','unambig','depth','depth_thresh','alleles','depth_flag','maf_flag','ntc_flag','new_flag','vc_flag','key_flag'])
         
     # loop through all positions
     for pos in vcf_sample.pos:
@@ -435,7 +437,7 @@ def main():
         
         # modify consensus genome based on ntc flag
         # remember consensus is zero-indexed but we are dealing with 1-indexed positions
-        if not pd.isna(data['ntc_flag']):
+        if not data['ntc_flag']=='.':
             cons[pos-1]='N'
             
         # add a flag if a key position is ambiguous in the consensus
