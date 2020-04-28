@@ -184,6 +184,12 @@ if ! [[ -s "$postfilt_summary" ]]; then
 	usage
 	exit
 fi
+postfilt_all="$postfilter_path/postfilt_all.txt"
+if ! [[ -s "$postfilt_summary" ]]; then
+	echo -e "${RED}Error: post-filter full report ${CYAN}$postfilt_all${RED} does not exist.${NC}"
+	usage
+	exit
+fi
 
 #===================================================================================================
 # DEFINE FUNCTIONS
@@ -232,12 +238,12 @@ echo_log "current git hash: $hash"
 echo_log "  guppy barcoder: "
 echo_log "input arguments"
 echo_log "  sequencing run folder: ${CYAN}$run_path${NC}"
-echo_log "    1)    barcode demux: ├──${CYAN}${demux_path#$run_path}${NC}"
-echo_log "    2)    length filter: ├──${CYAN}${lengthfilter_path#$run_path}${NC}"
-echo_log "    3)    normalization: ├──${CYAN}${normalize_path#$run_path}${NC}"
-echo_log "    4)  draft consensus: ├──${CYAN}${draftconsensus_path#$run_path}${NC}"
-echo_log "    5)       nextstrain: ├──${CYAN}${nextstrain_path#$run_path}${NC}"
-echo_log "    6)      post-filter: └──${CYAN}${postfilter_path#$run_path}${NC}"
+echo_log "    1)    barcode demux: ├── ${CYAN}${demux_path#$run_path}${NC}"
+echo_log "    2)    length filter: ├── ${CYAN}${lengthfilter_path#$run_path}${NC}"
+echo_log "    3)    normalization: ├── ${CYAN}${normalize_path#$run_path}${NC}"
+echo_log "    4)  draft consensus: ├── ${CYAN}${draftconsensus_path#$run_path}${NC}"
+echo_log "    5)       nextstrain: ├── ${CYAN}${nextstrain_path#$run_path}${NC}"
+echo_log "    6)      post-filter: └── ${CYAN}${postfilter_path#$run_path}${NC}"
 echo_log "  manifest: ${CYAN}$manifest${NC}"
 echo_log "  reference sequence: ${CYAN}$reference${NC}"
 echo_log "  working directory: ${CYAN}$workdir${NC}"
@@ -282,12 +288,22 @@ while read barcode label; do
 	demux_reads=$(grep "$barcode" "$stats_path/demux_count.txt" | sed 's/^ \+//' | cut -d" " -f1)
 	gather=$(find "$lengthfilter_path" -name "*$barcode.fastq")
 	echo_log "    FASTQ file: $gather"
-	length_filter=$(($(wc -l < "$gather") / 4))
+	if [[ -s "$gather" ]]; then
+		length_filter=$(($(wc -l < "$gather") / 4))
+	else
+		length_filter=0
+	fi
 	echo_log "      number of reads: $length_filter"
 #	alignment=$(find "$draftconsensus_path" -name "*${barcode}*.sorted.bam" ! -name "*trimmed*")
-	alignment=$(find "$normalize_path" -name "*$barcode.sam" | samtools sort | samtools depth -d 10000000 -)
+	alignment=$(find "$normalize_path" -name "*$barcode.sam")
+	if [[ -s "$gather" ]]; then
+		alignment_depth=$(wc -l "$alignment")
+	else
+		alignment_depth=0
+	fi
 	echo_log "    full alignment: $alignment"
-	aligned_reads=$(samtools idxstats "$alignment" | grep "$ref_header" | cut -f3)
+	normalized_alignment=$(find "$draftconsensus_path" -name "*$barcode*.sorted.bam" ! -name "*trimmed*")
+	normalized_reads=$(samtools idxstats "$normalized_alignment" | grep "$ref_header" | cut -f3)
 	echo_log "      aligned reads: $aligned_reads"
 	draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.consensus.fasta")
 	echo_log "    draft consensus: $draft_consensus"
@@ -313,7 +329,13 @@ while read barcode label; do
 	depth_outfile="$stats_path/depth-${label}_${barcode}.txt"
 	if ! [[ -s "$depth_outfile" ]]; then
 		echo_log "  creating depth file"
-		samtools depth -d 0 -a "$alignment" > "$depth_outfile"
+		samtools sort "$alignment" | samtools depth -a -d 10000000 - > "$depth_outfile"
+	fi
+
+	normalized_depth_outfile="$stats_path/depth-${label}_${barcode}.txt"
+	if ! [[ -s "$depth_outfile" ]]; then
+		echo_log "  creating normalized depth file"
+		samtools depth -d 0 -a "$normalized_alignment" > "$normalized_depth_outfile"
 	fi
 
 	mutations_outfile="$stats_path/mutations-${label}_${barcode}.txt"
@@ -407,5 +429,6 @@ awk '{
 }' "$mutations_pos" "$mutations_all" > "$mutations_table"
 
 cp "$postfilt_summary" "$stats_path"
+cp "$postfilt_all" "$stats_path"
 
 echo_log "${GREEN}Done${NC}"
