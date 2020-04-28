@@ -305,9 +305,11 @@ while read barcode label; do
 		alignment_depth=0
 	fi
 	echo_log "    full alignment: $alignment"
+	echo_log "      aligned reads: $alignment_depth"
 	normalized_alignment=$(find "$draftconsensus_path" -name "*$barcode*.sorted.bam" ! -name "*trimmed*")
 	normalized_reads=$(samtools idxstats "$normalized_alignment" | grep "$ref_header" | cut -f3)
-	echo_log "      aligned reads: $aligned_reads"
+	echo_log "    normalized alignment: $alignment"
+	echo_log "      normalized reads: $alignment_depth"
 	draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.consensus.fasta")
 	echo_log "    draft consensus: $draft_consensus"
 	consensus_length=$(($ref_length - $(tail -n+2 "$draft_consensus" | grep -o N | wc -l)))
@@ -336,7 +338,7 @@ while read barcode label; do
 	fi
 
 	normalized_depth_outfile="$stats_path/depth-${label}_${barcode}.txt"
-	if ! [[ -s "$depth_outfile" ]]; then
+	if ! [[ -s "$normalized_depth_outfile" ]]; then
 		echo_log "  creating normalized depth file"
 		samtools depth -d 0 -a "$normalized_alignment" > "$normalized_depth_outfile"
 	fi
