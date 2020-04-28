@@ -30,10 +30,10 @@ usage() {
 	echo -e "   -o      output folder (default: ${CYAN}<run-folder>/artic-pipeline/run_stats${NC})"
 	echo -e "   -1      barcode demux folder (default: ${CYAN}<run-folder>/artic-pipeline/1-guppy-barcoder${NC})"
 	echo -e "   -2      length filter folder (default: ${CYAN}<run-folder>/artic-pipeline/2-guppyplex${NC})"
-	echo -e "   -3      normalization folder (default: ${CYAN}not used yet${NC})"
-	echo -e "   -4      draft consensus folder (default: ${CYAN}<run-folder>/artic-pipeline/3-hac-medaka-norm200${NC})"
+	echo -e "   -3      normalization folder (default: ${CYAN}<run-folder>/artic-pipeline/3-normalization_update${NC})"
+	echo -e "   -4      draft consensus folder (default: ${CYAN}<run-folder>/artic-pipeline/4-draft-consensus${NC})"
 	echo -e "   -5      nextstrain folder (default: ${CYAN}not used yet${NC})"
-	echo -e "   -6      post-filter folder (default: ${CYAN}<run-folder>/artic-pipeline/4-post-filter${NC})"
+	echo -e "   -6      post-filter folder (default: ${CYAN}<run-folder>/artic-pipeline/5-post-filter${NC})"
 	echo -e ""
 }
 
@@ -319,7 +319,7 @@ while read barcode label; do
 
 	if [[ "$make_new_outfile" == "true" ]]; then
 		echo_log "  adding line to summary file"
-		flag=$(grep "^$label" "$postfilt_summary" | cut -d$'\t' -f6)
+		flag=$(grep "^$label" "$postfilt_summary" | cut -d$'\t' -f7)
 		printf "%s\t%s\t%'d\t%'d\t%'d\t%'d (%s %%)\t%s\n" \
 			"$label" \
 			"$barcode" \
@@ -435,5 +435,16 @@ awk '{
 
 cp "$postfilt_summary" "$stats_path"
 cp "$postfilt_all" "$stats_path"
+
+#===================================================================================================
+# BUILD MARKDOWN FILE
+#===================================================================================================
+
+sed -e "s@<RUN_PATH>@${run_path}@" \
+	-e "s@<PLATE>@${plate}@" \
+	-e "s@<ROW>@${row}@" \
+	"$bin_path/template.Rmd" > "$stats_path/$(basename $run_path)-report.Rmd"
+
+#---------------------------------------------------------------------------------------------------
 
 echo_log "${GREEN}Done${NC}"
