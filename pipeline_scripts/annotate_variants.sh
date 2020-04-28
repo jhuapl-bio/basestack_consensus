@@ -2,7 +2,7 @@
 
 ###
 
-# Script to snpeff annotations for all vcf
+# Run snpeff annotations for variant calls
 
 ###
 
@@ -23,8 +23,8 @@ EOM
 
 [ -z $1 ] && { usage; }
 
-PATHENV="/home/idies/workspace/Storage/sramakr4/persistent/miniconda3/etc/profile.d/conda.sh"
-JARPATH="/home/idies/workspace/Storage/sramakr4/persistent/miniconda3/envs/nextstrain/share/snpeff-4.3.1t-3/"
+PATHENV="/home/idies/workspace/covid19/miniconda3/etc/profile.d/conda.sh"
+JARPATH="/home/idies/workspace/covid19/miniconda3/envs/jhu-ncov/share/snpeff-4.3.1t-3/"
 
 VCF_BASE=$( basename ${VCF} ".vcf")
 CONFIG_DIR=$( dirname ${CONFIG} )
@@ -32,8 +32,8 @@ CONFIG_DATA=${CONFIG_DIR}/data/
 AA_DATA=${CONFIG_DIR}/amino_acid_codes.txt
 
 source ${PATHENV}
-conda activate nextstrain
-
+#conda activate nextstrain
+conda activate jhu-ncov
 
 if [[ ! -r "$CONFIG" ]]
 then
