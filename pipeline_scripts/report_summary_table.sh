@@ -68,11 +68,12 @@ postfilter_base="artic-pipeline/5-post-filter_update"
 #===================================================================================================
 
 # parse input arguments
-while getopts "hi:b:p:r:o:1:2:3:4:5:6:" OPTION
+while getopts "hi:m:b:p:r:o:1:2:3:4:5:6:" OPTION
 do
 	case $OPTION in
 		h) usage; exit 1 ;;
 		i) run_path=$OPTARG ;;
+		m) manifest=$OPTARG ;;
 		b) bin_path=$OPTARG ;;
 		p) run_path=$OPTARG ;;
 		r) reference=$OPTARG ;;
@@ -97,11 +98,13 @@ if ! [[ -d "$run_path" ]]; then
 	exit
 fi
 
-manifest="$run_path/manifest.txt"
 if ! [[ -s "$manifest" ]]; then
-	echo -e "${RED}Error: manifest file ${CYAN}$manifest${RED} does not exist.${NC}"
-	usage
-	exit
+	manifest="$run_path/manifest.txt"
+	if ! [[ -s "$manifest" ]]; then
+		echo -e "${RED}Error: manifest file ${CYAN}$manifest${RED} does not exist.${NC}"
+		usage
+		exit
+	fi
 fi
 
 if ! [[ -s "$reference" ]]; then
