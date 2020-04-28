@@ -14,7 +14,7 @@ DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/3-hac-med
 REF="$BINDIR/VariantValidator/nCoV-2019.reference.fasta"
 
 # make and save output directory
-outdir="/home/idies/workspace/Storage/mkirsche/persistent/covid/$RUN"
+outdir="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus-nanopolish/VariantValidator"
 if [ ! -d $outdir ]; then
     mkdir $outdir
 fi

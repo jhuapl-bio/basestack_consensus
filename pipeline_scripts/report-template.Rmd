@@ -1,0 +1,931 @@
+---
+title: "SARS-CoV-2 Run Report"
+author: "Plate <PLATE>, Row <ROW>"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+params:
+  path: "<RUN_PATH>"
+always_allow_html: true
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: true
+header-includes:
+    \definecolor{myDarkGreen}{rgb}{0.14,0.55,0.17}
+    \definecolor{myLightGreen}{rgb}{0.46,0.77,0.46}
+    \definecolor{myYellow}{rgb}{0.86,0.65,0.13}
+    \definecolor{myRed}{rgb}{0.93,0.17,0.17}
+    \definecolor{variantBlue}{rgb}{0.192,0.51,0.741}
+    \definecolor{variantRed}{rgb}{0.867,0.11,0.467}
+---
+  <!-- \usepackage{amsmath} -->
+  <!-- \usepackage{fdsymbol} -->
+  <!-- \usepackage[notextcomp]{stix} -->
+    <!-- \setmathfont{STIX2Math.otf} -->
+    <!-- \DeclareFontEncoding{LS1}{}{} -->
+    <!-- \DeclareFontSubstitution{LS1}{stix}{m}{n} -->
+    <!-- \DeclareSymbolFont{symbols4}{LS1}{stixbb}{m}{it} -->
+    <!-- \DeclareMathSymbol{\squarebotblack}{\mathord}{symbols4}{"CE} -->
+    <!-- \DeclareSymbolFont{symbols}{LS1}{stixscr}{m}{n} -->
+    <!-- \DeclareMathSymbol{\dottedcircle}{\mathord}{symbols}{"E3} -->
+
+```{r, load-libraries, echo=FALSE, message=FALSE}
+# using guidance from:
+#   https://libscie.github.io/rmarkdown-workshop/handout.html
+
+# load libraries
+library(knitr, quietly=TRUE)
+# hook knitr into tixz, from: https://github.com/daqana/tikzDevice/issues/60
+knit_hooks$set(plot = function(x, options) {
+  if ('tikz' %in% options$dev && !options$external) {
+    hook_plot_tex(x, options)
+  } else hook_plot_md(x, options)
+})
+library(kableExtra, quietly=TRUE)
+library(pander, quietly=TRUE)
+library(pheatmap, quietly=TRUE)
+library(ggplot2, quietly=TRUE)
+library(ggrepel, quietly=TRUE)
+library(broom, quietly=TRUE)
+library(devtools, quietly=TRUE)
+library(tidyverse, quietly=TRUE)
+library(jsonlite, quietly=TRUE)
+library(grid, quietly=TRUE)
+library(png, quietly=TRUE)
+library(gridExtra, quietly=TRUE)
+#library(ggpubr, quietly=TRUE)
+library(RColorBrewer, quietly=TRUE)
+library(viridis, quietly=TRUE)
+library(tikzDevice, quietly=TRUE)
+library(magick, quietly=TRUE)
+```
+
+```{r, load-files, echo=FALSE, message=FALSE, warning=FALSE}
+# grab path to run directory from YAML
+run_path <- params$path
+
+#-------------------------------------------------
+# set up colors
+flagColors <- c("Yes" = "#238B2B", "Yes*" = "#74C476", "Maybe" = "#DAA520", "No" = "#EE2C2C", "NA" = "#B3B3B3")
+flagColorsTeX <- c("Yes" = "\\textcolor{myDarkGreen}", "Yes*" = "\\textcolor{myLightGreen}", "Maybe" = "\\textcolor{myYellow}", "No" = "\\textcolor{myRed}", "NA" = "\\textcolor{gray70}")
+  colorlevels <- function(l, bg=FALSE) {
+  if(bg) {
+    colorList <- flagColors
+  } else {
+    colorList <- flagColorsTeX
+  }
+  for(i in l) {
+    l[l == i] <- colorList[i]
+  }
+  return(l)
+}
+
+shapes <- list( # from: https://en.wikipedia.org/wiki/Geometric_Shapes
+  squares = c("⬛","⬜","⬒","⬓","◧","◨","◩","◪","▣","▤","▥"),
+  triangles = c("▲","△","◀","◁","▶","▷","▼","▽"),
+  circles = c("⬤","○","◌","◍","◎","◐","◑","◒","◓","◔","◕"),
+  diamonds = c("◆","◇","◈","◊")
+  )
+
+#-------------------------------------------------
+# run information
+run_config <- read.table(paste0(run_path,"/run_config.txt"))
+manifest <- read.table(paste0(run_path,"/manifest.txt"))
+amplicons <- read.table(paste0(run_path,"/../amplicons"), sep="\t", header=TRUE)
+important_positions <- read.table(paste0(run_path,"/../clade_related_snps.txt"), sep="\t", header=TRUE)
+throughput <-read_csv(list.files(run_path, "throughput*", full.names=TRUE))
+
+# pipeline output files
+#read_lengths <- read.table(paste0(run_path,"/artic-pipeline/run_stats/read_lengths.txt"), sep="\t")
+summary <- read.table(paste0(run_path,"/artic-pipeline/run_stats/summary.txt"), sep="\t", header=TRUE)
+depth_all <- read.table(paste0(run_path,"/artic-pipeline/run_stats/depth-all.txt"), sep="\t", fill=TRUE)
+mutation_full <- read.table(paste0(run_path, "/artic-pipeline/run_stats/mutations-table.txt"), sep="\t", header=TRUE, row.names=1)
+postfilt <- read.table(paste0(run_path, "/artic-pipeline/run_stats/postfilt_summary.txt"), sep="\t", header=TRUE)
+postfilt_all <- read.table(paste0(run_path, "/artic-pipeline/run_stats/postfilt_all.txt"), sep="\t", header=TRUE)
+genome_cartoon_pdf <- paste0(run_path, "/artic-pipeline/run_stats/genome_cartoons.pdf")
+
+# sort all tables
+o1 <- order(paste(summary$Sample, summary$Barcode, sep="_"))
+summary <- summary[o1,]
+rownames(summary) <- NULL
+o2 <- order(postfilt$Sample)
+postfilt <- postfilt[o2,]
+o3 <- order(dimnames(mutation_full)[[1]])
+mutation_full <- mutation_full[o3,]
+
+# create mutation objects
+mutation_full <- t(mutation_full)
+dimnames(mutation_full)[[1]] <- gsub("X", "", dimnames(mutation_full)[[1]])
+dimnames(mutation_full)[[2]] <- gsub("-NB.*", "", dimnames(mutation_full)[[2]])
+mutation_full_bool <- nchar(mutation_full)
+mutation_full_bool[mutation_full_bool>1] <- 1
+consensus_call <- substr(mutation_full, nchar(mutation_full), nchar(mutation_full))
+mutation_full_bool[(mutation_full_bool > 0) & !(consensus_call %in% c("A","C","G","T"))] <- 2
+
+# set up color objects for our data (needs to be streamlined)
+flagList <- summary$Consensus
+flagList <- as.character(flagList)
+flagList[is.na(flagList)] <- "NA"
+flagFill <- factor(flagList)
+levels(flagFill) <- colorlevels(levels(factor(flagList)), TRUE)
+flagFill <- as.character(flagFill)
+flagFill[flagFill == "NA"] <- "#B3B3B3"
+flagFillDict <- {}
+for(i in 1:length(flagList)){
+  flagFillDict[as.character(summary$Barcode)[i]] <- flagFill[i]
+}
+
+# add additional info to summary
+summary$Consensus <- factor(summary$Consensus, levels = c("Yes", "Yes*", "Maybe", "No", "NA"))
+summary$Raw.reads <- paste0(summary$Raw.reads, " (", sprintf("%0.1d", 100*as.numeric(gsub(",", "", summary$Raw.reads))/sum(as.numeric(gsub(",", "", summary$Raw.reads)))),"%)")
+summary$Depth <- rep("NA", dim(summary)[1])
+summary$Depth[summary$Barcode != "uncalled"] <- c(paste0(format(round(tapply(depth_all[,4],depth_all[,1], sum)/29903, 0), big.mark=",", trim=T), "x"))
+summary <- summary[,c("Sample", "Barcode", "Raw.reads", "Length.filter", "Coverage", "Depth", "Consensus")]
+levels(summary$Consensus) <- paste0(colorlevels(levels(summary$Consensus), FALSE), "{", levels(summary$Consensus), "}")
+names(summary) <- gsub("\\.", " ", names(summary))
+
+# add SNP info to postfilt table
+f <- function(row) { return(paste(as.matrix(row[sapply(as.matrix(row),nchar)>0]), collapse=", ")) }
+mutation_collapse <- apply(mutation_full, 2, f)
+mutation_counts <- nchar(gsub("[^,]", "", mutation_collapse))+1
+select_many <- mutation_counts > 30
+mutation_collapse[select_many] <- paste(mutation_counts[select_many], "SNPs")
+mutation_samples <- sapply(names(mutation_collapse), function(s){ return(strsplit(s,"_")[[1]][1])})
+postfilt <- postfilt[,!(names(postfilt) %in% "Flagged.Positions")]
+
+# remove any outlier samples from mutation table
+mutation_table <- mutation_full[,!select_many]
+mutation_table <- mutation_table[rowSums(mutation_table != "") != 0,]
+mutation_bool <- mutation_full_bool[,!select_many]
+mutation_bool <- mutation_bool[rowSums(mutation_bool > 0) != 0,]
+if(sum(select_many)>0) {
+  mutation_table_many <- matrix(mutation_full[,select_many], ncol=sum(select_many))
+  dimnames(mutation_table_many)[[1]] <- rownames(mutation_full)
+  dimnames(mutation_table_many)[[2]] <- names(mutation_collapse[select_many])
+  new_cols <- matrix(mutation_table_many[rownames(mutation_table),], ncol=sum(select_many))
+  if(dim(new_cols)[2] > 0) {
+    dimnames(new_cols)[[2]] <- c(paste0(dimnames(mutation_table_many)[[2]], "*"))
+    mutation_table <- cbind(mutation_table, new_cols)
+  }
+  
+  mutation_bool_many <- matrix(mutation_full_bool[,select_many], ncol=sum(select_many))
+  dimnames(mutation_bool_many)[[1]] <- rownames(mutation_full_bool)
+  dimnames(mutation_bool_many)[[2]] <- names(mutation_collapse[select_many])
+  new_cols <- matrix(mutation_bool_many[rownames(mutation_bool),], ncol=sum(select_many))
+  if(dim(new_cols)[2] > 0) {
+    dimnames(new_cols)[[2]] <- c(paste0(dimnames(mutation_bool_many)[[2]], "*"))
+    mutation_bool <- cbind(mutation_bool, new_cols)
+  }
+}
+
+depth_plot_all = NULL
+for(i in levels(depth_all[,1])) {
+	d <- as.matrix(depth_all[depth_all[,1]==i,2:4])
+	b <- rep(-1,dim(amplicons)[[1]])
+	for(i in 1:dim(amplicons)[[1]]) {
+		sel <- as.numeric(d[,2]) >= amplicons$unique.start[i] & as.numeric(d[,2]) <= amplicons$unique.stop[i]
+		b[i] <- mean(as.numeric(d[sel,3]))
+	}
+  depth_plot_all <- rbind(depth_plot_all, b)
+}
+sample_barcodes <- paste(summary$Sample, summary$Barcode, sep="_")[-13]
+rownames(depth_plot_all) <- sample_barcodes
+#-------------------------------------------------
+```
+
+```{r, define-r-functions, echo=FALSE, message=FALSE}
+# define R functions used
+plot_reads_over_time <- function() {
+  
+  a <- data.frame(time=throughput$`Experiment Time (minutes)`, type='total', count=throughput$Reads)
+  b <- data.frame(time=throughput$`Experiment Time (minutes)`, type='passed', count=throughput$`Basecalled Reads Passed`)
+  c <- data.frame(time=throughput$`Experiment Time (minutes)`, type='failed', count=throughput$`Basecalled Reads Failed`)
+  
+  df2 <- rbind(a, b, c)
+  
+  # re-order levels for display
+  df2$type <- factor(df2$type, levels = c("total", "passed", "failed"))
+  
+  # following advice from: https://www.r-graph-gallery.com/233-add-annotations-on-ggplot2-chart.html
+  max_count <- tapply(df2$count, df2$type, max)
+  annotation <- data.frame(
+    x = rep(max(df2$time/60), length(levels(factor(df2$type)))),
+    y = max_count,
+    label = format(max_count, big.mark = ",", scientific=FALSE)
+  )
+  annotation2 <- data.frame(
+    x = rep(max(df2$time/60), length(levels(factor(df2$type)))),
+    y = max_count,
+    label = sprintf("%1.1f%%",100*max_count/max(df2$count), scientific=FALSE)
+  )
+  maxTime <- ceiling(max(df2$time/60)/12)*12
+  maxCount <- ceiling(max(df2$count)/5e6)*5e6
+  ggplot(df2, aes(time/60, count, group=type)) +
+  geom_line(aes(linetype=type)) +
+  scale_linetype_manual(values=c("solid", "twodash", "dotted")) +
+  scale_x_continuous(breaks=seq(0,maxTime,12), labels=seq(0,maxTime,12)) +
+  scale_y_continuous(breaks=seq(0,maxCount,5e6), labels=paste0(seq(0,maxCount/1e6,5),"M")) +
+  theme_minimal() +
+  labs(x="Sequencing Time (Hours)",y="Reads") +
+  geom_text(size=2.5, data=annotation, aes(x=x, y=y, label=label), inherit.aes=FALSE, hjust=0, vjust=-1.0, nudge_x=0.5) +
+  geom_text(size=2.5, data=annotation2, aes(x=x, y=y, label=label), inherit.aes=FALSE, hjust=0, vjust=0.5, nudge_x=0.5) +
+  theme(axis.text=element_text(size=10), legend.title=element_text(size=10), legend.text=element_text(size=10)) +
+  coord_cartesian(clip = 'off')
+}
+#-------------------------------------------------
+plot_barcode_barplot <- function() {
+  f <- function(s){ return(as.numeric(gsub(",", "", strsplit(s, " ")[[1]][1])))}
+
+  df <- data.frame(sample=paste(summary[,1], summary[,2]), reads=as.numeric(sapply(summary[,3], f)), Flag=flagList, stringsAsFactors = TRUE)
+  
+  df$pct = paste0(as.matrix(round(100 * df$reads / sum(df$reads), 1)), "% ")
+  
+  # re-order Flag levels for legend display
+  df$Flag <- factor(df$Flag, levels = c("Yes", "Yes*", "Maybe", "No", "NA"))
+  
+  ggplot(df, aes(x = reorder(sample, desc(sample)), y = log10(reads), fill = Flag)) +
+    geom_bar(stat="identity", width=0.6, position=position_stack(reverse = TRUE)) +
+    coord_flip() +
+    scale_fill_manual(name = "Flag", values = flagColors) +
+    scale_y_continuous(breaks=log10(c(1, 10, 100, 1000, 10000, 100000, 1000000)), labels=c(1, 10, 100, "1k", "10k", "100k", "1M")) +
+    labs(x="Sample", y="Read Count") +
+    theme_minimal() +
+    geom_text(aes(label=pct), hjust=1, size=3.5, color="white")
+}
+#-------------------------------------------------
+depth_heatmap <- function(plot_sel, title_additional, norm=F) {
+  plot_all <- depth_plot_all[,plot_sel]
+  plot_norm <- sweep(plot_all, 2, FUN="/", STATS=plot_all[12,])
+  if(norm) {
+    plot_dat <- plot_norm
+    plot_dat[plot_dat > 200] <- 200
+    plot_dat[plot_dat < 1] <- 1
+  } else {
+    plot_dat <- plot_all
+    plot_dat[plot_dat > 200] <- 200
+    plot_dat[plot_dat < 1] <- 1
+  }
+  plot_dat <- log10(plot_dat)
+  rownames(plot_dat) <- sample_barcodes
+  
+  annotation_row <- data.frame(Flag = flagList[-13])
+  rownames(annotation_row) <- sample_barcodes
+
+  # re-order Flag levels for legend display
+  annotation_row$Flag <- factor(annotation_row$Flag, levels = c("Yes", "Yes*", "Maybe", "No", "NA"))
+
+  pheatmap(as.data.frame(plot_dat),
+           cluster_rows=FALSE, cluster_cols=FALSE,
+           color=colorRampPalette(c("#FFFFFF", brewer.pal(n = 7, name = "Blues")))(8),
+           legend_breaks=log10(c(1, 2, 5, 10, 20, 50, 100, 200)),
+           legend_labels=c(1, 2, 5, 10, 20, 50, 100, ">200"),
+           border_color=NA,
+           labels_row=levels(plot_dat[,1]),
+           labels_col="",
+           annotation_row=annotation_row,
+           annotation_colors=list(Flag = flagColors[flagColors != flagColors["NA"]])
+        )
+}
+#-------------------------------------------------
+depth_plot <- function(plot_sel, title_additional) {
+  a <- amplicons
+  dat <- depth_all
+  par(mfrow=c(6,2), mar=c(2.1,3.6,2.1,0.1))
+  for(sample in levels(dat[,1])) {
+    d <- dat[dat[,1]==sample,2:4]
+  	b <- rep(-1,dim(a)[[1]])
+  	for(i in 1:dim(a)[[1]]) {
+  		sel <- as.numeric(d[,2]) >= a$unique.start[i] & as.numeric(d[,2]) <= a$unique.stop[i]
+  		b[i] <- mean(as.numeric(d[sel,3]))
+  	}
+  	b[b==0] <- 1
+  	barcode <- strsplit(sample,"_")[[1]][2]
+  	barplot(b[plot_sel], log='y', axes=F, col=flagFillDict[barcode], border=NA, ylim=c(1,1e5))
+  	abline(h=c(1,10,100,1000,1e4,1e5), col="gray80")
+  	b <- barplot(b[plot_sel], log='y', axes=F, main=paste0(sample, title_additional), col=flagFillDict[barcode], border=NA, ylim=c(1,1e5), add=T, xlab="", ylab="", cex.main=0.8)
+#  	axis(1, at=b, labels=a$amplicon[plot_sel], cex.axis=0.5)
+  	axis(1, at=b, labels=rep("", length(b)))
+  	axis(2, at=c(1,10,100,1000,10000,100000), labels=c(1,10,100,"1k","10k","100k"), las=2, cex.axis=1)
+  	title(ylab="reads", line=2.5, cex.lab=1)
+  	title(xlab="amplicon", line=1, cex.lab=1)
+  }
+}
+#-------------------------------------------------
+plot_readlen <- function() {
+  print("under construction")
+}
+#-------------------------------------------------
+plot_readlen2 <- function() {
+  d <- read_lengths
+  barcodes <- levels(d[,2])
+  plots=vector(mode='list')
+  for (i in 1:length(barcodes)) {
+#      rlens=tibble(samp=barcodes[i], readlen=readlen, propnum=bcdata$propnum[bcdata$bc==barcodes[i]])
+      rlens=d[d[,2]==barcodes[i],3]
+      
+#      if (rlens$propnum[1]<4) {
+#          col='#F8766D'
+#      }else{
+          col='#00BFC4'
+#      }
+      
+      plot=ggplot(rlens, aes(x=readlen)) +
+          geom_density(alpha=.5, colour=col, fill=col) +
+          ggtitle(i) +
+          xlab('length (bp)') +
+          xlim(0,1500) +
+          theme_bw() +
+          theme(plot.title=element_text(face='bold', colour=col)) +
+          theme(legend.position = "none")
+      
+      plots[[i]]=plot
+  }
+  print(ggarrange(plotlist=plots, ncol=3, nrow=5, align="hv"))
+}
+#-------------------------------------------------
+plot_homoplasy_heatmap <- function() {
+  plot_matrix <- mutation_bool
+
+  sample_sel <- summary$Sample %in% gsub("\\*", "", dimnames(plot_matrix)[[2]])
+  annotation_col <- data.frame(Flag = flagList[-13][sample_sel])
+  rownames(annotation_col) <- dimnames(plot_matrix)[[2]]
+  
+  # re-order Flag levels for legend display
+  annotation_col$Flag <- factor(annotation_col$Flag, levels = c("Yes", "Yes*", "Maybe", "No"))
+
+  # add common SNP annotation
+  annotation_row <- data.frame(common.SNP = dimnames(plot_matrix)[[1]] %in% important_positions$POS)
+  rownames(annotation_row) <- dimnames(plot_matrix)[[1]]
+  annotation_row$common.SNP <- factor(annotation_row$common.SNP)
+  levels(annotation_row$common.SNP) = c("other", "common")
+  
+  # create color object for annotations
+  annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]], common.SNP = c("common"="#000000", "other"="#FFFFFF"), Variants = c("#FFFFFF", brewer.pal(n = 3, name = "Blues"), brewer.pal(n = 3, name = "PuRd"))[c(1,4,7)])
+  
+  pheatmap(plot_matrix,
+          labels_col=dimnames(plot_matrix)[[2]],
+          labels_row=dimnames(plot_matrix)[[1]],
+          col=annotation_colors$Variants,
+          ylab="mutation position",
+          fontsize_row=8, fontsize_col=10,
+          margins=c(10,5),
+          legend=FALSE,
+ #         legend_breaks=c(0,1,2),
+ #         legend_labels=c("Wuhan-Hu-1","Variant","Ambiguous"),
+          annotation_col=annotation_col,
+          annotation_row=annotation_row,
+          annotation_colors=annotation_colors
+          )
+  grid.text("Variant position (nucleotide)", x=0.85, y=0.5, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
+}
+#-------------------------------------------------
+draw_flag_table2 <- function(dt) {
+  bg <- flagFill[summary$Sample %in% postfilt$Sample]
+  centerText <- function(text){
+    paste0("\\multirow{1}{*}[0pt]{", text, "}")
+  }
+#  dt <- sapply(dt, centerText)
+  pander(dt)
+}
+#-------------------------------------------------
+draw_flag_table <- function(dt) {
+  bg <- flagFill[summary$Sample %in% postfilt$Sample]
+  if(dim(dt)[1]>0){
+    
+    # from: https://stackoverflow.com/a/46143496
+    multirow_spec <- function(x, rows, bg) {
+      for (i in 1:length(rows)) 
+        x <- kableExtra::row_spec(x, rows[i], background=bg[i])
+      x
+    }
+    
+    x <- kable(dt, format="latex", booktabs=TRUE, row.names=FALSE) %>%
+        kable_styling(full_width = F, position = "center") %>%
+        column_spec(2, width = "15em") %>%
+        column_spec(3, width = "25em")
+    multirow_spec(x, 1:length(bg), bg)
+  }
+}
+#-------------------------------------------------
+plot_flag_matrix <- function() {
+
+  plot_matrix <- matrix(data=0,
+                        nrow=length(levels(factor(postfilt_all$pos))),
+                        ncol=length(levels(factor(postfilt_all$sample)))
+                      )
+  dimnames(plot_matrix)[[1]] <- levels(factor(postfilt_all$pos))
+  dimnames(plot_matrix)[[2]] <- levels(factor(postfilt_all$sample))
+  
+  o <- order(as.numeric(dimnames(plot_matrix)[[1]]))
+  o.col <- order(dimnames(plot_matrix)[[2]])
+  mut_rows <- dimnames(plot_matrix)[[1]] %in% dimnames(mutation_bool)[[1]]
+  mut_cols <- dimnames(plot_matrix)[[2]] %in% gsub("(\\*)?", "", dimnames(mutation_bool)[[2]])
+  plot_matrix[o,o.col][mut_rows,mut_cols] <- mutation_bool
+
+  # add overall genome flag annotation
+  sample_sel <- summary$Sample %in% dimnames(plot_matrix)[[2]]
+  annotation_col <- data.frame(Flag = flagList[-13][sample_sel])
+  rownames(annotation_col) <- summary$Sample[sample_sel]
+  
+  # re-order Flag levels for legend display
+  annotation_col$Flag <- factor(annotation_col$Flag, levels = c("Yes", "Yes*", "Maybe", "No"))
+
+  # add common SNP annotation
+  annotation_row <- data.frame(common.SNP = dimnames(plot_matrix)[[1]] %in% important_positions$POS)
+  rownames(annotation_row) <- dimnames(plot_matrix)[[1]]
+  annotation_row$common.SNP <- factor(annotation_row$common.SNP)
+  levels(annotation_row$common.SNP) = c("other", "common")
+
+  # create color object for annotations
+  annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]], common.SNP = c("common"="#000000", "other"="#FFFFFF"), Variants = c("#FFFFFF", brewer.pal(n = 3, name = "Blues"), brewer.pal(n = 3, name = "PuRd"))[c(1,4,7)])
+
+  h <- pheatmap(plot_matrix[o,],
+          labels_row=dimnames(plot_matrix)[[1]][o],
+          labels_col=dimnames(plot_matrix)[[2]],
+          cluster_rows=FALSE,
+          cluster_cols=FALSE,
+          col=annotation_colors$Variants,
+          ylab="mutation position",
+          fontsize_row=8, fontsize_col=10,
+          margins=c(10,5),
+          legend=FALSE,
+#          legend_breaks=c(0,1,2),
+#          legend_labels=c("Wuhan-Hu-1","Variant","Ambiguous"),
+          treeheight_row=0,
+          annotation_col=annotation_col,
+          annotation_row=annotation_row,
+          annotation_colors=annotation_colors
+          )
+  
+  maf_matrix <- postfilt_all %>% pivot_wider(id_cols=pos,
+                                             names_from=sample,
+                                             values_from=maf_flag,
+                                             values_fill=list(maf_flag="")
+                                            )
+  
+  new_matrix <- postfilt_all %>% pivot_wider(id_cols=pos,
+                                             names_from=sample,
+                                             values_from=new_flag,
+                                             values_fill=list(new_flag="")
+                                            )
+  
+  vc_matrix <- postfilt_all %>% pivot_wider(id_cols=pos,
+                                             names_from=sample,
+                                             values_from=vc_flag,
+                                             values_fill=list(vc_flag="")
+                                            )
+  
+  #ntc_matrix <- postfilt_all %>% pivot_wider(id_cols=pos,
+  #                                           names_from=sample,
+  #                                           values_from=ntc_flag,
+  #                                           values_fill=list(ntc_flag="")
+  #                                          )
+
+  maf_sel <- nchar(as.matrix(maf_matrix))[,-1]>0
+#  ntc_sel <- nchar(as.matrix(ntc_matrix))[,-1]>0
+  new_sel <- nchar(as.matrix(new_matrix))[,-1]>0
+  vc_sel_m <- as.matrix(vc_matrix)[,-1] == 'mismatch(m)'
+  vc_sel_s <- as.matrix(vc_matrix)[,-1] == 'mismatch(s)'
+  vc_sel_n <- as.matrix(vc_matrix)[,-1] == 'mismatch(n)'
+
+  
+  flag_matrix <- matrix(data="",
+                        nrow=length(levels(factor(postfilt_all$pos))),
+                        ncol=length(levels(factor(postfilt_all$sample)))
+                      )
+  dimnames(flag_matrix)[[1]] <- maf_matrix$pos
+  dimnames(flag_matrix)[[2]] <- names(maf_matrix)[-1]
+
+  # add minor allele frequency flag
+  flag_matrix[maf_sel] <- paste0(flag_matrix[maf_sel], shapes$squares[1])
+
+  # add new SNP flag
+  flag_matrix[new_sel] <- paste0(flag_matrix[new_sel], shapes$circles[2])
+
+  # add variant call flags
+  flag_matrix[vc_sel_s] <- paste0(flag_matrix[vc_sel_s], "s")
+  flag_matrix[vc_sel_m] <- paste0(flag_matrix[vc_sel_m], "m")
+  flag_matrix[vc_sel_n] <- paste0(flag_matrix[vc_sel_n], "n")
+
+  # create matrix for text displayed ordered by pheatmap clusters
+  if("order" %in% names(h$tree_row)) {
+    row_order <- h$tree_row$order
+  } else {
+    row_order <- seq(1,dim(plot_matrix)[1])
+  }
+  if("order" %in% names(h$tree_col)) {
+    col_order <- h$tree_col$order
+  } else {
+    col_order <- seq(1,dim(plot_matrix)[2])
+  }
+  # order flag_matrix rows and columns
+  flag_row_order <- order(as.numeric(dimnames(flag_matrix)[[1]]))
+  flag_col_order <- order(dimnames(flag_matrix)[[2]])
+  text_matrix <- flag_matrix[flag_row_order[row_order], flag_col_order[col_order]]
+
+  x <- rep(seq(0.08, 0.705, length.out=dim(plot_matrix)[2]), each=dim(plot_matrix)[1])
+  y <- rep(seq(0.961, 0.133, length.out=dim(plot_matrix)[1]), dim(plot_matrix)[2])
+  grid.text(text_matrix, x=x, y=y, gp=gpar(col="black", fontsize=8))
+
+#  grid.text(paste(shapes$triangles[1:5], collapse=""), x=0.08, y=0.961, gp=gpar(col="black", fontsize=7.5))
+#  grid.text(paste(shapes$circles[3:7], collapse=""), x=0.705, y=0.133, gp=gpar(col="black", fontsize=7.5))
+  grid.text("Variant position (nucleotide)", x=0.85, y=0.5, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
+}
+#-------------------------------------------------
+print_igv_plot <- function(row, flag) {
+  sample <- as.character(row$Sample)
+  barcode <- as.character(summary$Barcode[summary$Sample == sample])
+  if(nchar(as.character(row$Flags) > 0)) {
+    flags <- strsplit(as.character(row$Flags),"; ")[[1]]
+  } else {
+    flags <- NULL
+  }
+  if(length(flags) > 0) {
+    for(flagString in flags) {
+      nt <- strsplit(flagString, "=")[[1]][1]
+      alleles <- postfilt_all$alleles[postfilt_all$pos == nt & postfilt_all$sample == sample]
+      cat(paste0("\n### ", colorlevels(flag), "{[", flag, "]: ", sample, " ", flagString, " - ", alleles, "}\n"))
+      if(nt != "see full output") {
+        pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample,"_",barcode,"/MN908947.3_",nt,".png")
+        if(file.exists(pngFn)) {
+          cat(paste0("\\includegraphics[width=13cm]{",pngFn,"}\n"))
+        } else {
+          cat(paste0("\nWarning: file does not exist -",paste(tail(strsplit(pngFn,"/")[[1]],5),collapse="/"),"\n"))
+        }
+      }
+    }
+  }
+}
+#-------------------------------------------------
+```
+
+***
+
+# Experiment summary
+**Run data**: `` `r paste(tail(strsplit(run_path,"/")[[1]],2), collapse="/")` ``
+
+**Primers & Barcodes**: `` `r run_config[run_config[,1]=='primers',2]` `` & `` `r run_config[run_config[,1]=='barcoding',2]` ``
+
+**Basecalling**: `` `r run_config[run_config[,1]=='basecalling',2]` ``
+
+**Demultiplexing**:	`guppy_barcoder v3.5.2+5b7a51b`
+
+**Normalization**: `NormalizeCoverage coverage_threshold=150 --qual_sort`
+
+**Analysis pipeline**: `artic v1.0.0`, `nanopolish v0.13.0`, `medaka v0.11.5` & `samtools 1.9`
+
+(See section \ref{sec:pipeline} on page \pageref{sec:pipeline} for the full pipeline used to generate this report.)
+
+# Samples
+```{r, sample-table, echo=FALSE, results="asis"}
+pandoc.table(summary, split.cells = c(3,2,7,4,7,6,1), split.table = Inf,
+             justify=c("center","center","right","right","right","right","center"),
+             emphasize.rownames = FALSE, style="rmarkdown")
+```
+
+**Consensus flags**: \textcolor{myDarkGreen}{Yes = Dark Green} = Passed genome threshold and no flags ; \textcolor{myLightGreen}{Yes* = Light Green} = light green = complete genome and MAF flags and/or mismatch with N-call only ; \textcolor{myYellow}{Maybe = Yellow} = Passed genome threshold with any other flag ; \textcolor{myRed}{No = Red} = Incomplete genome
+
+(See section \ref{sec:flags} on page \pageref{sec:flags} for reasons for these flag calls. See section \ref{sec:pipeline_postfilter} on page \pageref{sec:pipeline_postfilter} for full flag definitions.)
+
+# Run summary
+\label{sec:run_summary}
+
+## Reads over time
+```{r, reads-time, echo=FALSE, fig.height=3}
+plot_reads_over_time()
+```
+
+## Quality scores
+(figure not added in yet)
+
+## Read Length
+```{r, read-length, echo=FALSE, fig.height=8}
+plot_readlen()
+```
+
+## Demultiplex summary
+```{r, barcode-barplot, echo=FALSE, message=FALSE, fig.height=3, fig.width=6, background="white"}
+plot_barcode_barplot()
+```
+
+## Amplicon depth
+### Read counts
+```{r, depth-heatmap-1, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=3}
+depth_heatmap((1:98 %% 2 >= 0), "", norm=FALSE)
+```
+
+### Multiple of NTC reads at that amplicon
+```{r, depth-heatmap-2, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=3}
+depth_heatmap((1:98 %% 2 >= 0), "", norm=TRUE)
+```
+
+### Primer pool 1 (nCoV2019_1)
+```{r, depth-barplot-1, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=8}
+depth_plot((1:98 %% 2 == 1), "-nCoV2019_1")
+```
+
+### Primer pool 2 (nCoV2019_2)
+```{r, depth-barplot-2, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=8}
+depth_plot((1:98 %% 2 == 0), "-nCoV2019_2")
+```
+
+# Variant calling
+\label{sec:variants}
+
+## Normalization
+(figure not added in yet)
+
+## Genome clusters
+
+### Genome cartoons
+<!--![](`r genome_cartoon_pdf`)-->
+(under construction)
+
+\pagebreak
+
+### Homoplasy assessment
+Observed nucleotide mutations as compared to Wuhan-Hu-1 reference:
+
+```{r, homoplasy-cluster, eval=TRUE, echo=FALSE, fig.height=8}
+plot_homoplasy_heatmap()
+```
+
+```{r echo=FALSE, results="asis"}
+cat("**Variants**: \\textcolor{variantBlue}{$\\blacksquare$} = Variant, \\textcolor{variantRed}{$\\blacksquare$} =  Ambiguity")
+
+if(sum(select_many) > 0) {
+  cat(paste(" ; Samples with asterisks have more than 30 SNPs compared with Wuhan-Hu-1. SNP locations unique to", ifelse(sum(select_many)>1, "these samples", "this sample"), "are not displayed in this table.\n"))
+} else {
+  cat("\n")
+}
+```
+
+### Nextstrain
+![](`r "/home/tom/data/ref/ncov/sequencing_runs/screenshots/https_nextstrain.idies.jhu.edu_443_ncov-alpha_global_d_tree_f_originating_lab_Johns_20Hopkins_20Hospital_20Department_20of_20Pathology.pdf"`)
+
+`r cat("**MDHP sequences**\n")`
+![](`r "/home/tom/data/ref/ncov/sequencing_runs/screenshots/https_nextstrain.idies.jhu.edu_443_ncov-alpha_MDHP_branchLabel_aa_c_division_d_tree_f_originating_lab_Johns_20Hopkins_20Hospital_20Department_20of_20Pathology.pdf"`)
+
+# Flags
+\label{sec:flags}
+
+## Flags identified
+```{r, flag-table, echo=FALSE}
+draw_flag_table(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status"))])
+```
+
+## Flags identified
+```{r, flag-table2, echo=FALSE}
+draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status"))])
+```
+
+**Flags**: MAF (Minor allele frequency > 0.15), new (present in < 2 GISAID sequences), mismatch (mismatches between variant callers where variant is present in medaka (m) or samtools(s))
+
+**Genome color key**:
+
+\textcolor{myDarkGreen}{Yes = Dark Green} = Passed genome threshold and no flags
+
+\textcolor{myLightGreen}{Yes* = Light Green} = light green = complete genome and MAF flags and/or mismatch with N-call only
+
+\textcolor{myYellow}{Maybe = Yellow} = Passed genome threshold with any other flag
+
+\textcolor{myRed}{No = Red} = Incomplete genome
+
+\pagebreak
+
+## Flag matrix
+```{r, flag-matrix, echo=FALSE, external=FALSE, fig.height=8, dev='cairo_pdf'}
+plot_flag_matrix()
+```
+
+**Variants**: \textcolor{variantBlue}{$\blacksquare$} = Variant, \textcolor{variantRed}{$\blacksquare$} =  Ambiguity ; **Flags**: $\blacksquare$ = MAF (Minor allele frequency > 0.15), $\bigcirc$ = new (present in < 2 GISAID sequences), s|m|n (mismatches between variant callers where variant is present in samtools (s), medaka (m), nanopolish (n))
+
+## SNPs associated with major clades
+```{r, snp-table, echo=FALSE, results="asis"}
+cat(paste("SNPs identified from a group of", important_positions[1,4],"sequences from GISAID:\n"))
+pander(important_positions[,-4])
+```
+
+## Alignment screenshots
+```{r, igv-lightgreen-flag, echo=FALSE, results="asis", fig.width=3}
+dt <- postfilt[postfilt$Sample %in% summary$Sample[flagList == "Yes*"],]
+if(dim(dt)[1] > 0){
+  for(row in 1:dim(dt)[1]){
+    print_igv_plot(dt[row,], "Yes*")
+  }
+}
+```
+
+```{r, igv-yellow-flag, echo=FALSE, results="asis", fig.width=4}
+dt <- postfilt[postfilt$Sample %in% summary$Sample[flagList == "Maybe"],]
+if(dim(dt)[1] > 0){
+  for(row in 1:dim(dt)[1]){
+    print_igv_plot(dt[row,], "Maybe")
+  }
+}
+```
+
+```{r, igv-red-flag, echo=FALSE, results="asis", fig.width=5}
+dt <- postfilt[postfilt$Sample %in% summary$Sample[flagList == "No"],]
+if(dim(dt)[1] > 0){
+  for(row in 1:dim(dt)[1]){
+    print_igv_plot(dt[row,], "No")
+  }
+}
+```
+
+# Pipeline
+\label{sec:pipeline}
+
+Output from out analysis pipeline 
+
+## Barcode demultiplexing
+```
+guppy_barcoder \
+	--require_barcodes_both_ends \
+	-i "$fastq_dir" \
+	-s "$demux_dir" \
+	--arrangements_files barcode_arrs_nb12.cfg
+```
+
+## Length filtering
+```
+while read barcode name; do
+  artic guppyplex \
+    --skip-quality-check \
+    --min-length 400 \
+    --max-length 700 \
+    --directory "$demux_dir"/"$barcode" \
+    --prefix "$gather_dir"/"$name"
+done < "$manifest"
+```
+
+## Amplicon normalization
+```
+$JAVA_PATH/java \
+  -cp $NormalizeCoveragePath/src \
+    NormalizeCoverage \
+  input=$normalize_dir/${name}_${barcode}/$align_out \
+  coverage_threshold=150 \
+  --qual_sort
+```
+
+## Generate draft consensuses
+```
+while read barcode name; do
+  artic minion \
+    --medaka \
+    --normalise 200 \
+    --threads 32 \
+    --scheme-directory "$scheme_dir" \
+    --read-file "$gather_dir"/${name}_${barcode}.fastq \
+    "$protocol" "$consensus_dir"/${name}_${barcode}-${pipeline_label}
+done < "$manifest"
+```
+
+### Full `artic minion` pipeline:
+(to be added)
+
+```{r comment=''}
+#cat(readLines(paste0(run_path,'/artic-pipeline/3-hac-medaka-norm200/NTC_barcode12-hac-medaka-norm200.minion.log.txt'), sep = '\n')
+```
+
+## Nextstrain
+(to be added)
+
+## VCF Post-Filter
+\label{sec:pipeline_postfilter}
+
+### Code
+```
+python vcf_postfilter.py \
+    --vcffile "merged_vcf" \
+    --bamfile "primmertrimmed_sorted_bam" \
+    --consensus "consensus_fasta" \
+    --ntc-bamfile "ntc_primmertrimed_sorted_bam" \
+    --vcf-nextstrain "all_nextstrain_vcf"
+    --outdir "postfilt_dir" \
+    --prefix "sample_name" \
+    --coverage-flag 20 \
+    --maf-flag 15 \
+    --call-depth-factor 2 \
+    --snp-depth-factor 5 \
+    --ns-snp-threshold 2 \
+    --unambig-threshold 25000
+```
+
+### Genome threshold
+
+- Complete genomes are those with at least `unambig-threshold` unambiguous basecalls.
+
+### NTC-based thresholds
+
+- NTC median read depth: `depth_threshold` / `call_depth_factor`
+
+- Depth threshold used for masking basecalls: `depth_threshold`
+
+### Flag thresholds
+
+- Minor allele frequency: flag variants with MAF > 0.15
+
+- Borderline depth threshold: flag variants within 20% of `depth_threshold`
+
+- Allele in negative control: flag and mask variants if alternate allele is in NTC and read depth is less than 5x corresponding depth in negative control
+
+- New SNP theshold: flag variants at sites observed in fewer than 2 published genomes
+
+- Variant caller mismatch: Flag any variants that are not called in all variant callers used
+
+### Genome flag colors
+
+\textcolor{myDarkGreen}{Yes = Dark Green} = Passed genome threshold and no flags
+
+\textcolor{myLightGreen}{Yes* = Light Green} = light green = complete genome and MAF flags and/or mismatch with N-call only
+
+\textcolor{myYellow}{Maybe = Yellow} = Passed genome threshold with any other flag
+
+\textcolor{myRed}{No = Red} = Incomplete genome
+
+# Authors
+\label{sec:authors}
+
+## Report authors
+Thomas Mehoke, Shirlee Wohl, Amanda Ernlund, Melanie Kirsche, Srividya Ramakrishnan, Yunfan Fan, Kianna Blount
+
+## Acknowledgements
+
+**JHMI**
+
+ - Heba Mostafa
+
+ - Stuart Ray
+
+ - Oluwaseun Falade-Nwulia
+
+ - Lauren Sauer
+
+ - Paul Morris
+
+ - Victoria Gniazdowski
+
+**JHBSPH**
+
+ - Justin Lessler
+
+ - Shirlee Wohl
+
+**JHU/APL**
+
+ - Peter Thielen
+
+ - Thomas Mehoke
+
+ - Jared Evans
+
+ - Craig Howser
+
+ - Brian Merritt
+
+ - Amanda Ernlund
+
+ - Kianna Blount
+
+**JHU WSE**
+
+ - Winston Timp
+
+ - Michael Schatz
+
+ - Steven Salzberg
+
+ - Srividya Ramakrishnan
+
+ - Melanie Kirsche
+
+ - Norah Sadowski
+
+ - Yunfan Fan
+
+ - Sam Kovaka
+
+ - Ariel Gershman
+
+ - Alaina Shumate
+
+ - Ales Varabyou
+
+ - Alex Szalay
+
+ - Gerard Lemson
+
+ - Dmitry Medvedev
+
+## Funding sources
+(to be filled in)
+
+\pagebreak
+
+# RMarkdown Environment
+```{r, markdown-env, eval=TRUE, echo=FALSE}
+# print out all packages used
+sessionInfo()
+```

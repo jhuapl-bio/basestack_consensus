@@ -5,6 +5,9 @@ else
     BINDIR=$(dirname "$(readlink "$0" || echo "$(echo "$0" | sed -e 's,\\,/,g')")")
 fi
 
+REF="/home/idies/workspace/covid19/ncov_reference/sequence.fasta"
+GENES="/home/idies/workspace/covid19/ncov_reference/genes.gff3"
+
 # specify a sequencing run directory
 RUN=$1
 
@@ -26,7 +29,7 @@ for table in $DIR/*.variant_data.txt; do
         echo 'Out prefix: '$outdir/$samplename
 
 	# run script
-        $BINDIR/VariantValidator/parsetable.sh $table $outdir/$samplename
+        $BINDIR/VariantValidator/parsetable.sh $table $GENES $REF $outdir/$samplename
     fi
 done
 
