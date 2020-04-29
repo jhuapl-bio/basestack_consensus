@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-
 ###
 # Script to build new databases for SnpEff
 ###
@@ -20,11 +19,11 @@ EOM
     exit 0
 }
 
-PATHENV="/home/idies/workspace/Storage/sramakr4/persistent/miniconda3/etc/profile.d/conda.sh"
-JARPATH="/home/idies/workspace/Storage/sramakr4/persistent/miniconda3/envs/nextstrain/share/snpeff-4.3.1t-3/"
+PATHENV="/home/idies/workspace/covid19/miniconda3/etc/profile.d/conda.sh"
+JARPATH="/home/idies/workspace/covid19/miniconda3/envs/jhu-ncov/share/snpeff-4.3.1t-3/"
 
 source ${PATHENV}
-conda activate nextstrain
+conda activate jhu-ncov
 
 [ -z $1 ] && { usage; }
 
@@ -39,10 +38,6 @@ then
         echo "$0: input $GFF3 not found"
         exit 1
 fi
-
-# CHECK 2: LOAD ENVIRONMENT
-. "/home/idies/workspace/Storage/sramakr4/persistent/miniconda3/etc/profile.d/conda.sh"
-conda activate nextstrain
 
 if ! [ -x "$(command -v snpEff)" ]; then
   echo 'Error: snpEff is not installed.' >&2
