@@ -29,12 +29,12 @@ usage() {
 	echo -e "   -p      protocol (default: )"
 	echo -e "   -r      reference FASTA (default: )"
 	echo -e "   -o      output folder (default: ${CYAN}<run-folder>/artic-pipeline/run_stats${NC})"
-	echo -e "   -1      barcode demux folder (default: ${CYAN}<run-folder>/artic-pipeline/1-guppy-barcoder${NC})"
-	echo -e "   -2      length filter folder (default: ${CYAN}<run-folder>/artic-pipeline/2-guppyplex${NC})"
-	echo -e "   -3      normalization folder (default: ${CYAN}<run-folder>/artic-pipeline/3-normalization_update${NC})"
+	echo -e "   -1      barcode demux folder (default: ${CYAN}<run-folder>/artic-pipeline/1-barcode-demux${NC})"
+	echo -e "   -2      length filter folder (default: ${CYAN}<run-folder>/artic-pipeline/2-length-filter${NC})"
+	echo -e "   -3      normalization folder (default: ${CYAN}<run-folder>/artic-pipeline/3-normalization${NC})"
 	echo -e "   -4      draft consensus folder (default: ${CYAN}<run-folder>/artic-pipeline/4-draft-consensus${NC})"
-	echo -e "   -5      nextstrain folder (default: ${CYAN}not used yet${NC})"
-	echo -e "   -6      post-filter folder (default: ${CYAN}<run-folder>/artic-pipeline/5-post-filter${NC})"
+	echo -e "   -5      nextstrain folder (default: ${CYAN}<run-folder>/artic-pipeline/5-nextstrain${NC})"
+	echo -e "   -6      post-filter folder (default: ${CYAN}<run-folder>/artic-pipeline/6-post-filter${NC})"
 	echo -e ""
 }
 
@@ -58,11 +58,12 @@ protocol="nCoV-2019/V3"
 reference="$primerscheme_path/$protocol/nCoV-2019.reference.fasta"
 
 stats_base="artic-pipeline/run_stats"
-demux_base="artic-pipeline/1-guppy-barcoder"
-lengthfilter_base="artic-pipeline/2-guppyplex"
-normalize_base="artic-pipeline/3-normalization_update"
-draftconsensus_base="artic-pipeline/4-draft-consensus_update"
-postfilter_base="artic-pipeline/5-post-filter_update"
+demux_base="artic-pipeline/1-barcode-demux"
+lengthfilter_base="artic-pipeline/2-length-filter"
+normalize_base="artic-pipeline/3-normalization"
+draftconsensus_base="artic-pipeline/4-draft-consensus"
+nextstrain_base="artic-pipeline/5-nextstrain"
+postfilter_base="artic-pipeline/6-post-filter"
 
 #===================================================================================================
 # PARSE INPUT ARGUMENTS
