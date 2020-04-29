@@ -14,8 +14,8 @@ header-includes:
     \definecolor{myLightGreen}{rgb}{0.46,0.77,0.46}
     \definecolor{myYellow}{rgb}{0.86,0.65,0.13}
     \definecolor{myRed}{rgb}{0.93,0.17,0.17}
-    \definecolor{variantBlue}{rgb}{0.192,0.51,0.741}
-    \definecolor{variantRed}{rgb}{0.867,0.11,0.467}
+    \definecolor{variantBlue}{rgb}{0.3,0.3,0.3}
+    \definecolor{variantRed}{rgb}{0.7,0.7,0.7}
 ---
   <!-- \usepackage{amsmath} -->
   <!-- \usepackage{fdsymbol} -->
@@ -27,6 +27,8 @@ header-includes:
     <!-- \DeclareMathSymbol{\squarebotblack}{\mathord}{symbols4}{"CE} -->
     <!-- \DeclareSymbolFont{symbols}{LS1}{stixscr}{m}{n} -->
     <!-- \DeclareMathSymbol{\dottedcircle}{\mathord}{symbols}{"E3} -->
+    <!-- \definecolor{variantBlue}{rgb}{0.192,0.51,0.741} -->
+    <!-- \definecolor{variantRed}{rgb}{0.867,0.11,0.467} -->
 
 ```{r, load-libraries, echo=FALSE, message=FALSE}
 # using guidance from:
@@ -98,9 +100,11 @@ throughput <-read_csv(list.files(run_path, "throughput*", full.names=TRUE))
 #read_lengths <- read.table(paste0(run_path,"/artic-pipeline/run_stats/read_lengths.txt"), sep="\t")
 summary <- read.table(paste0(run_path,"/artic-pipeline/run_stats/summary.txt"), sep="\t", header=TRUE)
 depth_all <- read.table(paste0(run_path,"/artic-pipeline/run_stats/depth-all.txt"), sep="\t", fill=TRUE)
+depth_norm <- read.table(paste0(run_path,"/artic-pipeline/run_stats/depth-norm-all.txt"), sep="\t", fill=TRUE)
 mutation_full <- read.table(paste0(run_path, "/artic-pipeline/run_stats/mutations-table.txt"), sep="\t", header=TRUE, row.names=1)
 postfilt <- read.table(paste0(run_path, "/artic-pipeline/run_stats/postfilt_summary.txt"), sep="\t", header=TRUE)
 postfilt_all <- read.table(paste0(run_path, "/artic-pipeline/run_stats/postfilt_all.txt"), sep="\t", header=TRUE)
+snpeff_report <- read.table(paste0(run_path, "/artic-pipeline/run_stats/final_snpEff_report.txt"), sep="\t", header=TRUE, comment.char="")
 genome_cartoon_pdf <- paste0(run_path, "/artic-pipeline/run_stats/genome_cartoons.pdf")
 
 # sort all tables
@@ -111,6 +115,11 @@ o2 <- order(postfilt$Sample)
 postfilt <- postfilt[o2,]
 o3 <- order(dimnames(mutation_full)[[1]])
 mutation_full <- mutation_full[o3,]
+o4 <- order(as.numeric(snpeff_report$POS))
+snpeff_report <- snpeff_report[o4,]
+rownames(snpeff_report) <- NULL
+
+sample_barcodes <- paste(summary$Sample, summary$Barcode, sep="_")[-13]
 
 # create mutation objects
 mutation_full <- t(mutation_full)
@@ -136,16 +145,32 @@ for(i in 1:length(flagList)){
 
 # add additional info to summary
 summary$Consensus <- factor(summary$Consensus, levels = c("Yes", "Yes*", "Maybe", "No", "NA"))
-summary$Raw.reads <- paste0(summary$Raw.reads, " (", sprintf("%0.1d", 100*as.numeric(gsub(",", "", summary$Raw.reads))/sum(as.numeric(gsub(",", "", summary$Raw.reads)))),"%)")
+summary$Raw.Reads <- paste0(summary$Raw.Reads, " (", sprintf("%0.1f", 100*as.numeric(gsub(",", "", summary$Raw.Reads))/sum(as.numeric(gsub(",", "", summary$Raw.Reads)))),"%)")
 summary$Depth <- rep("NA", dim(summary)[1])
 summary$Depth[summary$Barcode != "uncalled"] <- c(paste0(format(round(tapply(depth_all[,4],depth_all[,1], sum)/29903, 0), big.mark=",", trim=T), "x"))
-summary <- summary[,c("Sample", "Barcode", "Raw.reads", "Length.filter", "Coverage", "Depth", "Consensus")]
+summary <- summary[,c("Sample", "Barcode", "Raw.Reads", "Length.filter", "Coverage", "Depth", "Consensus")]
 levels(summary$Consensus) <- paste0(colorlevels(levels(summary$Consensus), FALSE), "{", levels(summary$Consensus), "}")
 names(summary) <- gsub("\\.", " ", names(summary))
 
+# identify low coverage regions
+threshold <- postfilt_all$depth_thresh[1]
+below_threshold <- function(v) { return(v<threshold) }
+amplicon_region <- depth_norm[,3] >= 55 & depth_norm[,3]<=29836
+low_coverage_regions <- tapply(depth_norm[amplicon_region,4], depth_norm[amplicon_region,1], below_threshold)
+low_coverage_totals <- unlist(lapply(low_coverage_regions, sum))
+names(low_coverage_totals) <- gsub("depth-norm-", "", names(low_coverage_totals))
+
 # add SNP info to postfilt table
+mutation_no_low_coverage <- mutation_full
+mutation_no_low_coverage_bool <- mutation_full_bool
+for(i in seq_along(low_coverage_regions)) {
+  low_coverage_rows <- dimnames(mutation_no_low_coverage)[[1]] %in% (which(low_coverage_regions[[i]])+54)
+  low_coverage_cols <- dimnames(mutation_no_low_coverage)[[2]] %in% sample_barcodes[i]
+  mutation_no_low_coverage[low_coverage_rows, low_coverage_cols] <- ""
+  mutation_no_low_coverage_bool[low_coverage_rows, low_coverage_cols] <- FALSE
+}
 f <- function(row) { return(paste(as.matrix(row[sapply(as.matrix(row),nchar)>0]), collapse=", ")) }
-mutation_collapse <- apply(mutation_full, 2, f)
+mutation_collapse <- apply(mutation_no_low_coverage, 2, f)
 mutation_counts <- nchar(gsub("[^,]", "", mutation_collapse))+1
 select_many <- mutation_counts > 30
 mutation_collapse[select_many] <- paste(mutation_counts[select_many], "SNPs")
@@ -153,13 +178,13 @@ mutation_samples <- sapply(names(mutation_collapse), function(s){ return(strspli
 postfilt <- postfilt[,!(names(postfilt) %in% "Flagged.Positions")]
 
 # remove any outlier samples from mutation table
-mutation_table <- mutation_full[,!select_many]
+mutation_table <- mutation_no_low_coverage[,!select_many]
 mutation_table <- mutation_table[rowSums(mutation_table != "") != 0,]
-mutation_bool <- mutation_full_bool[,!select_many]
+mutation_bool <- mutation_no_low_coverage_bool[,!select_many]
 mutation_bool <- mutation_bool[rowSums(mutation_bool > 0) != 0,]
 if(sum(select_many)>0) {
-  mutation_table_many <- matrix(mutation_full[,select_many], ncol=sum(select_many))
-  dimnames(mutation_table_many)[[1]] <- rownames(mutation_full)
+  mutation_table_many <- matrix(mutation_no_low_coverage[,select_many], ncol=sum(select_many))
+  dimnames(mutation_table_many)[[1]] <- rownames(mutation_no_low_coverage)
   dimnames(mutation_table_many)[[2]] <- names(mutation_collapse[select_many])
   new_cols <- matrix(mutation_table_many[rownames(mutation_table),], ncol=sum(select_many))
   if(dim(new_cols)[2] > 0) {
@@ -167,8 +192,8 @@ if(sum(select_many)>0) {
     mutation_table <- cbind(mutation_table, new_cols)
   }
   
-  mutation_bool_many <- matrix(mutation_full_bool[,select_many], ncol=sum(select_many))
-  dimnames(mutation_bool_many)[[1]] <- rownames(mutation_full_bool)
+  mutation_bool_many <- matrix(mutation_no_low_coverage_bool[,select_many], ncol=sum(select_many))
+  dimnames(mutation_bool_many)[[1]] <- rownames(mutation_no_low_coverage_bool)
   dimnames(mutation_bool_many)[[2]] <- names(mutation_collapse[select_many])
   new_cols <- matrix(mutation_bool_many[rownames(mutation_bool),], ncol=sum(select_many))
   if(dim(new_cols)[2] > 0) {
@@ -187,8 +212,34 @@ for(i in levels(depth_all[,1])) {
 	}
   depth_plot_all <- rbind(depth_plot_all, b)
 }
-sample_barcodes <- paste(summary$Sample, summary$Barcode, sep="_")[-13]
 rownames(depth_plot_all) <- sample_barcodes
+
+postfilt_rows <- levels(factor(postfilt_all$pos))
+postfilt_cols <- levels(factor(postfilt_all$sample))
+mut_rows <- dimnames(mutation_bool)[[1]]
+mut_cols <- gsub("(_NB[0-9]{2})?(\\*)?", "", dimnames(mutation_bool)[[2]])
+
+combined_rows <- sort(as.numeric(c(postfilt_rows, mut_rows[!(mut_rows %in% postfilt_rows)])))
+combined_cols <- postfilt_cols
+
+annotation_sample <- data.frame(Flag = flagList[-13])
+rownames(annotation_sample) <- sample_barcodes
+
+# re-order levels for legend display
+annotation_sample$Flag <- factor(annotation_sample$Flag, levels = c("Yes", "Yes*", "Maybe", "No"))
+
+# add SNP annotations
+snpeff_annotations <- rep("none", length(combined_rows))
+snpeff_annotations[combined_rows %in% snpeff_report$POS] <- as.character(snpeff_report$ANN[snpeff_report$POS %in% combined_rows])
+annotation_snp <- data.frame(common.SNP = combined_rows %in% important_positions$POS, SnpEff = snpeff_annotations)
+rownames(annotation_snp) <- combined_rows
+annotation_snp$common.SNP <- factor(annotation_snp$common.SNP)
+levels(annotation_snp$common.SNP) = c("other", "common")
+annotation_snp$SnpEff <- factor(snpeff_annotations, levels = c(levels(snpeff_report$ANN), "none"))
+
+# create color object for annotations
+annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]], common.SNP = c("common"="#000000", "other"="#FFFFFF"), Variants = c("#FFFFFF", "gray30", "gray70"), SnpEff = c(brewer.pal(n=length(levels(snpeff_report$ANN)), name="Dark2"), "white"))
+names(annotation_colors$SnpEff) <- levels(annotation_snp$SnpEff)
 #-------------------------------------------------
 ```
 
@@ -250,6 +301,35 @@ plot_barcode_barplot <- function() {
     labs(x="Sample", y="Read Count") +
     theme_minimal() +
     geom_text(aes(label=pct), hjust=1, size=3.5, color="white")
+}
+#-------------------------------------------------
+print_low_depth_regions <- function() {
+  region_collapse <- function(x) {
+    paste(tapply(x, cumsum(c(1, diff(x) != 1)), function(i) 
+        ifelse(length(i) > 2, paste0(head(i, 1), '-', tail(i, 1)), 
+                                paste(i, collapse = ', '))), collapse = ', ')
+  }
+  get_regions <- function(i){
+    d <- depth_norm[amplicon_region,]
+    l <- levels(factor(d[,1]))
+    r <- d[d[,1]==l[i] & low_coverage_regions[[i]], 3]
+    if(length(r) > 0) {
+      return(region_collapse(r))
+    } else {
+      return(NULL)
+    }
+  }
+  cat(paste0("**Depth threshold**: ", threshold, "\n"))
+  masked_regions <- lapply(seq_along(low_coverage_regions), get_regions)
+  if(max(sapply(masked_regions, length)) > 0) {
+    for(i in seq_along(masked_regions)){
+      if(length(masked_regions[[i]])>0 & !grepl("NTC", sample_barcodes[i], fixed = TRUE)) {
+        cat(paste0("\n**", gsub("(_NB[0-9]{2})?(\\*)?", "", sample_barcodes[i]), "**: ", masked_regions[[i]], "\n"))
+      }
+    }
+  } else {
+    cat("\nNo samples have depth-masked positions.\n")
+  }
 }
 #-------------------------------------------------
 depth_heatmap <- function(plot_sel, title_additional, norm=F) {
@@ -345,22 +425,9 @@ plot_readlen2 <- function() {
 plot_homoplasy_heatmap <- function() {
   plot_matrix <- mutation_bool
 
-  sample_sel <- summary$Sample %in% gsub("\\*", "", dimnames(plot_matrix)[[2]])
-  annotation_col <- data.frame(Flag = flagList[-13][sample_sel])
-  rownames(annotation_col) <- dimnames(plot_matrix)[[2]]
-  
-  # re-order Flag levels for legend display
-  annotation_col$Flag <- factor(annotation_col$Flag, levels = c("Yes", "Yes*", "Maybe", "No"))
+  sample_sel <- summary$Sample %in% gsub("(_NB[0-9]{2})?(\\*)?", "", dimnames(plot_matrix)[[2]])
+  snp_sel <- dimnames(annotation_snp)[[1]] %in% dimnames(plot_matrix)[[1]]
 
-  # add common SNP annotation
-  annotation_row <- data.frame(common.SNP = dimnames(plot_matrix)[[1]] %in% important_positions$POS)
-  rownames(annotation_row) <- dimnames(plot_matrix)[[1]]
-  annotation_row$common.SNP <- factor(annotation_row$common.SNP)
-  levels(annotation_row$common.SNP) = c("other", "common")
-  
-  # create color object for annotations
-  annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]], common.SNP = c("common"="#000000", "other"="#FFFFFF"), Variants = c("#FFFFFF", brewer.pal(n = 3, name = "Blues"), brewer.pal(n = 3, name = "PuRd"))[c(1,4,7)])
-  
   pheatmap(plot_matrix,
           labels_col=dimnames(plot_matrix)[[2]],
           labels_row=dimnames(plot_matrix)[[1]],
@@ -371,11 +438,11 @@ plot_homoplasy_heatmap <- function() {
           legend=FALSE,
  #         legend_breaks=c(0,1,2),
  #         legend_labels=c("Wuhan-Hu-1","Variant","Ambiguous"),
-          annotation_col=annotation_col,
-          annotation_row=annotation_row,
+          annotation_col=subset(annotation_sample, sample_sel),
+          annotation_row=subset(annotation_snp, snp_sel),
           annotation_colors=annotation_colors
           )
-  grid.text("Variant position (nucleotide)", x=0.85, y=0.5, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
+  grid.text("Variant position (nucleotide)", x=0.73, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
 }
 #-------------------------------------------------
 draw_flag_table2 <- function(dt) {
@@ -409,34 +476,19 @@ draw_flag_table <- function(dt) {
 plot_flag_matrix <- function() {
 
   plot_matrix <- matrix(data=0,
-                        nrow=length(levels(factor(postfilt_all$pos))),
-                        ncol=length(levels(factor(postfilt_all$sample)))
+                        nrow=length(combined_rows),
+                        ncol=length(combined_cols)
                       )
-  dimnames(plot_matrix)[[1]] <- levels(factor(postfilt_all$pos))
-  dimnames(plot_matrix)[[2]] <- levels(factor(postfilt_all$sample))
+  dimnames(plot_matrix)[[1]] <- combined_rows
+  dimnames(plot_matrix)[[2]] <- combined_cols
   
   o <- order(as.numeric(dimnames(plot_matrix)[[1]]))
   o.col <- order(dimnames(plot_matrix)[[2]])
-  mut_rows <- dimnames(plot_matrix)[[1]] %in% dimnames(mutation_bool)[[1]]
-  mut_cols <- dimnames(plot_matrix)[[2]] %in% gsub("(\\*)?", "", dimnames(mutation_bool)[[2]])
-  plot_matrix[o,o.col][mut_rows,mut_cols] <- mutation_bool
+  plot_matrix[o, o.col][combined_rows %in% mut_rows, combined_cols %in% mut_cols] <- mutation_bool[mut_rows %in% combined_rows, mut_cols %in% combined_cols]
 
   # add overall genome flag annotation
   sample_sel <- summary$Sample %in% dimnames(plot_matrix)[[2]]
-  annotation_col <- data.frame(Flag = flagList[-13][sample_sel])
-  rownames(annotation_col) <- summary$Sample[sample_sel]
-  
-  # re-order Flag levels for legend display
-  annotation_col$Flag <- factor(annotation_col$Flag, levels = c("Yes", "Yes*", "Maybe", "No"))
-
-  # add common SNP annotation
-  annotation_row <- data.frame(common.SNP = dimnames(plot_matrix)[[1]] %in% important_positions$POS)
-  rownames(annotation_row) <- dimnames(plot_matrix)[[1]]
-  annotation_row$common.SNP <- factor(annotation_row$common.SNP)
-  levels(annotation_row$common.SNP) = c("other", "common")
-
-  # create color object for annotations
-  annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]], common.SNP = c("common"="#000000", "other"="#FFFFFF"), Variants = c("#FFFFFF", brewer.pal(n = 3, name = "Blues"), brewer.pal(n = 3, name = "PuRd"))[c(1,4,7)])
+  snp_sel <- dimnames(annotation_snp)[[1]] %in% dimnames(plot_matrix)[[1]]
 
   h <- pheatmap(plot_matrix[o,],
           labels_row=dimnames(plot_matrix)[[1]][o],
@@ -451,8 +503,8 @@ plot_flag_matrix <- function() {
 #          legend_breaks=c(0,1,2),
 #          legend_labels=c("Wuhan-Hu-1","Variant","Ambiguous"),
           treeheight_row=0,
-          annotation_col=annotation_col,
-          annotation_row=annotation_row,
+          annotation_col=subset(annotation_sample, sample_sel),
+          annotation_row=subset(annotation_snp, snp_sel),
           annotation_colors=annotation_colors
           )
   
@@ -486,11 +538,13 @@ plot_flag_matrix <- function() {
   vc_sel_m <- as.matrix(vc_matrix)[,-1] == 'mismatch(m)'
   vc_sel_s <- as.matrix(vc_matrix)[,-1] == 'mismatch(s)'
   vc_sel_n <- as.matrix(vc_matrix)[,-1] == 'mismatch(n)'
+  vc_sel_ms <- as.matrix(vc_matrix)[,-1] == 'mismatch(m+s)'
+  vc_sel_mn <- as.matrix(vc_matrix)[,-1] == 'mismatch(m+n)'
+  vc_sel_ns <- as.matrix(vc_matrix)[,-1] == 'mismatch(n+s)'
 
-  
   flag_matrix <- matrix(data="",
-                        nrow=length(levels(factor(postfilt_all$pos))),
-                        ncol=length(levels(factor(postfilt_all$sample)))
+                        nrow=length(postfilt_rows),
+                        ncol=length(postfilt_cols)
                       )
   dimnames(flag_matrix)[[1]] <- maf_matrix$pos
   dimnames(flag_matrix)[[2]] <- names(maf_matrix)[-1]
@@ -505,6 +559,9 @@ plot_flag_matrix <- function() {
   flag_matrix[vc_sel_s] <- paste0(flag_matrix[vc_sel_s], "s")
   flag_matrix[vc_sel_m] <- paste0(flag_matrix[vc_sel_m], "m")
   flag_matrix[vc_sel_n] <- paste0(flag_matrix[vc_sel_n], "n")
+  flag_matrix[vc_sel_ms] <- paste0(flag_matrix[vc_sel_ms], "ms")
+  flag_matrix[vc_sel_ns] <- paste0(flag_matrix[vc_sel_ns], "ns")
+  flag_matrix[vc_sel_mn] <- paste0(flag_matrix[vc_sel_n], "mn")
 
   # create matrix for text displayed ordered by pheatmap clusters
   if("order" %in% names(h$tree_row)) {
@@ -520,15 +577,22 @@ plot_flag_matrix <- function() {
   # order flag_matrix rows and columns
   flag_row_order <- order(as.numeric(dimnames(flag_matrix)[[1]]))
   flag_col_order <- order(dimnames(flag_matrix)[[2]])
-  text_matrix <- flag_matrix[flag_row_order[row_order], flag_col_order[col_order]]
+  text_matrix <- matrix(data="",
+                        nrow=length(combined_rows),
+                        ncol=length(combined_cols)
+                      )
+  row_sel <- combined_rows %in% postfilt_rows
+  col_sel <- combined_cols %in% postfilt_cols
+#  text_matrix[row_sel, col_sel] <- flag_matrix[flag_row_order[row_order[row_sel]], flag_col_order[col_order[col_sel]]]
+  text_matrix[row_sel, col_sel] <- flag_matrix[flag_row_order, flag_col_order]
 
-  x <- rep(seq(0.08, 0.705, length.out=dim(plot_matrix)[2]), each=dim(plot_matrix)[1])
-  y <- rep(seq(0.961, 0.133, length.out=dim(plot_matrix)[1]), dim(plot_matrix)[2])
-  grid.text(text_matrix, x=x, y=y, gp=gpar(col="black", fontsize=8))
+  x <- rep(seq(0.095, 0.58, length.out=dim(text_matrix)[2]), each=dim(text_matrix)[1])
+  y <- rep(seq(0.961, 0.131, length.out=dim(text_matrix)[1]), dim(text_matrix)[2])
+  grid.text(text_matrix, x=x, y=y, gp=gpar(col="black", fontsize=7))
 
-#  grid.text(paste(shapes$triangles[1:5], collapse=""), x=0.08, y=0.961, gp=gpar(col="black", fontsize=7.5))
-#  grid.text(paste(shapes$circles[3:7], collapse=""), x=0.705, y=0.133, gp=gpar(col="black", fontsize=7.5))
-  grid.text("Variant position (nucleotide)", x=0.85, y=0.5, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
+#  grid.text(paste(shapes$triangles[1:5], collapse=""), x=0.095, y=0.961, gp=gpar(col="black", fontsize=7))
+#  grid.text(paste(shapes$circles[3:7], collapse=""), x=0.58, y=0.131, gp=gpar(col="black", fontsize=7))
+  grid.text("Variant position (nucleotide)", x=0.7, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
 }
 #-------------------------------------------------
 print_igv_plot <- function(row, flag) {
@@ -549,7 +613,7 @@ print_igv_plot <- function(row, flag) {
         if(file.exists(pngFn)) {
           cat(paste0("\\includegraphics[width=13cm]{",pngFn,"}\n"))
         } else {
-          cat(paste0("\nWarning: file does not exist -",paste(tail(strsplit(pngFn,"/")[[1]],5),collapse="/"),"\n"))
+          cat(paste0("\nWarning: file does not exist: ",paste(tail(strsplit(pngFn,"/")[[1]],5),collapse="/"),"\n"))
         }
       }
     }
@@ -609,13 +673,19 @@ plot_barcode_barplot()
 
 ## Amplicon depth
 ### Read counts
-```{r, depth-heatmap-1, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=3}
+```{r, depth-heatmap-1, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=2.5}
 depth_heatmap((1:98 %% 2 >= 0), "", norm=FALSE)
 ```
 
 ### Multiple of NTC reads at that amplicon
-```{r, depth-heatmap-2, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=3}
+```{r, depth-heatmap-2, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=2.5}
 depth_heatmap((1:98 %% 2 >= 0), "", norm=TRUE)
+```
+
+### Samples containing positions with depth less than 2x NTC median depth
+\label{low_depth}
+```{r, echo=FALSE, results="asis"}
+print_low_depth_regions()
 ```
 
 ### Primer pool 1 (nCoV2019_1)
@@ -650,36 +720,30 @@ plot_homoplasy_heatmap()
 ```
 
 ```{r echo=FALSE, results="asis"}
-cat("**Variants**: \\textcolor{variantBlue}{$\\blacksquare$} = Variant, \\textcolor{variantRed}{$\\blacksquare$} =  Ambiguity")
+cat("**Variants**: \\textcolor{variantBlue}{$\\blacksquare$} = Variant in consensus, \\textcolor{variantRed}{$\\blacksquare$} =  Ambiguity in consensus (at depth above threshold outlined in section \\ref{low_depth} on page \\pageref{low_depth})")
 
 if(sum(select_many) > 0) {
   cat(paste(" ; Samples with asterisks have more than 30 SNPs compared with Wuhan-Hu-1. SNP locations unique to", ifelse(sum(select_many)>1, "these samples", "this sample"), "are not displayed in this table.\n"))
-} else {
   cat("\n")
 }
 ```
 
-### Nextstrain
-![](`r "/home/tom/data/ref/ncov/sequencing_runs/screenshots/https_nextstrain.idies.jhu.edu_443_ncov-alpha_global_d_tree_f_originating_lab_Johns_20Hopkins_20Hospital_20Department_20of_20Pathology.pdf"`)
+## Nextstrain
 
-`r cat("**MDHP sequences**\n")`
-![](`r "/home/tom/data/ref/ncov/sequencing_runs/screenshots/https_nextstrain.idies.jhu.edu_443_ncov-alpha_MDHP_branchLabel_aa_c_division_d_tree_f_originating_lab_Johns_20Hopkins_20Hospital_20Department_20of_20Pathology.pdf"`)
+### Nextstrain tanglegram
+![](`r "/home/tom/data/ref/ncov/sequencing_runs/1-GLOBAL_MDHP_tanglegram.png"`)
+
+### Nextstrain global transmission
+![](`r "/home/tom/data/ref/ncov/sequencing_runs/0-GLOBAL_Transmission_map.png"`)
+
+### MDHP-only time tree
+![](`r "/home/tom/data/ref/ncov/sequencing_runs/2-MDHP_AA_MUTS_tree.png"`)
+
+### MDHP-only divergence tree
+![](`r "/home/tom/data/ref/ncov/sequencing_runs/3-MDHP_AA_MUTS_divergence.png"`)
 
 # Flags
 \label{sec:flags}
-
-## Flags identified
-```{r, flag-table, echo=FALSE}
-draw_flag_table(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status"))])
-```
-
-## Flags identified
-```{r, flag-table2, echo=FALSE}
-draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status"))])
-```
-
-**Flags**: MAF (Minor allele frequency > 0.15), new (present in < 2 GISAID sequences), mismatch (mismatches between variant callers where variant is present in medaka (m) or samtools(s))
-
 **Genome color key**:
 
 \textcolor{myDarkGreen}{Yes = Dark Green} = Passed genome threshold and no flags
@@ -690,6 +754,13 @@ draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status
 
 \textcolor{myRed}{No = Red} = Incomplete genome
 
+## Flags identified
+```{r, flag-table, echo=FALSE}
+draw_flag_table(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status"))])
+```
+
+**Flags**: MAF (Minor allele frequency > 0.15), new (present in < 2 GISAID sequences), mismatch (mismatches between variant callers where variant is present in nanopolish (n), medaka (m), and/or samtools(s))
+
 \pagebreak
 
 ## Flag matrix
@@ -697,7 +768,12 @@ draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status
 plot_flag_matrix()
 ```
 
-**Variants**: \textcolor{variantBlue}{$\blacksquare$} = Variant, \textcolor{variantRed}{$\blacksquare$} =  Ambiguity ; **Flags**: $\blacksquare$ = MAF (Minor allele frequency > 0.15), $\bigcirc$ = new (present in < 2 GISAID sequences), s|m|n (mismatches between variant callers where variant is present in samtools (s), medaka (m), nanopolish (n))
+**Variants**: \textcolor{variantBlue}{$\blacksquare$} = Variant in consensus, \textcolor{variantRed}{$\blacksquare$} =  Ambiguity in consensus (at depth above threshold outlined in section \ref{low_depth} on page \pageref{low_depth}) ; **Flags**: $\blacksquare$ = MAF (Minor allele frequency > 0.15), $\bigcirc$ = new (present in < 2 GISAID sequences), s|m|n (mismatches between variant callers where variant is present in samtools (s), medaka (m), nanopolish (n))
+
+## SnpEff annotation table
+```{r, snpeff-table, echo=FALSE, results="asis"}
+pander(snpeff_report[,-1])
+```
 
 ## SNPs associated with major clades
 ```{r, snp-table, echo=FALSE, results="asis"}
@@ -735,8 +811,6 @@ if(dim(dt)[1] > 0){
 
 # Pipeline
 \label{sec:pipeline}
-
-Output from out analysis pipeline 
 
 ## Barcode demultiplexing
 ```
@@ -849,7 +923,7 @@ python vcf_postfilter.py \
 \label{sec:authors}
 
 ## Report authors
-Thomas Mehoke, Shirlee Wohl, Amanda Ernlund, Melanie Kirsche, Srividya Ramakrishnan, Yunfan Fan, Kianna Blount
+Thomas Mehoke, Shirlee Wohl, Melanie Kirsche, Srividya Ramakrishnan, Yunfan Fan, Kianna Blount
 
 ## Acknowledgements
 

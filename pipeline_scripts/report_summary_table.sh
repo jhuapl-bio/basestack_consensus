@@ -29,12 +29,12 @@ usage() {
 	echo -e "   -p      protocol (default: )"
 	echo -e "   -r      reference FASTA (default: )"
 	echo -e "   -o      output folder (default: ${CYAN}<run-folder>/artic-pipeline/run_stats${NC})"
-	echo -e "   -1      barcode demux folder (default: ${CYAN}<run-folder>/artic-pipeline/1-guppy-barcoder${NC})"
-	echo -e "   -2      length filter folder (default: ${CYAN}<run-folder>/artic-pipeline/2-guppyplex${NC})"
-	echo -e "   -3      normalization folder (default: ${CYAN}<run-folder>/artic-pipeline/3-normalization_update${NC})"
+	echo -e "   -1      barcode demux folder (default: ${CYAN}<run-folder>/artic-pipeline/1-barcode-demux${NC})"
+	echo -e "   -2      length filter folder (default: ${CYAN}<run-folder>/artic-pipeline/2-length-filter${NC})"
+	echo -e "   -3      normalization folder (default: ${CYAN}<run-folder>/artic-pipeline/3-normalization${NC})"
 	echo -e "   -4      draft consensus folder (default: ${CYAN}<run-folder>/artic-pipeline/4-draft-consensus${NC})"
-	echo -e "   -5      nextstrain folder (default: ${CYAN}not used yet${NC})"
-	echo -e "   -6      post-filter folder (default: ${CYAN}<run-folder>/artic-pipeline/5-post-filter${NC})"
+	echo -e "   -5      nextstrain folder (default: ${CYAN}<run-folder>/artic-pipeline/5-nextstrain${NC})"
+	echo -e "   -6      post-filter folder (default: ${CYAN}<run-folder>/artic-pipeline/6-post-filter${NC})"
 	echo -e ""
 }
 
@@ -58,11 +58,12 @@ protocol="nCoV-2019/V3"
 reference="$primerscheme_path/$protocol/nCoV-2019.reference.fasta"
 
 stats_base="artic-pipeline/run_stats"
-demux_base="artic-pipeline/1-guppy-barcoder"
-lengthfilter_base="artic-pipeline/2-guppyplex"
-normalize_base="artic-pipeline/3-normalization_update"
-draftconsensus_base="artic-pipeline/4-draft-consensus_update"
-postfilter_base="artic-pipeline/5-post-filter_update"
+demux_base="artic-pipeline/1-barcode-demux"
+lengthfilter_base="artic-pipeline/2-length-filter"
+normalize_base="artic-pipeline/3-normalization"
+draftconsensus_base="artic-pipeline/4-draft-consensus"
+nextstrain_base="artic-pipeline/5-nextstrain"
+postfilter_base="artic-pipeline/6-post-filter"
 
 #===================================================================================================
 # PARSE INPUT ARGUMENTS
@@ -174,6 +175,14 @@ if ! [[ -d "$draftconsensus_path" ]]; then
 	usage
 	exit
 fi
+if [[ -z "$nextstrain_path" ]]; then
+	nextstrain_path="$run_path/$nextstrain_base"
+fi
+if ! [[ -d "$nextstrain_path" ]]; then
+	echo -e "${RED}Error: nextstrain path ${CYAN}$nextstrain_path${RED} does not exist.${NC}"
+	usage
+	exit
+fi
 if [[ -z "$postfilter_path" ]]; then
 	postfilter_path="$run_path/$postfilter_base"
 fi
@@ -193,6 +202,12 @@ if ! [[ -s "$postfilt_summary" ]]; then
 	echo -e "${RED}Error: post-filter full report ${CYAN}$postfilt_all${RED} does not exist.${NC}"
 	usage
 	exit
+fi
+snpeff_report="$postfilter_path/final_snpEff_report.txt"
+if ! [[ -s "$snpeff_report" ]]; then
+	echo -e "${RED}Error: SnpEff report ${CYAN}$snpeff_report${RED} does not exist.${NC}"
+#	usage
+#	exit
 fi
 
 #===================================================================================================
@@ -291,31 +306,31 @@ while read barcode label; do
 
 	demux_reads=$(grep "$barcode" "$stats_path/demux_count.txt" | sed 's/^ \+//' | cut -d" " -f1)
 	gather=$(find "$lengthfilter_path" -name "*$barcode.fastq")
-	echo_log "    FASTQ file: $gather"
 	if [[ -s "$gather" ]]; then
 		length_filter=$(($(wc -l < "$gather") / 4))
 	else
 		length_filter=0
 	fi
-	echo_log "      number of reads: $length_filter"
-#	alignment=$(find "$draftconsensus_path" -name "*${barcode}*.sorted.bam" ! -name "*trimmed*")
 	alignment=$(find "$normalize_path" -name "*$barcode.sam")
 	if [[ -s "$gather" ]]; then
-		alignment_depth=$(wc -l "$alignment")
+		aligned_reads=$(wc -l < "$alignment")
 	else
-		alignment_depth=0
+		aligned_reads=0
 	fi
-	echo_log "    full alignment: $alignment"
-	echo_log "      aligned reads: $alignment_depth"
-	normalized_alignment=$(find "$draftconsensus_path" -name "*$barcode*.sorted.bam" ! -name "*trimmed*")
+	normalized_alignment=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.sorted.bam" ! -name "*trimmed*")
 	normalized_reads=$(samtools idxstats "$normalized_alignment" | grep "$ref_header" | cut -f3)
-	echo_log "    normalized alignment: $alignment"
-	echo_log "      normalized reads: $alignment_depth"
-	draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.consensus.fasta")
-	echo_log "    draft consensus: $draft_consensus"
+	draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.consensus.fasta")
 	consensus_length=$(($ref_length - $(tail -n+2 "$draft_consensus" | grep -o N | wc -l)))
-	echo_log "      unambiguous consensus: $consensus_length"
 	post_filter=$(find "$postfilter_path" -name "*$barcode*.variant_data.txt")
+
+	echo_log "    FASTQ file: $gather"
+	echo_log "      number of reads: $length_filter"
+	echo_log "    full alignment: $alignment"
+	echo_log "      aligned reads: $aligned_reads"
+	echo_log "    normalized alignment: $normalized_alignment"
+	echo_log "      normalized reads: $normalized_reads"
+	echo_log "    draft consensus: $draft_consensus"
+	echo_log "      unambiguous consensus: $consensus_length"
 	echo_log "    variant file: $post_filter"
 
 	if [[ "$make_new_outfile" == "true" ]]; then
@@ -338,7 +353,7 @@ while read barcode label; do
 		samtools sort "$alignment" | samtools depth -a -d 10000000 - > "$depth_outfile"
 	fi
 
-	normalized_depth_outfile="$stats_path/depth-${label}_${barcode}.txt"
+	normalized_depth_outfile="$stats_path/depth-norm-${label}_${barcode}.txt"
 	if ! [[ -s "$normalized_depth_outfile" ]]; then
 		echo_log "  creating normalized depth file"
 		samtools depth -d 0 -a "$normalized_alignment" > "$normalized_depth_outfile"
@@ -359,15 +374,16 @@ while read barcode label; do
 
 	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.primertrimmed.rg.sorted.bam")
 	echo_log "    primer trimmed alignment: $trimmed_alignment"
-	vcf=$(find "$draftconsensus_path/VariantValidator" -name "*${barcode}*.merged.vcf" ! -name "*medaka*")
-	outPrefix=$(basename "${vcf%.merged.vcf}")
+	vcf=$(find "$draftconsensus_path" -name "*${barcode}*.allcallers.combined.vcf")
+	outPrefix=$(basename "${vcf%.allcallers.combined.vcf}")
 
 	if [[ -s "$vcf" && -s "$trimmed_alignment" ]]; then
 
 		igv_out_path="$stats_path/igv"
 		mkdir -p "$igv_out_path"
 
-		java -cp "$vcfigv_repo_path/src" \
+		JAVA_PATH="$bin_path/../../jdk-14.0.1/bin"
+		"$JAVA_PATH/java" -cp "$vcfigv_repo_path/src" \
 			Vcf2Bat \
 			--squish \
 			--nocombine \
@@ -393,10 +409,16 @@ if [[ "$make_new_outfile" == "true" ]]; then
 fi
 
 echo_log "Calculating depth"
-find "$stats_path" -name "depth-*.txt" ! -name "depth-all.txt" -print0 | while read -d $'\0' f; do
+find "$stats_path" -name "depth-*.txt" ! -name "depth-all.txt" ! -name "depth-norm-*" -print0 | while read -d $'\0' f; do
 	base="${f%.txt}"
 	awk -v BASE=$(basename "${base#depth-}") '{printf("%s\t%s\n", BASE, $0);}' "$f"
 done > "$depthfile"
+
+echo_log "Calculating depth"
+find "$stats_path" -name "depth-norm*.txt" ! -name "depth-norm-all.txt" -print0 | while read -d $'\0' f; do
+	base="${f%.txt}"
+	awk -v BASE=$(basename "${base#depth-}") '{printf("%s\t%s\n", BASE, $0);}' "$f"
+done > "${depthfile/-all/-norm-all}"
 
 echo_log "Identifying mutations"
 rm "$mutations_all"
@@ -436,10 +458,14 @@ awk '{
 
 cp "$postfilt_summary" "$stats_path"
 cp "$postfilt_all" "$stats_path"
+cp "final_snpEff_report.txt" "$stats_path"
 
 #===================================================================================================
 # BUILD MARKDOWN FILE
 #===================================================================================================
+
+plate=$(grep "plate" "${run_path}/run_info.txt" | cut -f2)
+row=$(grep "row" "${run_path}/run_info.txt" | cut -f2)
 
 sed -e "s@<RUN_PATH>@${run_path}@" \
 	-e "s@<PLATE>@${plate}@" \
