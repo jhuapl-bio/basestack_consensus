@@ -4,16 +4,16 @@
 RUN=$1
 
 # get known directory names
-DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus_update"
+DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus"
 
 # make and save output directory
-outdir="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/5-post-filter_update/"
+outdir="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/6-post-filter/"
 
 # save path to NTC bamfile
-ntc_bamfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus_update/NTC*primertrimmed.rg.sorted.bam"
+ntc_bamfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*primertrimmed.rg.sorted.bam"
 
 # save path to nextstrain vcf
-vcf_next="/home/idies/workspace/covid19/nextstrain/archive/2020-04-14/alignments.vcf"
+vcf_next="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/5-nextstrain/*alignments.vcf"
 
 for consfile in $DIR/*.consensus.fasta; do
 
@@ -25,9 +25,9 @@ for consfile in $DIR/*.consensus.fasta; do
 
 		echo $samplename
 
-		vcffile=$(find $DIR/VariantValidator/ -name "$samplename*.merged.vcf" ! -name "*medaka*")
-		bamfile="$DIR/$samplename*.primertrimmed.rg.sorted.bam"
-		consensus="$DIR/$samplename*.consensus.fasta"
+		vcffile=$DIR/$samplename*allcallers.combined.vcf
+		bamfile="$DIR/$samplename*nanopolish.primertrimmed.rg.sorted.bam"
+		consensus="$DIR/$samplename*nanopolish.consensus.fasta"
 		prefix=`echo $consensus`
 		prefix=${prefix##*/}
 		prefix=${prefix%%.*}
