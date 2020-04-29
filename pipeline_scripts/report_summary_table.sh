@@ -175,6 +175,14 @@ if ! [[ -d "$draftconsensus_path" ]]; then
 	usage
 	exit
 fi
+if [[ -z "$nextstrain_path" ]]; then
+	nextstrain_path="$run_path/$nextstrain_base"
+fi
+if ! [[ -d "$nextstrain_path" ]]; then
+	echo -e "${RED}Error: nextstrain path ${CYAN}$nextstrain_path${RED} does not exist.${NC}"
+	usage
+	exit
+fi
 if [[ -z "$postfilter_path" ]]; then
 	postfilter_path="$run_path/$postfilter_base"
 fi
@@ -198,8 +206,8 @@ fi
 snpeff_report="$postfilter_path/final_snpEff_report.txt"
 if ! [[ -s "$snpeff_report" ]]; then
 	echo -e "${RED}Error: SnpEff report ${CYAN}$snpeff_report${RED} does not exist.${NC}"
-	usage
-	exit
+#	usage
+#	exit
 fi
 
 #===================================================================================================
@@ -298,31 +306,31 @@ while read barcode label; do
 
 	demux_reads=$(grep "$barcode" "$stats_path/demux_count.txt" | sed 's/^ \+//' | cut -d" " -f1)
 	gather=$(find "$lengthfilter_path" -name "*$barcode.fastq")
-	echo_log "    FASTQ file: $gather"
 	if [[ -s "$gather" ]]; then
 		length_filter=$(($(wc -l < "$gather") / 4))
 	else
 		length_filter=0
 	fi
-	echo_log "      number of reads: $length_filter"
-#	alignment=$(find "$draftconsensus_path" -name "*${barcode}*.sorted.bam" ! -name "*trimmed*")
 	alignment=$(find "$normalize_path" -name "*$barcode.sam")
 	if [[ -s "$gather" ]]; then
-		alignment_depth=$(wc -l "$alignment")
+		aligned_reads=$(wc -l "$alignment")
 	else
-		alignment_depth=0
+		aligned_reads=0
 	fi
-	echo_log "    full alignment: $alignment"
-	echo_log "      aligned reads: $alignment_depth"
-	normalized_alignment=$(find "$draftconsensus_path" -name "*$barcode*.sorted.bam" ! -name "*trimmed*")
+	normalized_alignment=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.sorted.bam" ! -name "*trimmed*")
 	normalized_reads=$(samtools idxstats "$normalized_alignment" | grep "$ref_header" | cut -f3)
-	echo_log "    normalized alignment: $alignment"
-	echo_log "      normalized reads: $alignment_depth"
-	draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.consensus.fasta")
-	echo_log "    draft consensus: $draft_consensus"
+	draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.consensus.fasta")
 	consensus_length=$(($ref_length - $(tail -n+2 "$draft_consensus" | grep -o N | wc -l)))
-	echo_log "      unambiguous consensus: $consensus_length"
 	post_filter=$(find "$postfilter_path" -name "*$barcode*.variant_data.txt")
+
+	echo_log "    FASTQ file: $gather"
+	echo_log "      number of reads: $length_filter"
+	echo_log "    full alignment: $alignment"
+	echo_log "      aligned reads: $aligned_reads"
+	echo_log "    normalized alignment: $normalized_alignment"
+	echo_log "      normalized reads: $normalized_reads"
+	echo_log "    draft consensus: $draft_consensus"
+	echo_log "      unambiguous consensus: $consensus_length"
 	echo_log "    variant file: $post_filter"
 
 	if [[ "$make_new_outfile" == "true" ]]; then
@@ -366,15 +374,16 @@ while read barcode label; do
 
 	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.primertrimmed.rg.sorted.bam")
 	echo_log "    primer trimmed alignment: $trimmed_alignment"
-	vcf=$(find "$draftconsensus_path/VariantValidator" -name "*${barcode}*.merged.vcf" ! -name "*medaka*")
-	outPrefix=$(basename "${vcf%.merged.vcf}")
+	vcf=$(find "$draftconsensus_path" -name "*${barcode}*.allcallers.combined.vcf")
+	outPrefix=$(basename "${vcf%.allcallers.combined.vcf}")
 
 	if [[ -s "$vcf" && -s "$trimmed_alignment" ]]; then
 
 		igv_out_path="$stats_path/igv"
 		mkdir -p "$igv_out_path"
 
-		java -cp "$vcfigv_repo_path/src" \
+		JAVA_PATH="$bin_path/../../jdk-14.0.1/bin"
+		"$JAVA_PATH/java" -cp "$vcfigv_repo_path/src" \
 			Vcf2Bat \
 			--squish \
 			--nocombine \
