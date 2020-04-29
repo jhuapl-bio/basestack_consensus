@@ -194,6 +194,12 @@ if ! [[ -s "$postfilt_summary" ]]; then
 	usage
 	exit
 fi
+snpeff_report="$postfilter_path/final_snpEff_report.txt"
+if ! [[ -s "$snpeff_report" ]]; then
+	echo -e "${RED}Error: SnpEff report ${CYAN}$snpeff_report${RED} does not exist.${NC}"
+	usage
+	exit
+fi
 
 #===================================================================================================
 # DEFINE FUNCTIONS
@@ -338,7 +344,7 @@ while read barcode label; do
 		samtools sort "$alignment" | samtools depth -a -d 10000000 - > "$depth_outfile"
 	fi
 
-	normalized_depth_outfile="$stats_path/depth-${label}_${barcode}.txt"
+	normalized_depth_outfile="$stats_path/depth-norm-${label}_${barcode}.txt"
 	if ! [[ -s "$normalized_depth_outfile" ]]; then
 		echo_log "  creating normalized depth file"
 		samtools depth -d 0 -a "$normalized_alignment" > "$normalized_depth_outfile"
@@ -393,10 +399,16 @@ if [[ "$make_new_outfile" == "true" ]]; then
 fi
 
 echo_log "Calculating depth"
-find "$stats_path" -name "depth-*.txt" ! -name "depth-all.txt" -print0 | while read -d $'\0' f; do
+find "$stats_path" -name "depth-*.txt" ! -name "depth-all.txt" ! -name "depth-norm-*" -print0 | while read -d $'\0' f; do
 	base="${f%.txt}"
 	awk -v BASE=$(basename "${base#depth-}") '{printf("%s\t%s\n", BASE, $0);}' "$f"
 done > "$depthfile"
+
+echo_log "Calculating depth"
+find "$stats_path" -name "depth-norm*.txt" ! -name "depth-norm-all.txt" -print0 | while read -d $'\0' f; do
+	base="${f%.txt}"
+	awk -v BASE=$(basename "${base#depth-}") '{printf("%s\t%s\n", BASE, $0);}' "$f"
+done > "${depthfile/-all/-norm-all}"
 
 echo_log "Identifying mutations"
 rm "$mutations_all"
@@ -436,10 +448,14 @@ awk '{
 
 cp "$postfilt_summary" "$stats_path"
 cp "$postfilt_all" "$stats_path"
+cp "final_snpEff_report.txt" "$stats_path"
 
 #===================================================================================================
 # BUILD MARKDOWN FILE
 #===================================================================================================
+
+plate=$(grep "plate" "${run_path}/run_info.txt" | cut -f2)
+row=$(grep "row" "${run_path}/run_info.txt" | cut -f2)
 
 sed -e "s@<RUN_PATH>@${run_path}@" \
 	-e "s@<PLATE>@${plate}@" \
