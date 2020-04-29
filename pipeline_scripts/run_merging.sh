@@ -9,15 +9,9 @@ fi
 RUN=$1
 
 # get known directory names
-DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/3-hac-medaka-norm200"
+DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus"
 
 REF="$BINDIR/VariantValidator/nCoV-2019.reference.fasta"
-
-# make and save output directory
-outdir="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus-nanopolish/VariantValidator"
-if [ ! -d $outdir ]; then
-    mkdir $outdir
-fi
 
 for consfile in $DIR/*.consensus.fasta; do
 
@@ -29,7 +23,7 @@ for consfile in $DIR/*.consensus.fasta; do
 
         echo $samplename
 
-        nanopolishvcfunzipped=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus-nanopolish/$samplename*.merged.vcf`
+        nanopolishvcfunzipped=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/$samplename*.nanopolish.merged.vcf`
         #nanopolishvcfunzipped=${nanopolishvcffile::-3}
         #if [ ! -r $nanopolishvcfunzipped ]
         #then
@@ -37,7 +31,7 @@ for consfile in $DIR/*.consensus.fasta; do
         #    gunzip -c $nanopolishvcffile > $nanopolishvcfunzipped          
         #fi
 
-        medakavcffile=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus_update/$samplename*.merged.vcf.gz`
+        medakavcffile=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/$samplename*.medaka.merged.vcf.gz`
         medakavcfunzipped=${medakavcffile::-3}
         if [ ! -r $medakavcfunzipped ]
         then
@@ -45,8 +39,8 @@ for consfile in $DIR/*.consensus.fasta; do
             gunzip -c $medakavcffile > $medakavcfunzipped          
         fi
 
-        bamfile=`ls $DIR/$samplename*.primertrimmed.rg.sorted.bam`
-        consensus=`ls $DIR/$samplename*.consensus.fasta`
+        bamfile=`ls $DIR/$samplename*.medaka.primertrimmed.rg.sorted.bam`
+        consensus=`ls $DIR/$samplename*.medaka.consensus.fasta`
         prefix=`echo $consensus`
         prefix=${prefix##*/}
         prefix=${prefix%%.*}
@@ -56,10 +50,10 @@ for consfile in $DIR/*.consensus.fasta; do
         echo 'Bam file: '$bamfile
         echo 'Nanopolish VCF: '$nanopolishvcfunzipped
         echo 'Medaka VCF: '$medakavcfunzipped
-        echo 'Out prefix: '$outdir/$prefix
+        echo 'Out prefix: '$DIR/$prefix
 
 	# run script
-        $BINDIR/VariantValidator/run.sh $REF $bamfile $nanopolishvcfunzipped,$medakavcfunzipped $outdir/$prefix
+        $BINDIR/VariantValidator/run.sh $REF $bamfile $nanopolishvcfunzipped,$medakavcfunzipped $DIR/$prefix
     fi
 done
 
