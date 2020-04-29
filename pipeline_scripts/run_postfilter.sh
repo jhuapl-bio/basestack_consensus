@@ -10,7 +10,7 @@ DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-c
 outdir="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/6-post-filter/"
 
 # save path to NTC bamfile
-ntc_bamfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*primertrimmed.rg.sorted.bam"
+ntc_bamfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*nanopolish.primertrimmed.rg.sorted.bam"
 
 # save path to nextstrain vcf
 vcf_next="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/5-nextstrain/*alignments.vcf"
@@ -33,7 +33,7 @@ for consfile in $DIR/*.consensus.fasta; do
 		prefix=${prefix%%.*}
 
 		# run script
-		python /home/idies/workspace/Storage/swohl/persistent/covid/vcf_postfilter.py --vcffile $vcffile --bamfile $bamfile --consensus $consensus --ntc-bamfile $ntc_bamfile --vcf-nextstrain $vcf_next --ns-snp-threshold 2 -o $outdir --prefix $prefix --maf-flag 15
+		python /home/idies/workspace/covid19/code/ncov/pipeline_scripts/vcf_postfilter.py --vcffile $vcffile --bamfile $bamfile --consensus $consensus --ntc-bamfile $ntc_bamfile --vcf-nextstrain $vcf_next --ns-snp-threshold 2 -o $outdir --prefix $prefix --maf-flag 15
 	fi
 done
 

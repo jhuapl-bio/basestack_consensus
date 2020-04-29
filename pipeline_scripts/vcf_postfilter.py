@@ -288,7 +288,7 @@ def ambig_in_key_position(pos,vcf_nextstrain,cons):
             return('.')
 
 
-def add_key_ambiguous_positions(variants,cons,vcf_nextstrain):
+def add_key_ambiguous_positions(chrom,variants,cons,depth_threshold,vcf_nextstrain,bamfile):
     """ 
     Function that returns a dataframe of positions not called as variants in a sample
     but that are ambiguous at key positions
@@ -308,11 +308,24 @@ def add_key_ambiguous_positions(variants,cons,vcf_nextstrain):
     # loop through important snps
     for pos in key_snps:
         if (pos not in variants) and (cons[pos-1]=='N'):
+            pileup=collect_position_pileup(bamfile,pos)
+            depth=pileup[0]
+            pileup = pileup[1:]
             data={}
+            data['chrom']=chrom
             data['pos']=pos
             data['ref']=ns_snps[ns_snps.POS==pos].REF.values[0]
             data['alt']='N'
+            data['in_consensus']=False
             data['unambig']=False
+            data['depth']=depth
+            data['depth_thresh']=depth_threshold
+            data['alleles']=get_allele_counts(pileup,depth)
+            data['depth_flag']='.'
+            data['maf_flag']='.'
+            data['ntc_flag']='.'
+            data['new_flag']='.'
+            data['vc_flag']='.'
             data['key_flag']='ambig in key position'
             data = pd.DataFrame([data], columns=data.keys())
             df = pd.concat([df,data],ignore_index=True)
@@ -461,7 +474,7 @@ def main():
     
     # after looping through all positions
     # add positions at key snps if not in variant list
-    df = pd.concat([df,add_key_ambiguous_positions(list(df.pos.values), cons, args.vcf_nextstrain)],ignore_index=True,sort=False)
+    df = pd.concat([df,add_key_ambiguous_positions(vcf_sample.chrom.values[0],list(df.pos.values), cons, depth_threshold, args.vcf_nextstrain, args.bamfile)],ignore_index=True,sort=False)
     filepath = os.path.join(args.outdir,args.prefix+'.variant_data.txt')
     df.to_csv(filepath,sep='\t',index=False)
     

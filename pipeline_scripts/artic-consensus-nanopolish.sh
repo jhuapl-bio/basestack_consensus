@@ -15,7 +15,7 @@ protocol=$(grep primers "$run_path/run_config.txt" | cut -f2)
 consensus_dir=$run_path/artic-pipeline/4-draft-consensus
 mkdir -p "$consensus_dir"
 
-out_prefix="$consensus_dir/$(basename ${fastq%.covfiltered.fq})"
+out_prefix="$consensus_dir/$(basename ${fastq%.covfiltered.fq}).nanopolish"
 
 # run ARTIC pipeline
 artic minion \
