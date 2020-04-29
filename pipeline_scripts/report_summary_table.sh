@@ -313,7 +313,7 @@ while read barcode label; do
 	fi
 	alignment=$(find "$normalize_path" -name "*$barcode.sam")
 	if [[ -s "$gather" ]]; then
-		aligned_reads=$(wc -l "$alignment")
+		aligned_reads=$(wc -l < "$alignment")
 	else
 		aligned_reads=0
 	fi
