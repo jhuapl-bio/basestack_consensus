@@ -6,7 +6,7 @@ conda activate artic-ncov2019
 fastq=$1
 
 # grab environment and run info
-run_path=$(dirname $(dirname $(dirname "$fastq")))
+run_path=$(dirname $(dirname $(dirname $(dirname "$fastq"))))
 summary=$(find "$run_path" -max-depth 2 -name "*sequencing_summary*.txt")
 scheme_dir=/home/idies/workspace/covid19/code/artic-ncov2019/primer_schemes
 protocol=$(grep primers "$run_path/run_config.txt" | cut -f2)
