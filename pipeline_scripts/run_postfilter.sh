@@ -7,13 +7,13 @@ RUN=$1
 DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus"
 
 # make and save output directory
-outdir="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/6-post-filter/"
+outdir="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/5-post-filter/"
 
 # save path to NTC bamfile
 ntc_bamfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*nanopolish.primertrimmed.rg.sorted.bam"
 
 # save path to nextstrain vcf
-vcf_next="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/5-nextstrain/*alignments.vcf"
+vcf_next="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/6-nextstrain/*alignments.vcf"
 
 for consfile in $DIR/*.consensus.fasta; do
 
@@ -25,7 +25,7 @@ for consfile in $DIR/*.consensus.fasta; do
 
 		echo $samplename
 
-		vcffile=$DIR/$samplename*allcallers.combined.vcf
+		vcffile=$DIR/$samplename*all_callers.combined.vcf
 		bamfile="$DIR/$samplename*nanopolish.primertrimmed.rg.sorted.bam"
 		consensus="$DIR/$samplename*nanopolish.consensus.fasta"
 		prefix=`echo $consensus`

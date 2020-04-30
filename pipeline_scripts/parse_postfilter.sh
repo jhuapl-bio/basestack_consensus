@@ -12,7 +12,7 @@ GENES="/home/idies/workspace/covid19/ncov_reference/genes.gff3"
 RUN=$1
 
 # get known directory names
-DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/5-post-filter_nanopolish"
+DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/5-post-filter"
 
 # make and save output directory
 outdir=$DIR
