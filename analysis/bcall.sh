@@ -141,3 +141,12 @@ if [ $1 == dmux_test_count ] ; then
 	done
     done
 fi
+
+
+if [ $1 == recall05 ] ; then
+    datadir=~/data/ncov/20200405_0424_GA40000_FAN28191_4c470e7c
+    rawdir=$datadir/fast5_pass
+    calldir=$datadir/called
+    
+    guppy_basecaller -i $rawdir -s $calldir --flowcell FLO-MIN106 --kit SQK-LSK109 -x "cuda:0"
+fi
