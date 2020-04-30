@@ -31,29 +31,39 @@ def is_complete(rundir,prefix):
         return(False,29903-ambig)
     
 
-def status_by_flags(flagstr,unambig):
+def status_by_flags(flagstr,in_consensus,allele_freq):
     """
     Determine the genome status for a sample from the combined flag string
     and whether or not it passes the complete genome threshold
     """
     
-    # flag keywords are 'depth','MAF','nextstrain','NTC','mismatch','key'
+    # flag keywords are 'depth','MAF','new','NTC','mismatch','key','SB'
     # these are unique words to each type of flag
-    # flags other than MAF only in called bases put a genome in the maybe category
-    # mismatch flags in uncalled bases put a genome in the yes* category
     
-    if unambig == True:
-        if ('new' in flagstr) or ('depth' in flagstr) or ('NTC' in flagstr) or ('mismatch' in flagstr):
+    # situations that automatically lead to maybe
+    if ('depth' in flagstr) or ('NTC' in flagstr):
+        return('Maybe')
+        
+    # situations that can lead to maybe or yes*
+    if 'mismatch' in flagstr:
+        if ('mismatch(s)' in flagstr) and (allele_freq<0.2) and (in_consensus==False):
+            return('Yes*')
+        elif ('mismatch(s)' in flagstr) and ('SB' in flagstr) and (in_consensus==False):
+            return('Yes*')
+        else:
             return('Maybe')
-        elif ('MAF' in flagstr) or ('key' in flagstr):
-            return('Yes*')
-        else:
-            return('Yes')
-    else:
-        if 'mismatch' in flagstr:
-            return('Yes*')
-        else:
-            return('Yes')
+    
+    # accound for the unlikely case where there is no mismatch but there is strand bias
+    if 'SB' in flagstr:
+        return('Maybe')
+    
+    # situations that lead to yes*
+    # if we have gotten to this point, then the only possible flags are 'MAF','key','new'
+    if ('MAF' in flagstr) or ('key' in flagstr) or ('new' in flagstr):
+        return('Yes*')
+    
+    # if we make it this far there are no flags
+    return('Yes')
 
 
 def generate_postfilter_summary(rundir):
@@ -96,17 +106,18 @@ def generate_postfilter_summary(rundir):
                 # and get only flags to print
                 
                 # replace flags with abbreviated versions
-                for colname in ['depth_flag','maf_flag','ntc_flag','new_flag','key_flag']:
+                for colname in ['depth_flag','maf_flag','ntc_flag','new_flag','sb_flag','key_flag']:
                     if not pd.isna(tmp[colname].values[0]):
                         tmp.loc[tmp[colname].str.contains('depth'), colname] = 'depth'
                         tmp.loc[tmp[colname].str.contains('MAF'), colname] = 'MAF'
                         tmp.loc[tmp[colname].str.contains('NTC'), colname] = 'NTC'
                         tmp.loc[tmp[colname].str.contains('nextstrain'), colname] = 'new'
                         tmp.loc[tmp[colname].str.contains('key'), colname] = 'key'
+                        tmp.loc[tmp[colname].str.contains('strand bias'), colname] = 'SB'
                         
                 
-                allflag = tmp[['depth_flag','maf_flag','ntc_flag','new_flag','vc_flag','key_flag']].apply(lambda x: ', '.join(str(pos)+':'+x.dropna()), axis=1).values[0]
-                stat.append(status_by_flags(allflag, tmp.unambig.values[0]))
+                allflag = tmp[['depth_flag','maf_flag','ntc_flag','new_flag','vc_flag','sb_flag','key_flag']].apply(lambda x: ', '.join(str(pos)+':'+x.dropna()), axis=1).values[0]
+                stat.append(status_by_flags(allflag, tmp.in_consensus.values[0], tmp.allele_freq.values[0]))
                 
                 if tmp.unambig.values[0] == True:
                     if not allflag=='':
