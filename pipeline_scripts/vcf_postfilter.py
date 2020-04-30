@@ -6,7 +6,6 @@ import argparse
 import pandas as pd
 import numpy as np
 import pysam
-import warnings
 
 from Bio import SeqIO
 from Bio.Seq import Seq
@@ -52,6 +51,9 @@ def collect_position_pileup(bamfile,position):
     Used to calculate depth and minor allele frequency at that position
     """
     
+    # fix zero versus one based indexing
+    position = position-1
+    
     # check the BAM file exists
     if not os.path.exists(bamfile):
         raise Exception("bamfile doesn't exist (%s)" % bamfile)
@@ -66,12 +68,14 @@ def collect_position_pileup(bamfile,position):
     # pileup uses 0-based indexing, so need position-1 for actual genomic position
     pileup = []
     pileup.append(0)
-    for pileupcolumn in bamFile.pileup(refName, start=position-1, stop=position, max_depth=10000, min_base_quality=0):
+    for pileupcolumn in bamFile.pileup(refName, start=position, stop=position+1, max_depth=10000, min_base_quality=0):
         for pileupread in pileupcolumn.pileups:
             if pileupcolumn.pos == position and not pileupread.is_refskip:
                 pileup[0] += 1
-                if not pileupread.is_del:
-                    pileup.append(pileupread.alignment.query_sequence[pileupread.query_position-1])
+                #if not pileupread.is_del:
+                if not (pileupread.query_position) is None:
+                    base=pileupread.alignment.query_sequence[pileupread.query_position]
+                    pileup.append(base)
     
     bamFile.close()
     return pileup # first position is depth including deletions
@@ -262,6 +266,30 @@ def variant_caller_mismatch(supp_vec):
         sys.exit('%s is not a valid support vector' % supp_vec)
 
 
+def strand_bias_detected(strandAF,strand_threshold):
+    """ 
+    Function that returns a flag string if a variant is called unequally on the forward and reverse strands
+    strandAF order is: positive alts, total positive reads, negative alts, total negative reads
+    """
+    
+    # parse the strandAF string
+    strandAF = [int(x) for x in strandAF.split(',')]
+    
+    # get frequency for each strand
+    posAF = float(strandAF[0]/strandAF[1])*100
+    negAF = float(strandAF[2]/strandAF[3])*100
+    
+    # compare frequencies to threshold
+    if (posAF<strand_threshold) and (negAF<strand_threshold):
+        return('.') # no bias if both are low frequency
+    elif posAF<strand_threshold:
+        return('strand bias: low +AF')
+    elif negAF<strand_threshold:
+        return('strand bias: low -AF')
+    else:
+        return('.') # no bias if both are high frequency
+
+
 def ambig_in_key_position(pos,vcf_nextstrain,cons):
     """ 
     Function that returns a flag string if a position is at an important site
@@ -286,6 +314,19 @@ def ambig_in_key_position(pos,vcf_nextstrain,cons):
             return('ambig in key position')
         else:
             return('.')
+
+
+def get_allele_counts(pileup,depth):
+    
+    # get the allele counts to output
+    A_count = pileup.count('A')
+    T_count = pileup.count('T')
+    C_count = pileup.count('C')
+    G_count = pileup.count('G')
+    O_count = depth - (A_count+T_count+C_count+G_count)
+    allele_string = 'A:%d:T:%d:C:%d:G:%d:O:%d' % (A_count,T_count,C_count,G_count,O_count)
+    
+    return(allele_string)
 
 
 def add_key_ambiguous_positions(chrom,variants,cons,depth_threshold,vcf_nextstrain,bamfile):
@@ -321,29 +362,19 @@ def add_key_ambiguous_positions(chrom,variants,cons,depth_threshold,vcf_nextstra
             data['depth']=depth
             data['depth_thresh']=depth_threshold
             data['alleles']=get_allele_counts(pileup,depth)
+            data['allele_freq']='.'
             data['depth_flag']='.'
             data['maf_flag']='.'
             data['ntc_flag']='.'
             data['new_flag']='.'
             data['vc_flag']='.'
+            data['strand_counts']='.'
+            data['sb_flag']='.'
             data['key_flag']='ambig in key position'
             data = pd.DataFrame([data], columns=data.keys())
             df = pd.concat([df,data],ignore_index=True)
     
     return(df)
-
-
-def get_allele_counts(pileup,depth):
-    
-    # get the allele counts to output
-    A_count = pileup.count('A')
-    T_count = pileup.count('T')
-    C_count = pileup.count('C')
-    G_count = pileup.count('G')
-    O_count = depth - (A_count+T_count+C_count+G_count)
-    allele_string = 'A:%d:T:%d:C:%d:G:%d:O:%d' % (A_count,T_count,C_count,G_count,O_count)
-    
-    return(allele_string)
 
 
 def make_final_fasta(cons,prefix,unambig_thresh,outdir):
@@ -384,6 +415,7 @@ def parse_arguments():
    parser.add_argument('--snp-depth-factor', type=int, default=5, help='factor by which depth must exceed NTC depth to call a variant seen in the NTC at that position')
    parser.add_argument('--unambig-threshold', type=int, default=25000, help='number of unambiguous bases required in final genome')
    parser.add_argument('--ns-snp-threshold', type=int, default=5, help='number of published samples with a particular snp needed to count it as previously seen')
+   parser.add_argument('--strand-threshold', type=int, default=20, help='minimum minor allele frequency on each strand required for unbiased call')
    
    args = parser.parse_args()
    return(args)
@@ -407,7 +439,9 @@ def main():
     
     # set up the dataframe to store results
     df = pd.DataFrame(
-        columns=['chrom','pos','ref','alt','in_consensus','unambig','depth','depth_thresh','alleles','depth_flag','maf_flag','ntc_flag','new_flag','vc_flag','key_flag'])
+        columns=['chrom','pos','ref','alt',
+                 'in_consensus','unambig','depth','depth_thresh','allele_freq','alleles','strand_counts',
+                 'depth_flag','maf_flag','ntc_flag','new_flag','vc_flag','sb_flag','key_flag'])
         
     # loop through all positions
     for pos in vcf_sample.pos:
@@ -417,7 +451,7 @@ def main():
         # ignore indels
         # print a warning if indels are found in the input vcf
         if len(tmp.ref.values[0]) != len(tmp.alt.values[0]):
-            warnings.warn('Indel found at position %d\n indels are not carried over to the final VCF!' % pos)
+            print('Warning: indel found at position %d - indels are ignored!' % pos)
             continue
         
         # start a dictionary to store data for this sample
@@ -439,13 +473,16 @@ def main():
         # add basic data to this record
         data['depth'] = depth
         data['depth_thresh'] = depth_threshold
+        data['allele_freq'] = info['AF']
         data['alleles'] = get_allele_counts(pileup,depth)
+        data['strand_counts'] = [info['STRANDAF'] if 'STRANDAF' in info.keys() else '.'][0]
         
         # add flags to this record
         data['depth_flag'] = depth_near_threshold(depth,pileup,depth_threshold,args.coverage_flag)
         data['maf_flag'] = high_minor_allele_freq(depth, pileup, data['alt'], args.maf_flag)
         data['new_flag'] = snp_in_nextstrain(pos, data['ref'], data['alt'], args.vcf_nextstrain, args.ns_snp_threshold)
         data['vc_flag'] = variant_caller_mismatch(info['SUPP_VEC'])
+        data['sb_flag'] = [strand_bias_detected(info['STRANDAF'], args.strand_threshold) if 'STRANDAF' in info.keys() else '.'][0]
         data['ntc_flag'] = allele_in_ntc(pos, data['alt'], depth, args.ntc_bamfile, args.snp_depth_factor)
         
         # modify consensus genome based on ntc flag
