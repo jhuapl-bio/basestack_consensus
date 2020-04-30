@@ -1,6 +1,6 @@
 #!/bin/bash
-#source /home/idies/workspace/covid19/bashrc
-. "/home/idies/workspace/Storage/ernluaw1/persistent/Miniconda3/etc/profile.d/conda.sh"
+source /home/idies/workspace/covid19/bashrc
+#. "/home/idies/workspace/Storage/ernluaw1/persistent/Miniconda3/etc/profile.d/conda.sh"
 conda activate artic-ncov2019-medaka
 
 #---------------------------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ echo_log() {
 	# print to STDOUT
 	#echo -e "[$(date +"%F %T")]$input"
 	# print to log file (after removing color strings)
-	echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g'
+	echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
 
 #===================================================================================================
@@ -102,6 +102,9 @@ fi
 software_path=/home/idies/workspace/covid19/code
 guppy_barcoder_path=${software_path}/ont-guppy-cpu/bin
 
+# log file
+logfile=${sequencing_run}/pipeline.log
+
 # input files, these files should be in the sequencing run directory
 run_configuration="${sequencing_run}/run_config.txt"
 barcode_file=$(awk '/barcoding/{ print $2 }' "${run_configuration}")
@@ -127,7 +130,7 @@ echo_log "output demultiplex directory: ${demux_dir}"
 echo_log "------ processing pipeline output ------"
 
 #---------------------------------------------------------------------------------------------------
-# module 1 - !!!!! test whether renaming 1-barcode/subdirectories breaks module 2
+# module 1 
 #---------------------------------------------------------------------------------------------------
 
 echo_log "Starting guppy demux module 1 $sequencing_run"
@@ -147,3 +150,18 @@ done < "$manifest"
 echo_log "run complete"
 #chgrp -R 5102 $demux_dir
 
+#===================================================================================================
+# QUALITY CHECKING AND MODULE 2 JOB SUBMISSION
+#===================================================================================================
+
+if [ ! -d $demux_dir ];then
+    >&2 echo_log "Error $demux_dir not created"
+    exit 1
+fi
+
+#if find "$demux_dir" -maxdepth 0 -empty | read;
+#    echo_log "$demux_dir empty."
+#else
+#    echo_log "Begin submitting module 2"
+#    python <submit_module2>.py
+#fi

@@ -1,6 +1,6 @@
 #!/bin/bash
-#source /home/idies/workspace/covid19/bashrc
-. "/home/idies/workspace/Storage/ernluaw1/persistent/Miniconda3/etc/profile.d/conda.sh"
+source /home/idies/workspace/covid19/bashrc
+#. "/home/idies/workspace/Storage/ernluaw1/persistent/Miniconda3/etc/profile.d/conda.sh"
 conda activate artic-ncov2019-medaka
 
 #---------------------------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ echo_log() {
 	# print to STDOUT
 	#echo -e "[$(date +"%F %T")]$input"
 	# print to log file (after removing color strings)
-	echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g'
+	echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
 
 #===================================================================================================
@@ -99,6 +99,9 @@ fi
 #===================================================================================================
 
 # location of programs used by pipeline
+
+# log file
+logfile=${sequencing_run}/pipeline.log
 
 # input files, these files should be in the sequencing run directory
 manifest=${sequencing_run}/manifest.txt
@@ -138,15 +141,27 @@ artic guppyplex \
 	--max-length 700 \
 	--directory "$demux_dir"/"${barcode}" \
     --prefix "$gather_dir"/"${name}"
-    
-#remove this line of code once all other modules tested
-#mv "$gather_dir"/"${name}_${barcode}_${barcode/NB/barcode}.fastq" \
-#"$gather_dir"/"${name}_${barcode}.fastq"    
-
+      
 done < "$manifest"
     
 #---------------------------------------------------------------------------------------------------
 
 echo_log "run complete"
 #chgrp -R 5102 $demux_dir
+
+#===================================================================================================
+# QUALITY CHECKING AND MODULE 3 JOB SUBMISSION
+#===================================================================================================
+
+if [ ! -d $gather_dir ];then
+    >&2 echo_log "Error $gather_dir not created"
+    exit 1
+fi
+
+#if find "$gather_dir" -maxdepth 0 -empty | read;
+#    echo_log "$gather_dir empty."
+#else
+#    echo_log "Begin submitting module 3"
+#    python <submit_module2>.py
+#fi
 

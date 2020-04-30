@@ -1,5 +1,6 @@
 #!/bin/bash
-. "/home/idies/workspace/Storage/ernluaw1/persistent/Miniconda3/etc/profile.d/conda.sh"
+source /home/idies/workspace/covid19/bashrc
+#. "/home/idies/workspace/Storage/ernluaw1/persistent/Miniconda3/etc/profile.d/conda.sh"
 conda activate artic-ncov2019-medaka
 
 #---------------------------------------------------------------------------------------------------
@@ -68,7 +69,7 @@ echo_log() {
 	# print to STDOUT
 	#echo -e "[$(date +"%F %T")]$input"
 	# print to log file (after removing color strings)
-	echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g'
+	echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
 
 #===================================================================================================
@@ -104,6 +105,9 @@ software_path=/home/idies/workspace/covid19/code
 JAVA_PATH="${software_path}/jdk-14.0.1/bin"
 samtools_path="${software_path}/samtools-1.10/bin"
 NormalizeCoveragePath="${software_path}/CoverageNormalization"
+
+# log file
+logfile=${sequencing_run}/pipeline.log
 
 # input files, these files should be in the sequencing run directory
 manifest=${sequencing_run}/manifest.txt
@@ -173,4 +177,21 @@ done < "${manifest}"
 
 echo_log "run complete"
 #chgrp -R 5102 $demux_dir
+
+#===================================================================================================
+# QUALITY CHECKING AND MODULE 4 JOB SUBMISSION
+#===================================================================================================
+
+if [ ! -d $normalize_dir ];then
+    >&2 echo_log "Error $normalize_dir not created"
+    exit 1
+fi
+
+#if find "$normalize_dir" -maxdepth 0 -empty | read;
+#    echo_log "$normalize_dir" empty."
+#else
+#    echo_log "Begin submitting module 3"
+#    python <submit_module2>.py
+#fi
+
 

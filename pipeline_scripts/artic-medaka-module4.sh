@@ -1,5 +1,6 @@
 #!/bin/bash
-. "/home/idies/workspace/Storage/ernluaw1/persistent/Miniconda3/etc/profile.d/conda.sh"
+source /home/idies/workspace/covid19/bashrc
+#. "/home/idies/workspace/Storage/ernluaw1/persistent/Miniconda3/etc/profile.d/conda.sh"
 conda activate artic-ncov2019-medaka
 
 #---------------------------------------------------------------------------------------------------
@@ -68,7 +69,7 @@ echo_log() {
 	# print to STDOUT
 	#echo -e "[$(date +"%F %T")]$input"
 	# print to log file (after removing color strings)
-	echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g'
+	echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
 
 #===================================================================================================
@@ -106,6 +107,9 @@ fi
 # location of programs used by pipeline
 software_path=/home/idies/workspace/covid19/code
 
+# log file
+logfile=${sequencing_run}/pipeline.log
+
 # input files, these files should be in the sequencing run directory
 manifest=${sequencing_run}/manifest.txt
 run_configuration="${sequencing_run}/run_config.txt"
@@ -121,7 +125,7 @@ protocol=$(awk '/primers/{ print $2 }' "${run_configuration}")
 consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
 
 # Optional program parameters
-pipeline_label=medaka
+out_prefix="$consensus_dir/$(basename ${fastq%.covfiltered.fq}.medaka)"
 
 
 #===================================================================================================
@@ -155,7 +159,7 @@ artic minion \
 	--threads $threads \
 	--scheme-directory "$scheme_dir" \
 	--read-file $normalize_dir/${name}_${barcode}/${name}_${barcode}.covfiltered.fq \
-	"$protocol" "$consensus_dir"/${name}_${barcode}-${pipeline_label}
+	"$protocol" "$out_prefix"
 done < "$manifest"
 
 
