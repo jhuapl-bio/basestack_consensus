@@ -134,7 +134,7 @@ summary=$(find "$sequencing_run" -maxdepth 2 -name "*sequencing_summary*.txt")
 consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
 
 # Optional program parameters
-out_prefix="$consensus_dir/$(basename ${fastq%.covfiltered.fq}.nanopolish)"
+out_prefix="$consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}.nanopolish)"
 
 
 #===================================================================================================

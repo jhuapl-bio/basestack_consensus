@@ -128,7 +128,7 @@ protocol=$(awk '/primers/{ print $2 }' "${run_configuration}")
 consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
 
 # Optional program parameters
-out_prefix="$consensus_dir/$(basename ${fastq%.covfiltered.fq}.medaka)"
+out_prefix="$consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}.medaka)"
 
 
 #===================================================================================================
