@@ -166,6 +166,6 @@ artic minion \
 
 #---------------------------------------------------------------------------------------------------
 
-echo_log "Module 4 Nanopolish: processing complete"
+echo_log "Module 4 Medaka: processing complete"
 #chgrp -R 5102 $demux_dir
 
