@@ -1,6 +1,8 @@
 #!/bin/bash
+
+# activate conda env
 source /home/idies/workspace/covid19/bashrc
-conda activate artic-ncov2019-medaka
+conda activate artic-ncov2019
 
 #---------------------------------------------------------------------------------------------------
 
@@ -20,6 +22,7 @@ PURPLE='\033[1;35m'
 cyan='\033[0;36m'
 CYAN='\033[1;36m'
 NC='\033[0m'
+
 
 # usage function
 usage() {
@@ -124,11 +127,14 @@ scheme_dir=${software_path}/artic-ncov2019/primer_schemes
 # primer protocol
 protocol=$(awk '/primers/{ print $2 }' "${run_configuration}")
 
+#sequencing summary for input into nanopolish
+summary=$(find "$sequencing_run" -maxdepth 2 -name "*sequencing_summary*.txt")
+
 # Output directories
 consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
 
 # Optional program parameters
-out_prefix="$consensus_dir/$(basename ${fastq%.covfiltered.fq}.medaka)"
+out_prefix="$consensus_dir/$(basename ${fastq%.covfiltered.fq}.nanopolish)"
 
 
 #===================================================================================================
@@ -137,10 +143,10 @@ out_prefix="$consensus_dir/$(basename ${fastq%.covfiltered.fq}.medaka)"
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
-echo_log "------ Medaka Paramters:"
+echo_log "------ Nanopolish Paramters:"
 echo_log "sequencing run folder: ${CYAN}$sequencing_run${NC}"
 echo_log "recording software version numbers..."
-echo_log "Software version: $(medaka --version)"
+echo_log "Software version: $(nanopolish --version | awk 'NR==1; END{print}')"
 echo_log "run configuration file: ${sequencing_run}/run_config.txt"
 echo_log "run manifest file: ${manifest}"
 echo_log "inputs: normalize directory: ${normalize_dir}"
@@ -151,21 +157,24 @@ echo_log "------ processing pipeline output ------"
 # module 4
 #---------------------------------------------------------------------------------------------------
 
-echo_log "Starting Module 4 Medaka on $normalized_fastq"
+echo_log "Starting Module 4 Nanopolish on $normalized_fastq"
 mkdir -p $consensus_dir
 
+
+# run ARTIC pipeline - nanopolish
 artic minion \
-        --medaka \
-        --normalise 1000000 \
-        --threads $threads \
-        --scheme-directory "$scheme_dir" \
-        --read-file $normalized_fastq \
-        "$protocol" "$out_prefix"
+    --normalise 1000000 \
+    --threads 32 \
+    --scheme-directory "$scheme_dir" \
+    --read-file "$normalized_fastq" \
+    --fast5-directory "$sequencing_run/fast5_pass" \
+    --sequencing-summary "$summary" \
+    "$protocol" "$out_prefix"
 
 
 
-#---------------------------------------------------------------------------------------------------
-
-echo_log "Module 4 Nanopolish: processing complete"
-#chgrp -R 5102 $demux_dir
+  #---------------------------------------------------------------------------------------------------
+  
+  echo_log "Module 4 Nanopolish: processing complete"
+  #chgrp -R 5102 $demux_dir
 
