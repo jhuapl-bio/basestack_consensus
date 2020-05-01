@@ -2,7 +2,7 @@
 
 # activate conda env
 source /home/idies/workspace/covid19/bashrc
-conda activate artic-ncov2019
+conda activate artic-ncov2019-nanopolish-0-13-2
 
 #---------------------------------------------------------------------------------------------------
 
