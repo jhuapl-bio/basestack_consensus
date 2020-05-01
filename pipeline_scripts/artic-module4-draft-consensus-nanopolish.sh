@@ -149,7 +149,7 @@ echo_log "recording software version numbers..."
 echo_log "Software version: $(nanopolish --version | awk 'NR==1; END{print}')"
 echo_log "run configuration file: ${sequencing_run}/run_config.txt"
 echo_log "run manifest file: ${manifest}"
-echo_log "inputs: normalize directory: ${normalize_dir}"
+echo_log "fasta file: ${normalized_fastq}"
 echo_log "output medaka directory: ${consensus_dir}"
 echo_log "------ processing pipeline output ------"
 
