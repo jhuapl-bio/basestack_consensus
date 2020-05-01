@@ -18,35 +18,50 @@ fi
 
 for i in `ls $DIR/*.bam`
 do
+    # Get prefix without directory/file extensions
     echo $i
     prefix=`echo $i`
     prefix=${prefix##*/}
     prefix=${prefix%%.*}
-    #prefix=`echo "${prefix/_R1_/_}"`
     echo 'Prefix: '$prefix
 
-    #samunsorted=$OUTDIR/$prefix.sam
-    #echo 'Unsorted sam file: '$samunsorted
-    #if [ ! -r $samunsorted ]
-    #then
-    #	echo 'Aligning reads'    
-    #    bwa mem $REF $i $pair > $samunsorted
-    #fi
+    # Reheader the bam with SM added into the read group lines so freebayes won't complain
+    bamreheader=$OUTDIR/$prefix.reheader.bam
+    echo 'Bam file with fixed header: '$bamreheader
+    if [ ! -r $bamreheader ]
+    then
+        samtools view -H $i | sed 's/@RG/@RG\tSM:sample/g' | samtools reheader - $i > $bamreheader
+    fi
 
-    #bamunsorted=$OUTDIR/$prefix.unsorted.bam
-    #echo 'Unsorted bam file: '$bamunsorted
-    #if [ ! -r $bamunsorted ]
-    #then
-    #    echo 'Converting alignments to BAM'
-    #    samtools view -b $samunsorted > $bamunsorted	    
-    #fi
-    bamfile=$OUTDIR/$prefix.reheader.bam
-    echo 'Bam file: '$bamfile
+    # Convert reheadered bam to sam to pass to normalization
+    samfull=$OUTDIR/$prefix.unnormalized.sam
+    echo 'Unnormalized sam file: '$samfull
+    if [ ! -r $samfull ]
+    then
+        samtols view -h $bamreheader > $samfull
+    fi
+
+    # Normalize sam file
+    samfile=$OUTDIR/$prefix.sam
+    echo 'Normalized SAM file: '$samfile
+    if [ ! -r $samfile ]
+    then
+        java -cp $BINDIR/CoverageNormalization/src NormalizePairedReads input=$samfull output=$samfile coverage_threshold=200 --qual_sort 
+    fi
+
+    bamfileunsorted=$OUTDIR/$prefix.norm200.unsorted.bam
+    echo 'Normalized unsorted BAM file: '$bamfileunsorted
+    if [ ! -r $bamfileunsorted ]
+    then
+        samtools view -h -b $samfile > $bamfileunsorted
+    fi
+
+    bamfile=$OUTDIR/$prefix.norm200.bam
+    echo 'Normalized BAM file: '$bamfile
     if [ ! -r $bamfile ]
     then
-        samtools view -H $i | sed 's/@RG/@RG\tSM:sample/g' | samtools reheader - $i > $bamfile
+        samtools sort $bamfileunsorted > $bamfile
     fi
-    bamfile=$OUTDIR/$prefix.bam
     
     if [ ! -r $bamfile.bai ]
     then
