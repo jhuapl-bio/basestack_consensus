@@ -9,6 +9,8 @@ DIR=/home/idies/workspace/covid19/illumina/$RUN/trimmed
 REF=/home/idies/workspace/covid19/ncov_reference/sequence.fasta
 OUTDIR=$DIR/../trimmedvariantcalling
 
+javac $BINDIR/CoverageNormalization/*.java
+
 if [ ! -d $OUTDIR ]
 then
     mkdir $OUTDIR
@@ -38,7 +40,7 @@ do
     echo 'Unnormalized sam file: '$samfull
     if [ ! -r $samfull ]
     then
-        samtols view -h $bamreheader > $samfull
+        samtools view -h $bamreheader > $samfull
     fi
 
     # Normalize sam file
@@ -86,6 +88,22 @@ do
         java -cp $BINDIR/VariantValidator/src CallVariants flag_prefix=ILLUMINA_ pileup_file=$mpileup out_file=$samtoolsvcf
     fi
 
+    ivartsv=$OUTDIR/$prefix.ivar.tsv
+    echo 'ivar tsv: '$ivartsv
+    if [ ! -r $ivartsv ]
+    then
+        echo 'Calling ivar variants'
+        samtools mpileup -A -d 0 --reference $REF -B -Q 0 $bamfile | ivar variants -p $OUTDIR/$prefix.ivar -t 0.15
+    fi
+
+    ivarvcf=$OUTDIR/$prefix.ivar.vcf
+    echo 'ivar vcf: '$ivarvcf
+    if [ ! -r $ivarvcf ]
+    then
+        echo 'Converting ivar tsv to vcf'
+	java -cp $BINDIR/VariantValidator/src IvarToVcf table_file=$ivartsv out_file=$ivarvcf
+    fi
+
     freebayesunfiltered=$OUTDIR/$prefix.freebayes.unfiltered.vcf
     echo 'Freebayes unfiltered vcf: '$freebayesunfiltered
     if [ ! -r $freebayesunfiltered ]
@@ -109,16 +127,16 @@ do
     echo 'Short read sample: '$shortreadsample
     longreadsample=`cat $BINDIR/samplenamemap.txt | awk -v srs="$shortreadsample" '{ if ($1 == srs) { print $2; } }'`
     echo 'Long read sample: '$longreadsample
-
+    
     if [ "$longreadsample" = 'NTC' ]
     then
         continue
     fi
     longreaddir='/home/idies/workspace/covid19/sequencing_runs'
-    medakavcfzipped=`ls $longreaddir/*/artic-pipeline/4-draft-consensus/$longreadsample*.medaka.merged.vcf.gz`
+    medakavcfzipped=`ls $longreaddir/*/artic-pipeline/archive-no_even_strand/4-draft-consensus/$longreadsample*.medaka.merged.vcf.gz`
     echo 'Medaka vcf (zipped): '$medakavcfzipped
 
-    nanopolishvcf=`ls $longreaddir/*/artic-pipeline/4-draft-consensus/$longreadsample*.nanopolish.merged.vcf`
+    nanopolishvcf=`ls $longreaddir/*/artic-pipeline/archive-no_even_strand/4-draft-consensus/$longreadsample*.nanopolish.merged.vcf`
     echo 'Nanopolish vcf: '$nanopolishvcf
 
     medakavcf=${medakavcfzipped::-3}
@@ -128,7 +146,7 @@ do
         gunzip -c $medakavcfzipped > $medakavcf
     fi
 
-    longsamtoolsvcf=`ls $longreaddir/*/artic-pipeline/4-draft-consensus/$longreadsample*.samtools.vcf`
+    longsamtoolsvcf=`ls $longreaddir/*/artic-pipeline/archive-no_even_strand/4-draft-consensus/$longreadsample*.samtools.vcf`
     echo 'Long-read samtoolsvcf: '$longsamtoolsvcf
 
     samplewithbarcode=$medakavcf
@@ -137,9 +155,34 @@ do
     echo 'Sample with barcode: '$samplewithbarcode
 
     # Create symlinks for easier lookups
-    ln -s $freebayesvcf $OUTDIR/$samplewithbarcode.freebayes.vcf
-    ln -s $freebayesunfiltered $OUTDIR/$samplewithbarcode.freebayes.unfiltered.vcf
-    ln -s $samtoolsvcf $OUTDIR/$samplewithbarcode.illumina.samtools.vcf
+    fblink=$OUTDIR/$samplewithbarcode.freebayes.vcf
+    fbulink=$OUTDIR/$samplewithbarcode.freebayes.unfiltered.vcf
+    slink=$OUTDIR/$samplewithbarcode.samtools_illumina.vcf
+    ivlink=$OUTDIR/$samplewithbarcode.ivar.vcf
+
+    if [ -r $fblink ]
+    then
+        rm $fblink
+    fi
+
+    if [ -r $fbulink ]
+    then
+        rm $fbulink
+    fi
+
+    if [ -r $slink ]
+    then
+        rm $slink
+    fi
+    if [ -r $ivlink ]
+    then
+        rm $ivlink
+    fi
+    
+    ln -s $freebayesvcf $fblink
+    ln -s $freebayesunfiltered $fbulink
+    ln -s $samtoolsvcf $slink
+    ln -s $ivarvcf $ivlink
 
     vcffilelist=$OUTDIR/$samplewithbarcode.filelist.txt
     echo 'Vcf file list: '$vcffilelist
@@ -150,6 +193,7 @@ do
 	echo $medakavcf >> $vcffilelist
         echo $longsamtoolsvcf >> $vcffilelist
 	echo $freebayesvcf >> $vcffilelist
+	echo $ivarvcf >> $vcffilelist
 	echo $samtoolsvcf >> $vcffilelist
     fi
 
