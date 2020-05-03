@@ -9,7 +9,7 @@ DIR=/home/idies/workspace/covid19/illumina/$RUN/trimmed
 REF=/home/idies/workspace/covid19/ncov_reference/sequence.fasta
 OUTDIR=$DIR/../trimmedvariantcalling
 
-javac $BINDIR/CoverageNormalization/*.java
+javac $BINDIR/CoverageNormalization/src/*.java
 
 if [ ! -d $OUTDIR ]
 then
@@ -133,10 +133,10 @@ do
         continue
     fi
     longreaddir='/home/idies/workspace/covid19/sequencing_runs'
-    medakavcfzipped=`ls $longreaddir/*/artic-pipeline/archive-no_even_strand/4-draft-consensus/$longreadsample*.medaka.merged.vcf.gz`
+    medakavcfzipped=`ls $longreaddir/*/artic-pipeline/4-draft-consensus/$longreadsample*.medaka.merged.vcf.gz`
     echo 'Medaka vcf (zipped): '$medakavcfzipped
 
-    nanopolishvcf=`ls $longreaddir/*/artic-pipeline/archive-no_even_strand/4-draft-consensus/$longreadsample*.nanopolish.merged.vcf`
+    nanopolishvcf=`ls $longreaddir/*/artic-pipeline/4-draft-consensus/$longreadsample*.nanopolish.merged.vcf`
     echo 'Nanopolish vcf: '$nanopolishvcf
 
     medakavcf=${medakavcfzipped::-3}
