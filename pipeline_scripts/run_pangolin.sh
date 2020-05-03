@@ -19,19 +19,11 @@ OUTDIR=$DIR
 
 #SCRIPTS PATH
 SCRIPT_DIR="/home/idies/workspace/covid19/code/ncov/pipeline_scripts" 
-
-CONFIG="/home/idies/workspace/covid19/ncov_reference/snpEff.config"
-DBNAME="ncov"
-
-#mkdir -p $OUTDIR
-
-#for vcf in $TEST_DIR/*.consensus.combined.vcf; do
-for vcf in $DIR/*.allsnps.combined.vcf; do
-    ${SCRIPT_DIR}/annotate_variants.sh ${vcf} ${CONFIG} ${DBNAME} ${OUTDIR}
-    echo "SnpEff completed on run ${DIR}"
-done
-
-echo "Making final reports on run ${DIR}"
-cat ${OUTDIR}/MDHP*_ann_report.txt  | awk '$4 != "N" { print $0}'  | awk '!seen[$0]++' > ${OUTDIR}/final_snpEff_report.txt
-cat ${OUTDIR}/MDHP*_ann_report.txt  | awk '!seen[$0]++' | awk 'NR == 1  || $4 == "N" { print $0}'  > ${OUTDIR}/snpEff_report_with_Ns.txt
+DATA="/home/idies/workspace/covid19/ncov_reference/lineages/lineages/data/"
+TMPDIR=$OUTDIR
+source /home/idies/workspace/covid19/bashrc
+conda activate pangolin
+echo "Making Pangolin lineages for consensus sequences in ${DIR}"
+cat ${DIR}/MDHP*.complete.fasta > $OUTDIR/postfilt_consensus_all.fasta
+pangolin $OUTDIR/postfilt_consensus_all.fasta -f -d ${DATA} -o ${OUTDIR} --tempdir $TMPDIR
 echo "DONE"
