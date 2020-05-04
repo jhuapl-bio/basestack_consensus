@@ -8,6 +8,9 @@ DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-c
 
 # make and save output directory
 outdir="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/5-post-filter/"
+if [ ! -d $outdir ]; then
+        mkdir $outdir
+fi
 
 # save path to NTC bamfile
 ntc_bamfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*nanopolish.primertrimmed.rg.sorted.bam"
@@ -15,7 +18,7 @@ ntc_bamfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4
 # save path to nextstrain vcf
 vcf_next="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/6-nextstrain/*alignments.vcf"
 
-for consfile in $DIR/*.consensus.fasta; do
+for consfile in $DIR/*nanopolish.consensus.fasta; do
 
 	sample=${consfile##*/}
 	samplename=${sample%%_*}
