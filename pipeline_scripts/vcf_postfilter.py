@@ -191,7 +191,7 @@ def minor_allele_freq(depth,pileup,alt,maf_flag,hold_flag):
     
     # if there are flags, distinguish between the isnv and mixed scenarios
     if maf<AF<hold or (1-hold)<AF<(1-maf):
-        return(AF,'MAF>%0.2f' % maf,np.nan)
+        return(AF,'%0.2f<maf<%0.2f' % (maf,hold),np.nan)
     elif hold<AF<(1-hold):
         return(AF,np.nan,'mixed position')
 
@@ -426,10 +426,11 @@ def add_key_ambiguous_positions(chrom,variants,cons,depth_threshold,vcf_nextstra
             data['consensus_base']='N'
             data['in_consensus']=False
             data['unambig']=False
-            data['depth']=depth
-            data['depth_thresh']=depth_threshold
+            data['ont_depth']=depth
+            data['ont_depth_thresh']=depth_threshold
             data['ont_alleles']=get_allele_counts(pileup,depth)
             data['key_flag']='ambig in key position'
+            data['status']='Yes*'
             
             data = pd.DataFrame([data], columns=data.keys())
             df = pd.concat([df,data],ignore_index=True)
@@ -574,8 +575,8 @@ def main():
     # set up the dataframe to store results
     df = pd.DataFrame(
         columns=['chrom','pos','ref','alt','consensus_base','status','homopolymer','in_consensus','unambig',
-                 'depth','depth_thresh','ont_AF','illumina_AF','ont_alleles','illumina_alleles','strand_counts',
-                 'medaka_qual','nanopolish_qual','illumina','illumina_depth','maf_flag',
+                 'ont_depth','illumina_depth','ont_depth_thresh','illumina_depth_thresh','ont_AF','illumina_AF','ont_alleles','illumina_alleles','strand_counts',
+                 'medaka_qual','nanopolish_qual','illumina','min_illumina_depth','maf_flag',
                  'mixed_flag','depth_flag','ntc_flag','new_flag','ont_vc_flag','illumina_vc_flag','sb_flag','key_flag'])
         
     # loop through all positions
@@ -616,14 +617,16 @@ def main():
             continue
         
         # add basic data to this record
-        data['depth'] = depth
-        data['depth_thresh'] = depth_threshold
+        data['ont_depth'] = depth
+        data['illumina_depth'] = [illumina_depth if illumina else np.nan][0]
+        data['ont_depth_thresh'] = depth_threshold
+        data['illumina_depth_thresh'] = [20 if illumina else np.nan][0]
         data['ont_alleles'] = get_allele_counts(pileup,depth)
         data['strand_counts'] = [info['STRANDAF'] if 'STRANDAF' in info.keys() else np.nan][0]
         data['medaka_qual'] = [info['pred_q'] if 'pred_q' in info.keys() else np.nan][0]
         data['illumina'] = illumina
         data['illumina_alleles'] = [get_allele_counts(illumina_pileup, illumina_depth) if illumina else np.nan][0]
-        data['illumina_depth'] = [illumina_depth>20 if illumina else np.nan][0]
+        data['min_illumina_depth'] = [illumina_depth>20 if illumina else np.nan][0]
         data['illumina_AF'] = [float(illumina_pileup.count(data['alt'])/illumina_depth) if illumina else np.nan][0]
         
         # add flags to this record
