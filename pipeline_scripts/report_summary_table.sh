@@ -23,18 +23,14 @@ usage() {
 	echo -e ""
 	echo -e "OPTIONS:"
 	echo -e "   -h      show this message"
-	echo -e "   -b      repository path (working on calculating this directly)"
 	echo -e "   -i      sequencing run folder"
-	echo -e "   -m      manifest file"
-	echo -e "   -p      protocol (default: )"
-	echo -e "   -r      reference FASTA (default: )"
 	echo -e "   -o      output folder (default: ${CYAN}<run-folder>/artic-pipeline/run_stats${NC})"
 	echo -e "   -1      barcode demux folder (default: ${CYAN}<run-folder>/artic-pipeline/1-barcode-demux${NC})"
 	echo -e "   -2      length filter folder (default: ${CYAN}<run-folder>/artic-pipeline/2-length-filter${NC})"
 	echo -e "   -3      normalization folder (default: ${CYAN}<run-folder>/artic-pipeline/3-normalization${NC})"
 	echo -e "   -4      draft consensus folder (default: ${CYAN}<run-folder>/artic-pipeline/4-draft-consensus${NC})"
-	echo -e "   -5      nextstrain folder (default: ${CYAN}<run-folder>/artic-pipeline/5-nextstrain${NC})"
-	echo -e "   -6      post-filter folder (default: ${CYAN}<run-folder>/artic-pipeline/6-post-filter${NC})"
+	echo -e "   -5      post-filter folder (default: ${CYAN}<run-folder>/artic-pipeline/5-post-filter${NC})"
+	echo -e "   -6      nextstrain folder (default: ${CYAN}<run-folder>/artic-pipeline/6-nextstrain${NC})"
 	echo -e ""
 }
 
@@ -56,14 +52,15 @@ hash=$(git rev-parse --short HEAD)
 primerscheme_path="$bin_path/../../artic-ncov2019/primer_schemes"
 protocol="nCoV-2019/V3"
 reference="$primerscheme_path/$protocol/nCoV-2019.reference.fasta"
+bed="$primerscheme_path/$protocol/nCoV-2019.bed"
 
 stats_base="artic-pipeline/run_stats"
 demux_base="artic-pipeline/1-barcode-demux"
 lengthfilter_base="artic-pipeline/2-length-filter"
 normalize_base="artic-pipeline/3-normalization"
 draftconsensus_base="artic-pipeline/4-draft-consensus"
-nextstrain_base="artic-pipeline/5-nextstrain"
-postfilter_base="artic-pipeline/6-post-filter"
+postfilter_base="artic-pipeline/5-post-filter"
+nextstrain_base="artic-pipeline/6-nextstrain"
 
 #===================================================================================================
 # PARSE INPUT ARGUMENTS
@@ -84,8 +81,8 @@ do
 		2) lengthfilter_path=$OPTARG ;;
 		3) normalize_path=$OPTARG ;;
 		4) draftconsensus_path=$OPTARG ;;
-		5) nextstrain_path=$OPTARG ;;
-		6) postfilter_path=$OPTARG ;;
+		5) postfilter_path=$OPTARG ;;
+		6) nextstrain_path=$OPTARG ;;
 		?) usage; exit ;;
 	esac
 done
@@ -134,9 +131,7 @@ if [[ -z "$stats_path" ]]; then
 	stats_path="$run_path/$stats_base"
 fi
 if ! [[ -d "$stats_path" ]]; then
-	echo -e "${RED}Error: output path ${CYAN}$stats_path${RED} does not exist.${NC}"
-	usage
-	exit
+	mkdir -p "$stats_path"
 fi
 if [[ -z "$demux_path" ]]; then
 	demux_path="$run_path/$demux_base"
@@ -180,8 +175,8 @@ if [[ -z "$nextstrain_path" ]]; then
 fi
 if ! [[ -d "$nextstrain_path" ]]; then
 	echo -e "${RED}Error: nextstrain path ${CYAN}$nextstrain_path${RED} does not exist.${NC}"
-	usage
-	exit
+#	usage
+#	exit
 fi
 if [[ -z "$postfilter_path" ]]; then
 	postfilter_path="$run_path/$postfilter_base"
@@ -206,6 +201,12 @@ fi
 snpeff_report="$postfilter_path/final_snpEff_report.txt"
 if ! [[ -s "$snpeff_report" ]]; then
 	echo -e "${RED}Error: SnpEff report ${CYAN}$snpeff_report${RED} does not exist.${NC}"
+#	usage
+#	exit
+fi
+lineage_report="$postfilter_path/lineage_report.csv"
+if ! [[ -s "$lineage_report" ]]; then
+	echo -e "${RED}Error: Pangolin lineage report ${CYAN}$lineage_report${RED} does not exist.${NC}"
 #	usage
 #	exit
 fi
@@ -261,8 +262,8 @@ echo_log "    1)    barcode demux: ├── ${CYAN}${demux_path#$run_path}${NC}
 echo_log "    2)    length filter: ├── ${CYAN}${lengthfilter_path#$run_path}${NC}"
 echo_log "    3)    normalization: ├── ${CYAN}${normalize_path#$run_path}${NC}"
 echo_log "    4)  draft consensus: ├── ${CYAN}${draftconsensus_path#$run_path}${NC}"
-echo_log "    5)       nextstrain: ├── ${CYAN}${nextstrain_path#$run_path}${NC}"
-echo_log "    6)      post-filter: └── ${CYAN}${postfilter_path#$run_path}${NC}"
+echo_log "    5)      post-filter: ├── ${CYAN}${postfilter_path#$run_path}${NC}"
+echo_log "    6)       nextstrain: └── ${CYAN}${nextstrain_path#$run_path}${NC}"
 echo_log "  manifest: ${CYAN}$manifest${NC}"
 echo_log "  reference sequence: ${CYAN}$reference${NC}"
 echo_log "  working directory: ${CYAN}$workdir${NC}"
@@ -294,7 +295,7 @@ fi
 
 if ! [[ -s "$stats_path/demux_count.txt" ]]; then
 	echo_log "Pulling barcode demux stats"
-	tail -n+2 "$demux_path/barcoding_summary.txt" | cut -f2 | sort | uniq -c > "$demuxfile"
+	tail -n+2 "$demux_path/barcoding_summary.txt" | cut -f2 | sort | uniq -c | sed 's/barcode/NB/' > "$demuxfile"
 else
 	echo_log "Demux count already present - will not overwrite it"
 fi
@@ -311,9 +312,9 @@ while read barcode label; do
 	else
 		length_filter=0
 	fi
-	alignment=$(find "$normalize_path" -name "*$barcode.sam")
+	alignment=$(find "$normalize_path" -name "*$barcode.bam")
 	if [[ -s "$gather" ]]; then
-		aligned_reads=$(wc -l < "$alignment")
+		aligned_reads=$(samtools view "$alignment" | wc -l)
 	else
 		aligned_reads=0
 	fi
@@ -347,13 +348,13 @@ while read barcode label; do
 			"$flag" >> "$outfile"
 	fi
 
-	depth_outfile="$stats_path/depth-${label}_${barcode}.txt"
+	depth_outfile="$normalize_path/${label}_${barcode}.depth"
 	if ! [[ -s "$depth_outfile" ]]; then
 		echo_log "  creating depth file"
-		samtools sort "$alignment" | samtools depth -a -d 10000000 - > "$depth_outfile"
+		samtools depth -d 0 -a "$alignment" > "$depth_outfile"
 	fi
 
-	normalized_depth_outfile="$stats_path/depth-norm-${label}_${barcode}.txt"
+	normalized_depth_outfile="$normalize_path/${label}_${barcode}.covfiltered.depth"
 	if ! [[ -s "$normalized_depth_outfile" ]]; then
 		echo_log "  creating normalized depth file"
 		samtools depth -d 0 -a "$normalized_alignment" > "$normalized_depth_outfile"
@@ -372,10 +373,10 @@ while read barcode label; do
 		fi
 	fi
 
-	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.primertrimmed.rg.sorted.bam")
+	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.nanopolish.primertrimmed.rg.sorted.bam")
 	echo_log "    primer trimmed alignment: $trimmed_alignment"
-	vcf=$(find "$draftconsensus_path" -name "*${barcode}*.allcallers.combined.vcf")
-	outPrefix=$(basename "${vcf%.allcallers.combined.vcf}")
+	vcf=$(find "$draftconsensus_path" -name "*${barcode}*.all_callers.combined.vcf")
+	outPrefix=$(basename "${vcf%.all_callers.combined.vcf}")
 
 	if [[ -s "$vcf" && -s "$trimmed_alignment" ]]; then
 
@@ -391,7 +392,8 @@ while read barcode label; do
 			aln="$trimmed_alignment" \
 			var="$vcf" \
 			genome="$reference" \
-			outprefix="$outPrefix"
+			outprefix="$outPrefix" \
+			bed="$bed"
 
 		mv "$outPrefix.bat" "$outPrefix"
 		mv "$outPrefix" "$igv_out_path"
@@ -409,15 +411,15 @@ if [[ "$make_new_outfile" == "true" ]]; then
 fi
 
 echo_log "Calculating depth"
-find "$stats_path" -name "depth-*.txt" ! -name "depth-all.txt" ! -name "depth-norm-*" -print0 | while read -d $'\0' f; do
-	base="${f%.txt}"
-	awk -v BASE=$(basename "${base#depth-}") '{printf("%s\t%s\n", BASE, $0);}' "$f"
+find "$normalize_path" -name "*.depth" ! -name "*covfiltered.depth" -print0 | while read -d $'\0' f; do
+	base=$(basename "$f")
+	awk -v BASE="${base%%.*}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
 done > "$depthfile"
 
 echo_log "Calculating depth"
-find "$stats_path" -name "depth-norm*.txt" ! -name "depth-norm-all.txt" -print0 | while read -d $'\0' f; do
-	base="${f%.txt}"
-	awk -v BASE=$(basename "${base#depth-}") '{printf("%s\t%s\n", BASE, $0);}' "$f"
+find "$stats_path" -name ".covfiltered.depth" ! -name "depth-norm-all.txt" -print0 | while read -d $'\0' f; do
+	base=$(basename "$f")
+	awk -v BASE="${base%.covfiltered.depth}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
 done > "${depthfile/-all/-norm-all}"
 
 echo_log "Identifying mutations"
@@ -456,10 +458,6 @@ awk '{
 	printf("\n");
 }' "$mutations_pos" "$mutations_all" > "$mutations_table"
 
-cp "$postfilt_summary" "$stats_path"
-cp "$postfilt_all" "$stats_path"
-cp "final_snpEff_report.txt" "$stats_path"
-
 #===================================================================================================
 # BUILD MARKDOWN FILE
 #===================================================================================================
@@ -470,7 +468,9 @@ row=$(grep "row" "${run_path}/run_info.txt" | cut -f2)
 sed -e "s@<RUN_PATH>@${run_path}@" \
 	-e "s@<PLATE>@${plate}@" \
 	-e "s@<ROW>@${row}@" \
-	"$bin_path/template.Rmd" > "$stats_path/$(basename $run_path)-report.Rmd"
+	"$bin_path/report-template.Rmd" > "$stats_path/$(basename $run_path)-report.Rmd"
+
+Rscript -e "rmarkdown::render('$stats_path/$(basename $run_path)-report.Rmd')"
 
 #---------------------------------------------------------------------------------------------------
 
