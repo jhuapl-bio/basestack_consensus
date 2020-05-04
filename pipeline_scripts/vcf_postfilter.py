@@ -372,7 +372,7 @@ def ont_illumina_mismatch(min_illumina_depth,supp_vec):
     one or more illumina variant callers
     """
     
-    if not min_illumina_depth:
+    if pd.isna(min_illumina_depth) or min_illumina_depth==False:
         return(np.nan)
     else:
         assert len(supp_vec)==6
