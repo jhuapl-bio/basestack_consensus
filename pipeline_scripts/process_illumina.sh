@@ -7,9 +7,9 @@ fi
 RUN=$1
 DIR=/home/idies/workspace/covid19/illumina/$RUN/trimmed
 REF=/home/idies/workspace/covid19/ncov_reference/sequence.fasta
-OUTDIR=$DIR/../trimmedvariantcalling
+OUTDIR=/home/idies/workspace/covid19/illumina/$RUN/trimmedvariantcalling
 
-javac $BINDIR/CoverageNormalization/*.java
+javac $BINDIR/CoverageNormalization/src/*.java
 
 if [ ! -d $OUTDIR ]
 then
@@ -133,10 +133,10 @@ do
         continue
     fi
     longreaddir='/home/idies/workspace/covid19/sequencing_runs'
-    medakavcfzipped=`ls $longreaddir/*/artic-pipeline/archive-no_even_strand/4-draft-consensus/$longreadsample*.medaka.merged.vcf.gz`
+    medakavcfzipped=`ls $longreaddir/*/artic-pipeline/4-draft-consensus/$longreadsample*.medaka.merged.vcf.gz`
     echo 'Medaka vcf (zipped): '$medakavcfzipped
 
-    nanopolishvcf=`ls $longreaddir/*/artic-pipeline/archive-no_even_strand/4-draft-consensus/$longreadsample*.nanopolish.merged.vcf`
+    nanopolishvcf=`ls $longreaddir/*/artic-pipeline/4-draft-consensus/$longreadsample*.nanopolish.merged.vcf`
     echo 'Nanopolish vcf: '$nanopolishvcf
 
     medakavcf=${medakavcfzipped::-3}
@@ -146,7 +146,7 @@ do
         gunzip -c $medakavcfzipped > $medakavcf
     fi
 
-    longsamtoolsvcf=`ls $longreaddir/*/artic-pipeline/archive-no_even_strand/4-draft-consensus/$longreadsample*.samtools.vcf`
+    longsamtoolsvcf=`ls $longreaddir/*/artic-pipeline/4-draft-consensus/$longreadsample*.samtools.vcf`
     echo 'Long-read samtoolsvcf: '$longsamtoolsvcf
 
     samplewithbarcode=$medakavcf
@@ -202,7 +202,14 @@ do
     if [ ! -r $allcallersvcf ]
     then
         echo 'Merging calls'
-	java -cp $BINDIR/VariantValidator/src MergeVariants file_list=$vcffilelist out_file=$allcallersvcf
+	java -cp $BINDIR/VariantValidator/src MergeVariants file_list=$vcffilelist out_file=$allcallersvcf illumina_bam=$bamfile
+    fi
+
+    if [ -r $freebayesvcf ] && [ -r $ivarvcf ] && [ -r $samtoolsvcf ] && [ -r $nanopolishvcf ] && [ -r $medakavcf ] && [ -r $longsamtoolsvcf ] && [ -r $allcallersvcf ]
+    then
+        newpath=${medakavcf::-18}.all_callers.combined.vcf
+	echo 'Copying combined vcf to: '$newpath
+        cp $allcallersvcf $newpath
     fi
 
 done
