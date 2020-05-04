@@ -39,9 +39,8 @@ for consfile in $DIR/*.consensus.fasta; do
             gunzip -c $medakavcffile > $medakavcfunzipped          
         fi
 
-        bamfile=`ls $DIR/$samplename*.medaka.primertrimmed.rg.sorted.bam`
-        consensus=`ls $DIR/$samplename*.medaka.consensus.fasta`
-        prefix=`echo $consensus`
+        bamfile=`ls $DIR/$samplename*.nanopolish.primertrimmed.rg.sorted.bam`
+        prefix=`echo $bamfile`
         prefix=${prefix##*/}
         prefix=${prefix%%.*}
 

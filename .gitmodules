@@ -1,3 +1,6 @@
 [submodule "pipeline_scripts/VariantValidator"]
 	path = pipeline_scripts/VariantValidator
 	url = git@github.com:mkirsche/VariantValidator.git
+[submodule "pipeline_scripts/CoverageNormalization"]
+	path = pipeline_scripts/CoverageNormalization
+	url = git@github.com:mkirsche/CoverageNormalization.git
