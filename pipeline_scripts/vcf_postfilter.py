@@ -190,9 +190,9 @@ def minor_allele_freq(depth,pileup,alt,maf_flag,hold_flag):
         return(AF,np.nan,np.nan)
     
     # if there are flags, distinguish between the isnv and mixed scenarios
-    if maf<AF<hold or (1-hold)<AF<(1-maf):
+    if maf<=AF<hold or (1-hold)<AF<=(1-maf):
         return(AF,'%0.2f<maf<%0.2f' % (maf,hold),np.nan)
-    elif hold<AF<(1-hold):
+    elif hold<=AF<=(1-hold):
         return(AF,np.nan,'mixed position')
 
 
@@ -291,8 +291,15 @@ def strand_bias_detected(strandAF,strand_threshold):
     strandAF = [int(x) for x in strandAF.split(',')]
     
     # get frequency for each strand
-    posAF = float(strandAF[0]/strandAF[1])*100
-    negAF = float(strandAF[2]/strandAF[3])*100
+    if strandAF[1]>0:
+        posAF = float(strandAF[0]/strandAF[1])*100
+    else:
+        posAF=0.0
+    
+    if strandAF[3]>0:
+        negAF = float(strandAF[2]/strandAF[3])*100
+    else:
+        negAF=0.0
     
     # compare frequencies to threshold
     if (posAF<strand_threshold) and (negAF<strand_threshold):
@@ -359,13 +366,13 @@ def in_homopolymer_region(pos):
         return(False)
     
 
-def ont_illumina_mismatch(illumina,supp_vec):
+def ont_illumina_mismatch(min_illumina_depth,supp_vec):
     """ 
     Function that reports if there is a variant called by nanopore callers but not by
     one or more illumina variant callers
     """
     
-    if not illumina:
+    if not min_illumina_depth:
         return(np.nan)
     else:
         assert len(supp_vec)==6
@@ -466,13 +473,16 @@ def status_by_flags(data):
             return('Yes')
         elif 0.2<data['ont_AF']<0.3 and data['in_consensus']==False and data['ont_vc_flag']=='mismatch(s)':
             return('Yes*')
-        
         else:
             return('Maybe')
     
     # if we have gotten to this point
     # there is no mismatch within the ont data
-    if data['ont_AF']<0.2 and data['in_consensus']==False:
+    if pd.isna(data['illumina_vc_flag']) and data['homopolymer'] and data['in_consensus'] and not pd.isna(data['mixed_flag']):
+        return('Yes')
+    elif pd.isna(data['illumina_vc_flag']) and data['homopolymer'] and data['in_consensus'] and not pd.isna(data['maf_flag']):
+        return('Yes')
+    elif data['ont_AF']<0.2 and data['in_consensus']==False:
         return('Yes')
     elif 0.2<data['ont_AF']<0.3 and data['in_consensus']==False:
         return('Yes*')
@@ -587,7 +597,7 @@ def main():
         # ignore indels
         # print a warning if indels are found in the input vcf
         if len(tmp.ref.values[0]) != len(tmp.alt.values[0]):
-            print('Warning: indel found at position %d - indels are ignored!' % pos)
+            #print('Warning: indel found at position %d - indels are ignored!' % pos)
             continue
         
         # start a dictionary to store data for this sample
@@ -611,6 +621,10 @@ def main():
             illumina_pileup = collect_position_pileup(illumina_bam, pos)
             illumina_depth = illumina_pileup[0]
             illumina_pileup = illumina_pileup[1:]
+            if illumina_depth>0:
+                illumina_AF=float(illumina_pileup.count(data['alt'])/illumina_depth)
+            else:
+                illumina_AF=0.0
             
         # ignore this position if the depth is too low
         if depth < depth_threshold:
@@ -627,7 +641,7 @@ def main():
         data['illumina'] = illumina
         data['illumina_alleles'] = [get_allele_counts(illumina_pileup, illumina_depth) if illumina else np.nan][0]
         data['min_illumina_depth'] = [illumina_depth>20 if illumina else np.nan][0]
-        data['illumina_AF'] = [float(illumina_pileup.count(data['alt'])/illumina_depth) if illumina else np.nan][0]
+        data['illumina_AF'] = [illumina_AF if illumina else np.nan][0]
         
         # add flags to this record
         data['depth_flag'] = depth_near_threshold(depth,pileup,depth_threshold,args.coverage_flag)
@@ -637,7 +651,7 @@ def main():
         data['ntc_flag'] = allele_in_ntc(pos, data['alt'], depth, args.ntc_bamfile, args.snp_depth_factor)
         data['homopolymer'] = in_homopolymer_region(pos)
         data['ont_AF'],data['maf_flag'],data['mixed_flag'] = minor_allele_freq(depth, pileup, data['alt'], args.maf_flag, args.hold_flag)
-        data['illumina_vc_flag'] = ont_illumina_mismatch(illumina, info['SUPP_VEC'])
+        data['illumina_vc_flag'] = ont_illumina_mismatch(data['min_illumina_depth'], info['SUPP_VEC'])
         
         # modify consensus genome based on ntc flag
         # remember consensus is zero-indexed but we are dealing with 1-indexed positions
