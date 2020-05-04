@@ -94,18 +94,64 @@ run_config <- read.table(paste0(run_path,"/run_config.txt"))
 manifest <- read.table(paste0(run_path,"/manifest.txt"))
 amplicons <- read.table(paste0(run_path,"/../amplicons"), sep="\t", header=TRUE)
 important_positions <- read.table(paste0(run_path,"/../clade_related_snps.txt"), sep="\t", header=TRUE)
-throughput <-read_csv(list.files(run_path, "throughput*", full.names=TRUE))
-
+if(length(list.files(run_path, "throughput*", full.names=TRUE) > 0) {
+	throughput <-read_csv(list.files(run_path, "throughput*", full.names=TRUE))
+} else {
+	throughput <- data.frame('Experiment Time (minutes)' = 0, 'Reads' = 0, 'Basecalled Reads Passed' = 0, 'Basecalled Reads Failed' = 0)
+}
 # pipeline output files
 #read_lengths <- read.table(paste0(run_path,"/artic-pipeline/run_stats/read_lengths.txt"), sep="\t")
-summary <- read.table(paste0(run_path,"/artic-pipeline/run_stats/summary.txt"), sep="\t", header=TRUE)
-depth_all <- read.table(paste0(run_path,"/artic-pipeline/run_stats/depth-all.txt"), sep="\t", fill=TRUE)
-depth_norm <- read.table(paste0(run_path,"/artic-pipeline/run_stats/depth-norm-all.txt"), sep="\t", fill=TRUE)
-mutation_full <- read.table(paste0(run_path, "/artic-pipeline/run_stats/mutations-table.txt"), sep="\t", header=TRUE, row.names=1)
-postfilt <- read.table(paste0(run_path, "/artic-pipeline/run_stats/postfilt_summary.txt"), sep="\t", header=TRUE)
-postfilt_all <- read.table(paste0(run_path, "/artic-pipeline/run_stats/postfilt_all.txt"), sep="\t", header=TRUE)
-snpeff_report <- read.table(paste0(run_path, "/artic-pipeline/run_stats/final_snpEff_report.txt"), sep="\t", header=TRUE, comment.char="")
-genome_cartoon_pdf <- paste0(run_path, "/artic-pipeline/run_stats/genome_cartoons.pdf")
+summaryFn <- paste0(run_path,"/artic-pipeline/run_stats/summary.txt")
+depth_allFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-all.txt")
+depth_normFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-norm-all.txt")
+mutation_fullFn <- paste0(run_path, "/artic-pipeline/run_stats/mutations-table.txt")
+postfiltFn <- paste0(run_path, "/artic-pipeline/5-post-filter/postfilt_summary.txt")
+postfilt_allFn <- paste0(run_path, "/artic-pipeline/5-post-filter/postfilt_all.txt")
+snpeff_reportFn <- paste0(run_path, "/artic-pipeline/5-post-filter/final_snpEff_report.txt")
+clade_reportFn <- paste0(run_path, "/artic-pipeline/5-post-filter/lineage_report.csv")
+
+if(file.exists(summaryFn)) {
+  summary <- read.table(summaryFn, sep="\t", header=TRUE)
+}
+if(file.exists(depth_allFn)) {
+  depth_all <- read.table(depth_allFn, sep="\t", fill=TRUE)
+} else {
+  depth_all <- NULL
+  for(i in levels(summary$Sample)) {
+    depth_one <- data.frame(V1=rep(i, 29903), V2=rep("MN908947.3", 29903), V3=seq(1, 29903), V4=rep(1, 29903))
+  }
+  depth_all <- rbind(depth_all, depth_one)
+}
+if(file.exists(depth_normFn)) {
+  depth_norm <- read.table(depth_normFn, sep="\t", fill=TRUE)
+} else {
+  depth_norm <- NULL
+  for(i in levels(summary$Sample)) {
+    depth_one <- data.frame(V1=rep(i, 29903), V2=rep("MN908947.3", 29903), V3=seq(1, 29903), V4=rep(1, 29903))
+  }
+  depth_norm <- rbind(depth_norm, depth_one)
+}
+if(file.exists(mutation_fullFn)) {
+  mutation_full <- read.table(mutation_fullFn, sep="\t", header=TRUE, row.names=1)
+}
+if(file.exists(postfiltFn)) {
+  postfilt <- read.table(postfiltFn, sep="\t", header=TRUE)
+}
+if(file.exists(postfilt_allFn)) {
+  postfilt_all <- read.table(postfilt_allFn, sep="\t", header=TRUE)
+}
+if(file.exists(snpeff_reportFn)) {
+  snpeff_report <- read.table(snpeff_reportFn, sep="\t", header=TRUE, comment.char="")
+} else {
+  empty_column <- rep("", dim(mutation_full)[1])
+  snpeff_report <- data.frame("X.CHROM" = rep("MN908947.3", dim(mutation_full)[1]), "POS" = rownames(mutation_full), "REF" = empty_column, "ALT" = empty_column, "GENE" = empty_column, "ANN" = empty_column, "AA_MUT" = empty_column)
+}
+if(file.exists(clade_reportFn)) {
+  clade_report <- read.table(clade_reportFn, sep=",", header=TRUE)
+} else {
+  empty_column <- rep("", dim(mutation_full)[1])
+  clade_report <- data.frame("taxon" = summary$Sample, "lineage" = rep("", length(summary$Sample)))
+}
 
 # sort all tables
 o1 <- order(paste(summary$Sample, summary$Barcode, sep="_"))
@@ -148,7 +194,12 @@ summary$Consensus <- factor(summary$Consensus, levels = c("Yes", "Yes*", "Maybe"
 summary$Raw.Reads <- paste0(summary$Raw.Reads, " (", sprintf("%0.1f", 100*as.numeric(gsub(",", "", summary$Raw.Reads))/sum(as.numeric(gsub(",", "", summary$Raw.Reads)))),"%)")
 summary$Depth <- rep("NA", dim(summary)[1])
 summary$Depth[summary$Barcode != "uncalled"] <- c(paste0(format(round(tapply(depth_all[,4],depth_all[,1], sum)/29903, 0), big.mark=",", trim=T), "x"))
-summary <- summary[,c("Sample", "Barcode", "Raw.Reads", "Length.filter", "Coverage", "Depth", "Consensus")]
+summary$Coverage <- sapply(as.matrix(summary$Coverage), function(s) { return(strsplit(s, " ")[[1]][1] )})
+summary$Lineage <- rep("", dim(summary)[1])
+if(dim(clade_report)[1]>0) {
+  summary$Lineage[clade_report$taxon %in% summary$Sample] <- as.matrix(clade_report$lineage)
+}
+summary <- summary[,c("Sample", "Barcode", "Raw.Reads", "Coverage", "Depth", "Consensus", "Lineage")]
 levels(summary$Consensus) <- paste0(colorlevels(levels(summary$Consensus), FALSE), "{", levels(summary$Consensus), "}")
 names(summary) <- gsub("\\.", " ", names(summary))
 
@@ -423,6 +474,9 @@ plot_readlen2 <- function() {
 }
 #-------------------------------------------------
 plot_homoplasy_heatmap <- function() {
+
+  # look into adding joint surprisal information theory (Stuart suggestion)
+  
   plot_matrix <- mutation_bool
 
   sample_sel <- summary$Sample %in% gsub("(_NB[0-9]{2})?(\\*)?", "", dimnames(plot_matrix)[[2]])
@@ -586,13 +640,13 @@ plot_flag_matrix <- function() {
 #  text_matrix[row_sel, col_sel] <- flag_matrix[flag_row_order[row_order[row_sel]], flag_col_order[col_order[col_sel]]]
   text_matrix[row_sel, col_sel] <- flag_matrix[flag_row_order, flag_col_order]
 
-  x <- rep(seq(0.095, 0.58, length.out=dim(text_matrix)[2]), each=dim(text_matrix)[1])
-  y <- rep(seq(0.961, 0.131, length.out=dim(text_matrix)[1]), dim(text_matrix)[2])
-  grid.text(text_matrix, x=x, y=y, gp=gpar(col="black", fontsize=7))
+  x <- rep(seq(0.095, 0.6, length.out=dim(text_matrix)[2]), each=dim(text_matrix)[1])
+  y <- rep(seq(0.961, 0.129, length.out=dim(text_matrix)[1]), dim(text_matrix)[2])
+  grid.text(text_matrix, x=x, y=y, gp=gpar(col="black", fontsize=5))
 
 #  grid.text(paste(shapes$triangles[1:5], collapse=""), x=0.095, y=0.961, gp=gpar(col="black", fontsize=7))
 #  grid.text(paste(shapes$circles[3:7], collapse=""), x=0.58, y=0.131, gp=gpar(col="black", fontsize=7))
-  grid.text("Variant position (nucleotide)", x=0.7, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
+  grid.text("Variant position (nucleotide)", x=0.75, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
 }
 #-------------------------------------------------
 print_igv_plot <- function(row, flag) {
@@ -609,7 +663,7 @@ print_igv_plot <- function(row, flag) {
       alleles <- postfilt_all$alleles[postfilt_all$pos == nt & postfilt_all$sample == sample]
       cat(paste0("\n### ", colorlevels(flag), "{[", flag, "]: ", sample, " ", flagString, " - ", alleles, "}\n"))
       if(nt != "see full output") {
-        pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample,"_",barcode,"/MN908947.3_",nt,".png")
+        pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample,"/MN908947.3_",nt,".png")
         if(file.exists(pngFn)) {
           cat(paste0("\\includegraphics[width=13cm]{",pngFn,"}\n"))
         } else {
@@ -641,7 +695,7 @@ print_igv_plot <- function(row, flag) {
 
 # Samples
 ```{r, sample-table, echo=FALSE, results="asis"}
-pandoc.table(summary, split.cells = c(3,2,7,4,7,6,1), split.table = Inf,
+pandoc.table(summary, split.cells = c(3,2,7,4,6,1,1), split.table = Inf,
              justify=c("center","center","right","right","right","right","center"),
              emphasize.rownames = FALSE, style="rmarkdown")
 ```
@@ -756,7 +810,7 @@ if(sum(select_many) > 0) {
 
 ## Flags identified
 ```{r, flag-table, echo=FALSE}
-draw_flag_table(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status"))])
+draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status"))])
 ```
 
 **Flags**: MAF (Minor allele frequency > 0.15), new (present in < 2 GISAID sequences), mismatch (mismatches between variant callers where variant is present in nanopolish (n), medaka (m), and/or samtools(s))
