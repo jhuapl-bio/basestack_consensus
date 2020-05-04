@@ -1,6 +1,5 @@
 #!/bin/bash
 source /home/idies/workspace/covid19/bashrc
-#. "/home/idies/workspace/Storage/ernluaw1/persistent/Miniconda3/etc/profile.d/conda.sh"
 conda activate artic-ncov2019-medaka
 
 #---------------------------------------------------------------------------------------------------
@@ -24,50 +23,41 @@ NC='\033[0m'
 
 # usage function
 usage() {
-	echo -e "usage: ${YELLOW}$0${NC} [options]"
-	echo -e ""
-	echo -e "OPTIONS:"
-	echo -e "   -h      show this message"
-	echo -e "   -i      path/to/sequencing run folder"
-	#echo -e "   -b      repository path (working on calculating this directly)"
-	#echo -e "   -1      length folder (default: ${CYAN}<run-folder>/artic-pipeline/2-length-filter${NC})"
-	echo -e ""
+        echo -e "usage: ${YELLOW}$0${NC} [options]"
+        echo -e ""
+        echo -e "OPTIONS:"
+        echo -e "   -h      show this message"
+        echo -e "   -i      /full/path/to/normalizd_sample.fq"
+        echo -e ""
 }
 
 #---------------------------------------------------------------------------------------------------
 
 # parse input arguments
-while getopts "hi:1:" OPTION
+# parse input arguments
+while getopts "hi:" OPTION
 do
-	case $OPTION in
-		h) usage; exit 1 ;;
-		i) sequencing_run=$OPTARG ;;
-		#b) bin_path=$OPTARG ;;
-		#1) demux_path=$OPTARG ;;
-		?) usage; exit ;;
-	esac
+       case $OPTION in
+                h) usage; exit 1 ;;
+                i) sequencing_run=$OPTARG ;;
+                ?) usage; exit ;;
+       esac
 done
-
-if ((OPTIND == 1))
-then
-    usage
-    exit
-fi
 
 #===================================================================================================
 # DEFINE FUNCTIONS
 #===================================================================================================
 
 echo_log() {
-	input="$*"
-	# if input is non-empty string, prepend initial space
-	if [[ -n "$input" ]]; then
-		input=" $input"
-	fi
-	# print to STDOUT
-	#echo -e "[$(date +"%F %T")]$input"
-	# print to log file (after removing color strings)
-	echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
+        input="$*"
+        # if input is non-empty string, prepend initial space
+        if [[ -n "$input" ]]; then
+                input=" $input"
+        fi
+        # print to STDOUT
+        #echo -e "[$(date +"%F %T")]$input"
+        # print to log file (after removing color strings)
+        echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
 
 #===================================================================================================
@@ -110,6 +100,8 @@ demux_dir=${sequencing_run}/artic-pipeline/1-barcode-demux
 # Output directories
 gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
 
+# Optional program parameters
+
 
 #===================================================================================================
 # MAIN BODY
@@ -130,7 +122,7 @@ echo_log "------ processing pipeline output ------"
 # module 2
 #---------------------------------------------------------------------------------------------------
 
-echo_log "Starting artic guppyplex module 2 $sequencing_run"
+echo_log "Starting artic guppyplex module 2 on $sequencing_run"
 mkdir -p $gather_dir
 
 while read barcode name; do
