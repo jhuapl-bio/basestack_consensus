@@ -1,7 +1,5 @@
 #!/bin/bash
 source /home/idies/workspace/covid19/bashrc
-#. "/home/idies/workspace/Storage/ernluaw1/persistent/Miniconda3/etc/profile.d/conda.sh"
-conda activate artic-ncov2019-medaka
 
 #---------------------------------------------------------------------------------------------------
 
@@ -28,9 +26,7 @@ usage() {
 	echo -e ""
 	echo -e "OPTIONS:"
 	echo -e "   -h      show this message"
-	echo -e "   -i      path/to/sequencing run folder"
-	#echo -e "   -b      repository path (working on calculating this directly)"
-	#echo -e "   -1      barcode demux folder (default: ${CYAN}<run-folder>/artic-pipeline/1-barcode-deumux${NC})"
+	echo -e "   -i      path/to/sequencing_run_folder"
 	echo -e ""
 }
 
@@ -42,8 +38,6 @@ do
 	case $OPTION in
 		h) usage; exit 1 ;;
 		i) sequencing_run=$OPTARG ;;
-		#b) bin_path=$OPTARG ;;
-		1) demux_path=$OPTARG ;;
 		?) usage; exit ;;
 	esac
 done
@@ -74,21 +68,37 @@ echo_log() {
 # QUALITY CHECKING
 #===================================================================================================
 
+# check for the existence of the sequencing run directory
 if [ ! -d ${sequencing_run} ];then
     >&2 echo "Error Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
 
+# check for existence of run_config.txt and for barcoding 
 if [ ! -s ${sequencing_run}/run_config.txt ];then
     >&2 echo "Error Require a run_config.txt file in the sequencing run directory"
     exit 1
+else
+    if ! grep -q "barcoding" ${sequencing_run}/run_config.txt;then 
+        echo "require barcoding file"
+        >&2 echo "Error barcode file not found"
+        exit 1
+    fi
 fi
 
-if [ ! -s ${sequencing_run}/manifest.txt ];then
+# check for existence of manifest.txt and that it has two columns
+if [ ! -s ${sequencing_run}/manifest.txt ];then 
     >&2 echo "Error Require a manifest.txt file in the sequencing run directory"
     exit 1
+else
+    columns=$( awk -F' ' '{print NF}' ${sequencing_run}/manifest3.txt )
+    if [ $columns -ne 2 ];then 
+        >&2 echo "Error manifest.txt file does not have two columns"
+        exit 1
+    fi
 fi
 
+# check for existence of fastq_pass directory
 if [ ! -d ${sequencing_run}/fastq_pass ];then
     >&2 echo "Error Require fastq_pass directory in the sequencing run directory"
     exit 1
@@ -98,7 +108,7 @@ fi
 # Default values
 #===================================================================================================
 
-# location of programs used by pipeline
+# location of programs used by pipeline - double check if source bashrc don't have to hardcode paths
 software_path=/home/idies/workspace/covid19/code
 guppy_barcoder_path=${software_path}/ont-guppy-cpu/bin
 
@@ -147,7 +157,6 @@ done < "$manifest"
     
 #---------------------------------------------------------------------------------------------------
 
-echo_log "run complete"
 #chgrp -R 5102 $demux_dir
 
 #===================================================================================================
@@ -159,9 +168,29 @@ if [ ! -d $demux_dir ];then
     exit 1
 fi
 
-#if find "$demux_dir" -maxdepth 0 -empty | read;
-#    echo_log "$demux_dir empty."
-#else
-#    echo_log "Begin submitting module 2"
-#    python <submit_module2>.py
-#fi
+while read name barcode; do
+    if [ -d "$demux_dir"/"$name" ]; then
+        complete=TRUE
+    else
+        complete=FALSE
+        echo_log Error "$demux_dir"/"$name" does not exist
+        exit 1
+    fi
+done < $manifest
+
+if complete=TRUE; then
+   touch $demux_dir/1-barcode-demux.complete
+   echo_log "run complete"
+fi
+    
+if [ -s $demux_dir/1-barcode-demux.complete ]; then
+    while read name barcode; do
+        echo submit module_2 $demux_dir/$name
+        #        
+        #python <submit_module2.py>
+    done < $manifest
+fi
+
+
+
+
