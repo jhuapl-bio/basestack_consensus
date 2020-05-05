@@ -1,5 +1,8 @@
 #!/bin/bash
 
+export JAVA_HOME="/home/idies/workspace/covid19/code/jdk-11.0.2"
+export PATH=$JAVA_HOME/bin:$PATH
+
 #---------------------------------------------------------------------------------------------------
 
 # define colors for error messages
@@ -24,6 +27,7 @@ usage() {
 	echo -e "OPTIONS:"
 	echo -e "   -h      show this message"
 	echo -e "   -i      sequencing run folder"
+	echo -e "   -s      skip IGV"
 	echo -e "   -o      output folder (default: ${CYAN}<run-folder>/artic-pipeline/run_stats${NC})"
 	echo -e "   -1      barcode demux folder (default: ${CYAN}<run-folder>/artic-pipeline/1-barcode-demux${NC})"
 	echo -e "   -2      length filter folder (default: ${CYAN}<run-folder>/artic-pipeline/2-length-filter${NC})"
@@ -41,6 +45,7 @@ usage() {
 # set default values here
 logfile="/dev/null"
 tempdir="/tmp"
+skip_igv="false"
 
 # report current hash of miseq-analysis git repo
 bin_path="$(dirname $0)"
@@ -67,11 +72,12 @@ nextstrain_base="artic-pipeline/6-nextstrain"
 #===================================================================================================
 
 # parse input arguments
-while getopts "hi:m:b:p:r:o:1:2:3:4:5:6:" OPTION
+while getopts "hi:sm:b:p:r:o:1:2:3:4:5:6:" OPTION
 do
 	case $OPTION in
 		h) usage; exit 1 ;;
 		i) run_path=$OPTARG ;;
+		s) skip_igv="true" ;;
 		m) manifest=$OPTARG ;;
 		b) bin_path=$OPTARG ;;
 		p) run_path=$OPTARG ;;
@@ -305,36 +311,40 @@ while read barcode label; do
 
 	echo_log "  $barcode"
 
-	demux_reads=$(grep "$barcode" "$stats_path/demux_count.txt" | sed 's/^ \+//' | cut -d" " -f1)
-	gather=$(find "$lengthfilter_path" -name "*$barcode.fastq")
-	if [[ -s "$gather" ]]; then
-		length_filter=$(($(wc -l < "$gather") / 4))
-	else
-		length_filter=0
-	fi
-	alignment=$(find "$normalize_path" -name "*$barcode.bam")
-	if [[ -s "$gather" ]]; then
-		aligned_reads=$(samtools view "$alignment" | wc -l)
-	else
-		aligned_reads=0
-	fi
-	normalized_alignment=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.sorted.bam" ! -name "*trimmed*")
-	normalized_reads=$(samtools idxstats "$normalized_alignment" | grep "$ref_header" | cut -f3)
-	draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.consensus.fasta")
-	consensus_length=$(($ref_length - $(tail -n+2 "$draft_consensus" | grep -o N | wc -l)))
-	post_filter=$(find "$postfilter_path" -name "*$barcode*.variant_data.txt")
-
-	echo_log "    FASTQ file: $gather"
-	echo_log "      number of reads: $length_filter"
-	echo_log "    full alignment: $alignment"
-	echo_log "      aligned reads: $aligned_reads"
-	echo_log "    normalized alignment: $normalized_alignment"
-	echo_log "      normalized reads: $normalized_reads"
-	echo_log "    draft consensus: $draft_consensus"
-	echo_log "      unambiguous consensus: $consensus_length"
-	echo_log "    variant file: $post_filter"
+	filebase="${label}_${barcode}"
 
 	if [[ "$make_new_outfile" == "true" ]]; then
+
+		demux_reads=$(grep "$barcode" "$stats_path/demux_count.txt" | sed 's/^ \+//' | cut -d" " -f1)
+		gather=$(find "$lengthfilter_path" -name "*$barcode.fastq")
+
+		if [[ -s "$gather" ]]; then
+			length_filter=$(($(wc -l < "$gather") / 4))
+		else
+			length_filter=0
+		fi
+		alignment=$(find "$normalize_path" -name "*$barcode.bam")
+		if [[ -s "$gather" ]]; then
+			aligned_reads=$(samtools view "$alignment" | wc -l)
+		else
+			aligned_reads=0
+		fi
+		normalized_alignment=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.sorted.bam" ! -name "*trimmed*")
+		normalized_reads=$(samtools idxstats "$normalized_alignment" | grep "$ref_header" | cut -f3)
+		draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.consensus.fasta")
+		consensus_length=$(($ref_length - $(tail -n+2 "$draft_consensus" | grep -o N | wc -l)))
+		post_filter=$(find "$postfilter_path" -name "*$barcode*.variant_data.txt")
+
+		echo_log "    FASTQ file: $gather"
+		echo_log "      number of reads: $length_filter"
+		echo_log "    full alignment: $alignment"
+		echo_log "      aligned reads: $aligned_reads"
+		echo_log "    normalized alignment: $normalized_alignment"
+		echo_log "      normalized reads: $normalized_reads"
+		echo_log "    draft consensus: $draft_consensus"
+		echo_log "      unambiguous consensus: $consensus_length"
+		echo_log "    variant file: $post_filter"
+
 		echo_log "  adding line to summary file"
 		flag=$(grep "^$label" "$postfilt_summary" | cut -d$'\t' -f7)
 		printf "%s\t%s\t%'d\t%'d\t%'d\t%'d (%s %%)\t%s\n" \
@@ -348,19 +358,19 @@ while read barcode label; do
 			"$flag" >> "$outfile"
 	fi
 
-	depth_outfile="$normalize_path/${label}_${barcode}.depth"
+	depth_outfile="$normalize_path/$filebase/$filebase.depth"
 	if ! [[ -s "$depth_outfile" ]]; then
 		echo_log "  creating depth file"
 		samtools depth -d 0 -a "$alignment" > "$depth_outfile"
 	fi
 
-	normalized_depth_outfile="$normalize_path/${label}_${barcode}.covfiltered.depth"
+	normalized_depth_outfile="$normalize_path/$filebase/$filebase.covfiltered.depth"
 	if ! [[ -s "$normalized_depth_outfile" ]]; then
 		echo_log "  creating normalized depth file"
 		samtools depth -d 0 -a "$normalized_alignment" > "$normalized_depth_outfile"
 	fi
 
-	mutations_outfile="$stats_path/mutations-${label}_${barcode}.txt"
+	mutations_outfile="$stats_path/mutations-$filebase.txt"
 	if ! [[ -s "$mutations_outfile" ]]; then
 		echo_log "  creating mutations file"
 		final_consensus=$(find "$postfilter_path" -name "*$barcode*.complete.fasta")
@@ -378,7 +388,7 @@ while read barcode label; do
 	vcf=$(find "$draftconsensus_path" -name "*${barcode}*.all_callers.combined.vcf")
 	outPrefix=$(basename "${vcf%.all_callers.combined.vcf}")
 
-	if [[ -s "$vcf" && -s "$trimmed_alignment" ]]; then
+	if [[ -s "$vcf" && -s "$trimmed_alignment" && skip_igv == "false" ]]; then
 
 		igv_out_path="$stats_path/igv"
 		mkdir -p "$igv_out_path"
@@ -399,7 +409,7 @@ while read barcode label; do
 		mv "$outPrefix" "$igv_out_path"
 
 		"$vcfigv_repo_path/xvfb-run" \
-			--auto-servernum "$vcfigv_repo_path/IGV_2.3.98/igv.sh" \
+			--auto-servernum "$vcfigv_repo_path/IGV_2.8.2/igv.sh" \
 			-b "$pipelinepath/$outPrefix/$outPrefix.bat"
 
 	fi
@@ -417,7 +427,7 @@ find "$normalize_path" -name "*.depth" ! -name "*covfiltered.depth" -print0 | wh
 done > "$depthfile"
 
 echo_log "Calculating depth"
-find "$stats_path" -name ".covfiltered.depth" ! -name "depth-norm-all.txt" -print0 | while read -d $'\0' f; do
+find "$normalize_path" -name "*.covfiltered.depth" -print0 | while read -d $'\0' f; do
 	base=$(basename "$f")
 	awk -v BASE="${base%.covfiltered.depth}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
 done > "${depthfile/-all/-norm-all}"
@@ -462,15 +472,9 @@ awk '{
 # BUILD MARKDOWN FILE
 #===================================================================================================
 
-plate=$(grep "plate" "${run_path}/run_info.txt" | cut -f2)
-row=$(grep "row" "${run_path}/run_info.txt" | cut -f2)
-
-sed -e "s@<RUN_PATH>@${run_path}@" \
-	-e "s@<PLATE>@${plate}@" \
-	-e "s@<ROW>@${row}@" \
-	"$bin_path/report-template.Rmd" > "$stats_path/$(basename $run_path)-report.Rmd"
-
-Rscript -e "rmarkdown::render('$stats_path/$(basename $run_path)-report.Rmd')"
+report_pdf.sh \
+	-i "$run_path" \
+	-o "$stats_path/$(basename $run_path)-report.pdf"
 
 #---------------------------------------------------------------------------------------------------
 
