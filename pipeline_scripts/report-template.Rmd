@@ -46,7 +46,7 @@ library(kableExtra, quietly=TRUE)
 library(pander, quietly=TRUE)
 library(pheatmap, quietly=TRUE)
 library(ggplot2, quietly=TRUE)
-library(ggrepel, quietly=TRUE)
+#library(ggrepel, quietly=TRUE)
 library(broom, quietly=TRUE)
 library(devtools, quietly=TRUE)
 library(tidyverse, quietly=TRUE)
@@ -57,7 +57,7 @@ library(gridExtra, quietly=TRUE)
 #library(ggpubr, quietly=TRUE)
 library(RColorBrewer, quietly=TRUE)
 library(viridis, quietly=TRUE)
-library(tikzDevice, quietly=TRUE)
+#library(tikzDevice, quietly=TRUE)
 library(magick, quietly=TRUE)
 ```
 
@@ -94,10 +94,10 @@ run_config <- read.table(paste0(run_path,"/run_config.txt"))
 manifest <- read.table(paste0(run_path,"/manifest.txt"))
 amplicons <- read.table(paste0(run_path,"/../amplicons"), sep="\t", header=TRUE)
 important_positions <- read.table(paste0(run_path,"/../clade_related_snps.txt"), sep="\t", header=TRUE)
-if(length(list.files(run_path, "throughput*", full.names=TRUE) > 0) {
+if(length(list.files(run_path, "throughput*", full.names=TRUE)) > 0) {
 	throughput <-read_csv(list.files(run_path, "throughput*", full.names=TRUE))
 } else {
-	throughput <- data.frame('Experiment Time (minutes)' = 0, 'Reads' = 0, 'Basecalled Reads Passed' = 0, 'Basecalled Reads Failed' = 0)
+	throughput <- data.frame('Experiment.Time..minutes.' = seq(1,2), 'Reads' = rep(2,2), 'Basecalled.Reads.Passed' = rep(1,2), 'Basecalled.Reads.Failed' = rep(1,2))
 }
 # pipeline output files
 #read_lengths <- read.table(paste0(run_path,"/artic-pipeline/run_stats/read_lengths.txt"), sep="\t")
@@ -143,7 +143,7 @@ if(file.exists(postfilt_allFn)) {
 if(file.exists(snpeff_reportFn)) {
   snpeff_report <- read.table(snpeff_reportFn, sep="\t", header=TRUE, comment.char="")
 } else {
-  empty_column <- rep("", dim(mutation_full)[1])
+  empty_column <- rep("unknown", dim(mutation_full)[1])
   snpeff_report <- data.frame("X.CHROM" = rep("MN908947.3", dim(mutation_full)[1]), "POS" = rownames(mutation_full), "REF" = empty_column, "ALT" = empty_column, "GENE" = empty_column, "ANN" = empty_column, "AA_MUT" = empty_column)
 }
 if(file.exists(clade_reportFn)) {
@@ -170,7 +170,7 @@ sample_barcodes <- paste(summary$Sample, summary$Barcode, sep="_")[-13]
 # create mutation objects
 mutation_full <- t(mutation_full)
 dimnames(mutation_full)[[1]] <- gsub("X", "", dimnames(mutation_full)[[1]])
-dimnames(mutation_full)[[2]] <- gsub("-NB.*", "", dimnames(mutation_full)[[2]])
+dimnames(mutation_full)[[2]] <- gsub("_NB.*", "", dimnames(mutation_full)[[2]])
 mutation_full_bool <- nchar(mutation_full)
 mutation_full_bool[mutation_full_bool>1] <- 1
 consensus_call <- substr(mutation_full, nchar(mutation_full), nchar(mutation_full))
@@ -239,7 +239,7 @@ if(sum(select_many)>0) {
   dimnames(mutation_table_many)[[2]] <- names(mutation_collapse[select_many])
   new_cols <- matrix(mutation_table_many[rownames(mutation_table),], ncol=sum(select_many))
   if(dim(new_cols)[2] > 0) {
-    dimnames(new_cols)[[2]] <- c(paste0(dimnames(mutation_table_many)[[2]], "*"))
+    dimnames(new_cols)[[2]] <- list(sapply(dimnames(mutation_table_many)[[2]], paste0, "*"))
     mutation_table <- cbind(mutation_table, new_cols)
   }
   
@@ -248,7 +248,7 @@ if(sum(select_many)>0) {
   dimnames(mutation_bool_many)[[2]] <- names(mutation_collapse[select_many])
   new_cols <- matrix(mutation_bool_many[rownames(mutation_bool),], ncol=sum(select_many))
   if(dim(new_cols)[2] > 0) {
-    dimnames(new_cols)[[2]] <- c(paste0(dimnames(mutation_bool_many)[[2]], "*"))
+    dimnames(new_cols)[[2]] <- list(sapply(dimnames(mutation_table_many)[[2]], paste0, "*"))
     mutation_bool <- cbind(mutation_bool, new_cols)
   }
 }
@@ -289,8 +289,14 @@ levels(annotation_snp$common.SNP) = c("other", "common")
 annotation_snp$SnpEff <- factor(snpeff_annotations, levels = c(levels(snpeff_report$ANN), "none"))
 
 # create color object for annotations
-annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]], common.SNP = c("common"="#000000", "other"="#FFFFFF"), Variants = c("#FFFFFF", "gray30", "gray70"), SnpEff = c(brewer.pal(n=length(levels(snpeff_report$ANN)), name="Dark2"), "white"))
-names(annotation_colors$SnpEff) <- levels(annotation_snp$SnpEff)
+if(length(levels(snpeff_report$ANN)) >= 3) {
+	snpeff_colors <- c(brewer.pal(n=length(levels(snpeff_report$ANN)), name="Dark2"), "white")
+} else {
+	snpeff_colors <- rep("gray50", length(levels(snpeff_report$ANN)))
+}
+annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]], common.SNP = c("common"="#000000", "other"="#FFFFFF"), Variants = c("#FFFFFF", "gray30", "gray70"), SnpEff = snpeff_colors)
+
+names(annotation_colors$SnpEff) <- "none" # list(levels(annotation_snp$SnpEff))
 #-------------------------------------------------
 ```
 
@@ -298,9 +304,9 @@ names(annotation_colors$SnpEff) <- levels(annotation_snp$SnpEff)
 # define R functions used
 plot_reads_over_time <- function() {
   
-  a <- data.frame(time=throughput$`Experiment Time (minutes)`, type='total', count=throughput$Reads)
-  b <- data.frame(time=throughput$`Experiment Time (minutes)`, type='passed', count=throughput$`Basecalled Reads Passed`)
-  c <- data.frame(time=throughput$`Experiment Time (minutes)`, type='failed', count=throughput$`Basecalled Reads Failed`)
+  a <- data.frame(time=throughput$Experiment.Time..minutes., type='total', count=throughput$Reads)
+  b <- data.frame(time=throughput$Experiment.Time..minutes., type='passed', count=throughput$Basecalled.Reads.Passed)
+  c <- data.frame(time=throughput$Experiment.Time..minutes., type='failed', count=throughput$Basecalled.Reads.Failed)
   
   df2 <- rbind(a, b, c)
   
@@ -385,7 +391,8 @@ print_low_depth_regions <- function() {
 #-------------------------------------------------
 depth_heatmap <- function(plot_sel, title_additional, norm=F) {
   plot_all <- depth_plot_all[,plot_sel]
-  plot_norm <- sweep(plot_all, 2, FUN="/", STATS=plot_all[12,])
+  NTC_row <- grepl("NTC", rownames(plot_all), fixed = TRUE)
+  plot_norm <- sweep(plot_all, 2, FUN="/", STATS=plot_all[NTC_row,])
   if(norm) {
     plot_dat <- plot_norm
     plot_dat[plot_dat > 200] <- 200
@@ -398,11 +405,7 @@ depth_heatmap <- function(plot_sel, title_additional, norm=F) {
   plot_dat <- log10(plot_dat)
   rownames(plot_dat) <- sample_barcodes
   
-  annotation_row <- data.frame(Flag = flagList[-13])
-  rownames(annotation_row) <- sample_barcodes
-
-  # re-order Flag levels for legend display
-  annotation_row$Flag <- factor(annotation_row$Flag, levels = c("Yes", "Yes*", "Maybe", "No", "NA"))
+  sample_sel <- summary$Sample %in% gsub("(_NB[0-9]{2})?(\\*)?", "", rownames(plot_dat))
 
   pheatmap(as.data.frame(plot_dat),
            cluster_rows=FALSE, cluster_cols=FALSE,
@@ -412,7 +415,7 @@ depth_heatmap <- function(plot_sel, title_additional, norm=F) {
            border_color=NA,
            labels_row=levels(plot_dat[,1]),
            labels_col="",
-           annotation_row=annotation_row,
+           annotation_row=annotation_sample[sample_sel],
            annotation_colors=list(Flag = flagColors[flagColors != flagColors["NA"]])
         )
 }
@@ -761,7 +764,6 @@ depth_plot((1:98 %% 2 == 0), "-nCoV2019_2")
 ## Genome clusters
 
 ### Genome cartoons
-<!--![](`r genome_cartoon_pdf`)-->
 (under construction)
 
 \pagebreak
@@ -785,16 +787,16 @@ if(sum(select_many) > 0) {
 ## Nextstrain
 
 ### Nextstrain tanglegram
-![](`r "/home/tom/data/ref/ncov/sequencing_runs/1-GLOBAL_MDHP_tanglegram.png"`)
+<!-- ![](`r "/home/tom/data/ref/ncov/sequencing_runs/1-GLOBAL_MDHP_tanglegram.png"`) -->
 
 ### Nextstrain global transmission
-![](`r "/home/tom/data/ref/ncov/sequencing_runs/0-GLOBAL_Transmission_map.png"`)
+<!-- ![](`r "/home/tom/data/ref/ncov/sequencing_runs/0-GLOBAL_Transmission_map.png"`) -->
 
 ### MDHP-only time tree
-![](`r "/home/tom/data/ref/ncov/sequencing_runs/2-MDHP_AA_MUTS_tree.png"`)
+<!-- ![](`r "/home/tom/data/ref/ncov/sequencing_runs/2-MDHP_AA_MUTS_tree.png"`) -->
 
 ### MDHP-only divergence tree
-![](`r "/home/tom/data/ref/ncov/sequencing_runs/3-MDHP_AA_MUTS_divergence.png"`)
+<!-- ![](`r "/home/tom/data/ref/ncov/sequencing_runs/3-MDHP_AA_MUTS_divergence.png"`) -->
 
 # Flags
 \label{sec:flags}
@@ -819,7 +821,7 @@ draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status
 
 ## Flag matrix
 ```{r, flag-matrix, echo=FALSE, external=FALSE, fig.height=8, dev='cairo_pdf'}
-plot_flag_matrix()
+#plot_flag_matrix()
 ```
 
 **Variants**: \textcolor{variantBlue}{$\blacksquare$} = Variant in consensus, \textcolor{variantRed}{$\blacksquare$} =  Ambiguity in consensus (at depth above threshold outlined in section \ref{low_depth} on page \pageref{low_depth}) ; **Flags**: $\blacksquare$ = MAF (Minor allele frequency > 0.15), $\bigcirc$ = new (present in < 2 GISAID sequences), s|m|n (mismatches between variant callers where variant is present in samtools (s), medaka (m), nanopolish (n))
