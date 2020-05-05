@@ -108,7 +108,7 @@ logfile=${sequencing_run}/pipeline.log
 manifest=${sequencing_run}/manifest.txt
 
 # grabbing sample name from manifest given input barcode directory
-name=$(grep $(basename $barcode_dir) manifest.txt | cut -d $'\t' -f 2)
+name=$(grep $(basename $barcode_dir) ${manifest} | cut -d $'\t' -f 2)
 
 # Output directories
 gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
