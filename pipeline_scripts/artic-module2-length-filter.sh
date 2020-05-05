@@ -59,6 +59,12 @@ echo_log() {
         # print to log file (after removing color strings)
         echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
+#===================================================================================================
+# Sequencing run directory
+#===================================================================================================
+
+# sequencing run directory
+sequencing_run=$(dirname $(dirname $(dirname "$barcode_dir")))
 
 #===================================================================================================
 # QUALITY CHECKING
