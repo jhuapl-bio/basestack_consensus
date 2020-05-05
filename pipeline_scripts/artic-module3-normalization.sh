@@ -164,7 +164,7 @@ $scheme_dir/$protocol/nCoV-2019.reference.fasta \
 $gather_dir/${name}_${barcode}.fastq > $normalize_dir/${name}_${barcode}/$align_out
 
 samtools sort "$align_out" > ${align_out%.sam}.bam"
-samtools depth "${align_out%.sam}.bam" > "${align_out%.sam}.depth"
+samtools depth -a -d 0 "${align_out%.sam}.bam" > "${align_out%.sam}.depth"
 
 # normalization, txt file output went to working directory
 out_sam=$normalize_dir/${name}_${barcode}/${name}_${barcode}.covfiltered.sam
@@ -179,7 +179,7 @@ $JAVA_PATH/java \
 $samtools_path/samtools fastq $out_sam > $normalize_dir/${name}_${barcode}/${name}_${barcode}.covfiltered.fq
 
 samtools sort "$out_sam" > ${out_sam%.sam}.bam"
-samtools depth "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth"
+samtools depth -a -d 0 "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth"
 
 done < "${manifest}"
     
