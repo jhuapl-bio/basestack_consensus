@@ -1,0 +1,23 @@
+﻿case,description,status
+1,near depth threshold,Maybe
+2,allele in negative control,Maybe
+3,mixed variant in illumina,Maybe
+4,illumina variant callers disagree,Maybe
+5,illumina/ont allele frequency mismatch,Maybe
+6,mixed variant validated by illumina,Yes
+7,low freq samtools-only variant,Yes
+8,variant only on one strand,Yes
+9,medium freq samtools-only variant invalidated by illumina,Yes
+10,no evidence for medium freq samtools-only variant,Yes*
+11,misc variant with ont mismatch,Maybe
+12,ignore high maf in homopolymer region,Yes
+13,misc mixed variant,Maybe
+14,low freq variant not in consensus,Yes
+15,low freq variant in consensus,Maybe
+16,medium frequency variant,Yes*
+17,misc high minor allele frequency,Maybe
+18,misc strand bias,Maybe
+19,ambig in key position,Yes*
+20,new position validated by illumina,Yes
+21,new position with no illumina data,Yes*
+22,no flags,Yes
