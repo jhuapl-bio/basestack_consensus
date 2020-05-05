@@ -97,7 +97,7 @@ important_positions <- read.table(paste0(run_path,"/../clade_related_snps.txt"),
 if(length(list.files(run_path, "throughput*", full.names=TRUE)) > 0) {
 	throughput <-read_csv(list.files(run_path, "throughput*", full.names=TRUE))
 } else {
-	throughput <- data.frame('Experiment.Time..minutes.' = seq(1,2), 'Reads' = rep(2,2), 'Basecalled.Reads.Passed' = rep(1,2), 'Basecalled.Reads.Failed' = rep(1,2))
+	throughput <- NULL
 }
 # pipeline output files
 #read_lengths <- read.table(paste0(run_path,"/artic-pipeline/run_stats/read_lengths.txt"), sep="\t")
@@ -239,7 +239,12 @@ if(sum(select_many)>0) {
   dimnames(mutation_table_many)[[2]] <- names(mutation_collapse[select_many])
   new_cols <- matrix(mutation_table_many[rownames(mutation_table),], ncol=sum(select_many))
   if(dim(new_cols)[2] > 0) {
-    dimnames(new_cols)[[2]] <- list(sapply(dimnames(mutation_table_many)[[2]], paste0, "*"))
+    if(dim(new_cols)[2] == 1) {
+      new_names <- list(sapply(dimnames(mutation_table_many)[[2]], paste0, "*"))
+    } else {
+      new_names <- sapply(dimnames(mutation_table_many)[[2]], paste0, "*")
+    }
+    dimnames(new_cols)[[2]] <- new_names
     mutation_table <- cbind(mutation_table, new_cols)
   }
   
@@ -248,7 +253,11 @@ if(sum(select_many)>0) {
   dimnames(mutation_bool_many)[[2]] <- names(mutation_collapse[select_many])
   new_cols <- matrix(mutation_bool_many[rownames(mutation_bool),], ncol=sum(select_many))
   if(dim(new_cols)[2] > 0) {
-    dimnames(new_cols)[[2]] <- list(sapply(dimnames(mutation_table_many)[[2]], paste0, "*"))
+    if(dim(new_cols)[2] == 1) {
+      new_names <- list(sapply(dimnames(mutation_table_many)[[2]], paste0, "*"))
+    } else {
+      new_names <- sapply(dimnames(mutation_table_many)[[2]], paste0, "*")
+    }
     mutation_bool <- cbind(mutation_bool, new_cols)
   }
 }
@@ -304,9 +313,9 @@ names(annotation_colors$SnpEff) <- "none" # list(levels(annotation_snp$SnpEff))
 # define R functions used
 plot_reads_over_time <- function() {
   
-  a <- data.frame(time=throughput$Experiment.Time..minutes., type='total', count=throughput$Reads)
-  b <- data.frame(time=throughput$Experiment.Time..minutes., type='passed', count=throughput$Basecalled.Reads.Passed)
-  c <- data.frame(time=throughput$Experiment.Time..minutes., type='failed', count=throughput$Basecalled.Reads.Failed)
+  a <- data.frame(time=throughput$`Experiment Time (minutes)`, type='total', count=throughput$Reads)
+  b <- data.frame(time=throughput$`Experiment Time (minutes)`, type='passed', count=throughput$`Basecalled Reads Passed`)
+  c <- data.frame(time=throughput$`Experiment Time (minutes)`, type='failed', count=throughput$`Basecalled Reads Failed`)
   
   df2 <- rbind(a, b, c)
   
@@ -405,7 +414,7 @@ depth_heatmap <- function(plot_sel, title_additional, norm=F) {
   plot_dat <- log10(plot_dat)
   rownames(plot_dat) <- sample_barcodes
   
-  sample_sel <- summary$Sample %in% gsub("(_NB[0-9]{2})?(\\*)?", "", rownames(plot_dat))
+  sample_sel <- summary$Sample %in% gsub("(_NB[0-9]{2})?(\\*)?", "", sample_barcodes)
 
   pheatmap(as.data.frame(plot_dat),
            cluster_rows=FALSE, cluster_cols=FALSE,
@@ -415,7 +424,7 @@ depth_heatmap <- function(plot_sel, title_additional, norm=F) {
            border_color=NA,
            labels_row=levels(plot_dat[,1]),
            labels_col="",
-           annotation_row=annotation_sample[sample_sel],
+           annotation_row=subset(annotation_sample, sample_sel),
            annotation_colors=list(Flag = flagColors[flagColors != flagColors["NA"]])
         )
 }
@@ -712,7 +721,9 @@ pandoc.table(summary, split.cells = c(3,2,7,4,6,1,1), split.table = Inf,
 
 ## Reads over time
 ```{r, reads-time, echo=FALSE, fig.height=3}
-plot_reads_over_time()
+if(!is.null(throughput)) {
+  plot_reads_over_time()
+}
 ```
 
 ## Quality scores
