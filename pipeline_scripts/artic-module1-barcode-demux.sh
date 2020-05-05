@@ -185,8 +185,7 @@ fi
     
 if [ -s $demux_dir/1-barcode-demux.complete ]; then
     while read name barcode; do
-        echo submit module_2 $demux_dir/$name
-        #        
+        echo_log executing <submit_module2>.py artic-module2-length-filter.sh "$demux_dir"/"$name"       
         #python <submit_module2.py>
     done < $manifest
 fi
