@@ -67,46 +67,53 @@ def generate_postfilter_summary(rundir):
             for pos in var.pos:
                 tmp = var[var.pos==pos]
                 tmp = tmp.replace('.',np.nan)
+                data = tmp.to_dict('records')[0]
                 
                 # get all the flags (for status determination)
                 # and get only flags to print
                 
                 # replace flags with abbreviated versions
-                for colname in ['depth_flag','ntc_flag','new_flag','sb_flag','key_flag']:
-                    if not pd.isna(tmp[colname].values[0]):
-                        tmp.loc[tmp[colname].str.contains('depth'), colname] = 'depth'
-                        tmp.loc[tmp[colname].str.contains('NTC'), colname] = 'NTC'
-                        tmp.loc[tmp[colname].str.contains('nextstrain'), colname] = 'new'
-                        tmp.loc[tmp[colname].str.contains('key'), colname] = 'key'
-                        tmp.loc[tmp[colname].str.contains('strand bias'), colname] = 'SB'
-                if any(not pd.isna(tmp[maf].values[0]) for maf in ['maf_flag','mixed_flag']):
-                    tmp['maf_flag']='MAF'
+                for key in ['depth_flag','ntc_flag','new_flag','sb_flag','key_flag']:
+                    if not pd.isna(data[key]):
+                        if 'depth' in data[key]:
+                            data[key]='depth'
+                        elif 'NTC' in data[key]:
+                            data[key]='NTC'
+                        elif 'nextstrain' in data[key]:
+                            data[key]='new'
+                        elif 'strand bias' in data[key]:
+                            data[key]='SB'
+                if any(not pd.isna(data[key]) for key in ['maf_flag','mixed_flag']):
+                    data['maf_flag']='MAF'
                         
+                # update illumina support to produce flags only if no/maybe/mixed
+                data['ill']=np.nan
+                if not pd.isna(data['illumina_support']):
+                    if data['in_consensus'] and not data['illumina_support']=='yes':
+                        data['ill']='ill'
+                    elif data['in_consensus']==False and not data['illumina_support']=='no':
+                        data['ill']='ill'
                 
-                allflag = tmp[['depth_flag','maf_flag','ntc_flag','new_flag','ont_vc_flag','illumina_vc_flag','sb_flag','key_flag']].apply(lambda x: ', '.join(str(pos)+':'+x.dropna()), axis=1).values[0]
-                stat.append(tmp['status'].values[0])
+                # concatenate all flags together
+                flags_to_join=['depth_flag','ntc_flag','vc_flag','maf_flag','sb_flag','key_flag','new_flag','ill']
+                flag_data = {key: data[key] for key in flags_to_join}
+                allflag = ', '.join([str(pos)+':'+str(x) for x in flag_data.values() if not pd.isna(x)])
+                stat.append(data['status'])
                 
-                if tmp.unambig.values[0] == True:
-                    if not allflag=='':
-                        printflag.append(allflag)
-                    if pd.isna(tmp.ont_vc_flag.values[0]):
-                        snp.append(''.join([tmp.ref.values[0],str(pos),tmp.alt.values[0]]))
+                if not allflag=='':
+                    printflag.append(allflag)
+                
+                if data['unambig']:
+                    if pd.isna(data['vc_flag']):
+                        snp.append(''.join([data['ref'],str(pos),data['alt']]))
                     else:
                         # values that mean this position is not actually a snp in the consensus
                         no_snp = ['mismatch(m)','mismatch(s)','mismatch(m+s)']
-                        if any(mismatch_snp in tmp.ont_vc_flag.values[0] for mismatch_snp in no_snp)==False:
-                            snp.append(''.join([tmp.ref.values[0],str(pos),tmp.alt.values[0]]))
+                        if any(mismatch_snp in data['vc_flag'] for mismatch_snp in no_snp)==False:
+                            snp.append(''.join([data['ref'],str(pos),data['alt']]))
                             
                 else:
-                    if not pd.isna(tmp.ont_vc_flag.values[0]):
-                        printflag.append(str(pos)+':'+tmp.ont_vc_flag.values[0])
-                    if not pd.isna(tmp.illumina_vc_flag.values[0]):
-                        printflag.append(str(pos)+':'+tmp.illumina_vc_flag.values[0])
-                    if not pd.isna(tmp.depth_flag.values[0]):
-                        printflag.append(str(pos)+':'+tmp.depth_flag.values[0])
-                    if not pd.isna(tmp.key_flag.values[0]):
-                        printflag.append(str(pos)+':'+tmp.key_flag.values[0])
-                    snp.append(''.join([tmp.ref.values[0],str(pos),'N']))
+                    snp.append(''.join([data['ref'],str(pos),'N']))
             
             # get the percent coverage for this sample
             complete,nt = is_complete(rundir,prefix)
@@ -166,7 +173,10 @@ def generate_postfilter_summary(rundir):
     df.to_csv(os.path.join(rundir,'postfilt_summary.txt'),sep='\t',index=False)
     
     # output the large table
-    alldata = alldata[['sample','chrom','pos','ref','alt','consensus_base','status','homopolymer','in_consensus','unambig','ont_depth','illumina_depth','ont_depth_thresh','illumina_depth_thresh','ont_AF','illumina_AF','ont_alleles','illumina_alleles','strand_counts','medaka_qual','nanopolish_qual','illumina','min_illumina_depth','maf_flag','mixed_flag','depth_flag','ntc_flag','new_flag','ont_vc_flag','illumina_vc_flag','sb_flag','key_flag']]
+    # get a list of columns
+    cols = list(alldata)
+    cols.insert(0, cols.pop(cols.index('sample')))
+    alldata = alldata.reindex(columns=cols)
     alldata.to_csv(os.path.join(rundir,'postfilt_all.txt'),sep='\t',index=False)
     
 def parse_arguments():
