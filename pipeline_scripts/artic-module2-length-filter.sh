@@ -85,7 +85,7 @@ if [ ! -s ${sequencing_run}/manifest.txt ];then
     exit 1
 fi
 
-if [ ! -d ${sequencing_run}/artic-pipeline/1-barcode-demux];then
+if [ ! -d ${sequencing_run}/artic-pipeline/1-barcode-demux ];then
     >&2 echo "Error Require Module 1-barcode-demux output. Module 1 Output: '${sequencing_run}/artic-pipeline/1-barcode-demux' does not exist"
     exit 1
 fi
@@ -121,7 +121,7 @@ gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
 echo_log "  sequencing run folder: ${CYAN}$sequencing_run${NC}"
-echo_log "recording software version numbers"
+echo_log "Software version and inputs:"
 echo_log "Artic guppyplex from: $(artic --version)"
 echo_log "input barcode directory: ${barcode_dir}"
 echo_log "run manifest file: ${manifest}"
@@ -133,7 +133,7 @@ echo_log "------ processing pipeline output ------"
 # module 2
 #---------------------------------------------------------------------------------------------------
 
-echo_log "Starting artic guppyplex module 2 on $sequencing_run"
+echo_log "Starting artic guppyplex module 2 on $sequencing_run, sample ${name}"
 mkdir -p $gather_dir
 
 artic guppyplex \
