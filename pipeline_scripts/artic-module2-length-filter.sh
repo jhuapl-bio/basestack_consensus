@@ -27,7 +27,7 @@ usage() {
         echo -e ""
         echo -e "OPTIONS:"
         echo -e "   -h      show this message"
-        echo -e "   -i      /full/path/to/normalizd_sample.fq"
+        echo -e "   -i      barcode fastq directory (i.e. /full/path/to/module1/output/barcode)"
         echo -e ""
 }
 
@@ -39,7 +39,7 @@ while getopts "hi:" OPTION
 do
        case $OPTION in
                 h) usage; exit 1 ;;
-                i) sequencing_run=$OPTARG ;;
+                i) barcode_dir=$OPTARG ;;
                 ?) usage; exit ;;
        esac
 done
@@ -79,8 +79,13 @@ if [ ! -s ${sequencing_run}/manifest.txt ];then
     exit 1
 fi
 
-if [ ! -d ${sequencing_run}/artic-pipeline/1-barcode-demux ];then
-    >&2 echo "Error Require module 1-barcode-demux output"
+if [ ! -d ${sequencing_run}/artic-pipeline/1-barcode-demux];then
+    >&2 echo "Error Require Module 1-barcode-demux output. Module 1 Output: '${sequencing_run}/artic-pipeline/1-barcode-demux' does not exist"
+    exit 1
+fi
+
+if [ ! -f ${sequencing_run}/artic-pipeline/1-barcode-demux/1-barcode-demux.complete];then
+    >&2 echo "'1-barcode-demux.complete file' not detected in Module 1 output directory.  Module 1 must complete on all barcodes prior to proceeding to Module 2.."
     exit 1
 fi
 
@@ -93,14 +98,14 @@ fi
 # log file
 logfile=${sequencing_run}/pipeline.log
 
-# input files, these files should be in the sequencing run directory
+# input files, these files should be located in the sequencing run directory
 manifest=${sequencing_run}/manifest.txt
-demux_dir=${sequencing_run}/artic-pipeline/1-barcode-demux
+
+# grabbing sample name from manifest given input barcode directory
+name=$(grep $(basename $barcode_dir) manifest.txt | cut -d $'\t' -f 2)
 
 # Output directories
 gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
-
-# Optional program parameters
 
 
 #===================================================================================================
@@ -112,9 +117,9 @@ echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname
 echo_log "  sequencing run folder: ${CYAN}$sequencing_run${NC}"
 echo_log "recording software version numbers"
 echo_log "Artic guppyplex from: $(artic --version)"
-echo_log "run configuration file: ${sequencing_run}/run_config.txt"
+echo_log "input barcode directory: ${barcode_dir}"
 echo_log "run manifest file: ${manifest}"
-echo_log "inputs: fastq_directory: ${demux_dir}"
+echo_log "sample name extracted from manifest: ${name}"
 echo_log "output gather directory: ${gather_dir}"
 echo_log "------ processing pipeline output ------"
 
@@ -125,20 +130,17 @@ echo_log "------ processing pipeline output ------"
 echo_log "Starting artic guppyplex module 2 on $sequencing_run"
 mkdir -p $gather_dir
 
-while read barcode name; do
-echo_log "${name}_${barcode}"
 artic guppyplex \
 	--skip-quality-check \
 	--min-length 400 \
 	--max-length 700 \
-	--directory "$demux_dir"/"${barcode}" \
+	--directory "${barcode_dir}" \
     --prefix "$gather_dir"/"${name}"
-      
-done < "$manifest"
-    
+
+
 #---------------------------------------------------------------------------------------------------
 
-echo_log "run complete"
+# sciserver at one point needed recursive permission fixes to enable group wide access
 #chgrp -R 5102 $demux_dir
 
 #===================================================================================================
@@ -146,14 +148,14 @@ echo_log "run complete"
 #===================================================================================================
 
 if [ ! -d $gather_dir ];then
-    >&2 echo_log "Error $gather_dir not created"
+    >&2 echo_log "Error: $gather_dir not created"
     exit 1
 fi
 
-#if find "$gather_dir" -maxdepth 0 -empty | read;
-#    echo_log "$gather_dir empty."
-#else
-#    echo_log "Begin submitting module 3"
-#    python <submit_module2>.py
-#fi
-
+if [ ! -f "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq ];then
+    >&2 echo_log "Error: Module 2 output for sample '${name}' not found"
+    exit 1
+else
+  echo_log "Module 2 complete for sample '${name}'"
+  # sciserver_job-submit_module2.py -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq
+fi
