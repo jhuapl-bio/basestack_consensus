@@ -17,6 +17,8 @@ dependencies:
   - xorg-libxrender
   - xorg-libxi
   - imagemagick
+  - hdf5
+  - nano
   - r-knitr
   - r-kableExtra
   - r-pander
@@ -31,3 +33,6 @@ dependencies:
   - r-RColorBrewer
   - r-viridis
   - r-magick
+  - bioconductor-gviz
+  - bioconductor-rtracklayer
+  - bioconductor-trackViewer
