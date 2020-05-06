@@ -66,7 +66,7 @@ def mask_consensus_sites(consensus,mpileup,depth_threshold,outdir,prefix):
             ambig.append(pos)
             continue
         else:
-            rd = cov[pos+1]
+            rd = [cov[pos+1] if (pos+1) in cov.keys() else 0][0]
             if rd < depth_threshold:
                 cons[pos] = 'N'
                 newmask.append(pos)
@@ -151,7 +151,7 @@ def add_key_ambiguous_positions(chrom,variants,cons,depth_threshold,vcf_nextstra
             data['consensus_base']='N'
             data['in_consensus']=False
             data['unambig']=False
-            data['ont_depth']=cov[pos]
+            data['ont_depth']=[cov[pos] if pos in cov.keys() else 0][0]
             data['ont_depth_thresh']=depth_threshold
             data['key_flag']='ambig in key position'
             data['case']=19
