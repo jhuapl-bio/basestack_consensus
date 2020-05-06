@@ -16,7 +16,7 @@ fi
 ntc_bamfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*nanopolish.primertrimmed.rg.sorted.bam"
 
 # save path to nextstrain vcf
-vcf_next="/home/idies/workspace/covid19/nextstrain/latest/alignments.vcf"
+vcf_next="/home/idies/workspace/covid19/nextstrain/latest/alpha/alignments.vcf"
 
 # save path to case definitions
 case_defs="/home/idies/workspace/covid19/code/ncov/pipeline_scripts/variant_case_definitions.csv"
