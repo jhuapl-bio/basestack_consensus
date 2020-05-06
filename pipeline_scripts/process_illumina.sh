@@ -149,6 +149,9 @@ do
     longsamtoolsvcf=`ls $longreaddir/*/artic-pipeline/4-draft-consensus/$longreadsample*.samtools.vcf`
     echo 'Long-read samtoolsvcf: '$longsamtoolsvcf
 
+    longreadmpileup=`ls $longreaddir/*/artic-pipeline/4-draft-consensus/$longreadsample*.mpileup`
+    echo 'Long read mpileup: '$longreadmpileup
+
     samplewithbarcode=$medakavcf
     samplewithbarcode=${samplewithbarcode##*/}
     samplewithbarcode=${samplewithbarcode%%.*}
@@ -205,11 +208,15 @@ do
 	java -cp $BINDIR/VariantValidator/src MergeVariants file_list=$vcffilelist out_file=$allcallersvcf illumina_bam=$bamfile
     fi
 
+    mergedallelefreqvcf=$OUTDIR/$samplewithbarcode.combined_allele_freqs.vcf
+    echo 'VCF with combined allele frequencies: '$mergedallelefreqvcf
+    java -cp $BINDIR/VariantValidator/src AddAlleleFrequencies vcf_file=$allcallersvcf illumina_mpileup=$mpileup ont_mpileup=$longreadmpileup out_file=$mergedallelefreqvcf
+
     if [ -r $freebayesvcf ] && [ -r $ivarvcf ] && [ -r $samtoolsvcf ] && [ -r $nanopolishvcf ] && [ -r $medakavcf ] && [ -r $longsamtoolsvcf ] && [ -r $allcallersvcf ]
     then
         newpath=${medakavcf::-18}.all_callers.combined.vcf
 	echo 'Copying combined vcf to: '$newpath
-        cp $allcallersvcf $newpath
+        cp $mergedallelefreqvcf $newpath
     fi
 
 done
