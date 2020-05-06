@@ -32,7 +32,7 @@ for consfile in $DIR/*nanopolish.consensus.fasta; do
 		echo $samplename
 
 		vcffile=$DIR/$samplename*all_callers.combined.vcf
-		bamfile="$DIR/$samplename*nanopolish.primertrimmed.rg.sorted.bam"
+		mpileup="$DIR/$samplename*mpileup"
 		consensus="$DIR/$samplename*nanopolish.consensus.fasta"
 		prefix=`echo $consensus`
 		prefix=${prefix##*/}
@@ -41,14 +41,14 @@ for consfile in $DIR/*nanopolish.consensus.fasta; do
 		# run script
 		python /home/idies/workspace/covid19/code/ncov/pipeline_scripts/vcf_postfilter.py \
 		--vcffile $vcffile \
-		--bamfile $bamfile \
+		--mpileup $mpileup \
 		--consensus $consensus \
 		--ntc-bamfile $ntc_bamfile \
 		--vcf-nextstrain $vcf_next \
 		--case-defs $case_defs \
 		--ns-snp-threshold 2 \
 		--maf-flag 15 \
-		-o $outdir \
+		--outdir $outdir \
 		--prefix $prefix
 	fi
 done
