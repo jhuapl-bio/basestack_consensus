@@ -6,7 +6,7 @@ import pandas as pd
 
 from samtools_funcs import collect_position_pileup
 
-def depth_near_threshold(depth,pileup,depth_threshold,coverage_flag):
+def depth_near_threshold(depth,depth_threshold,coverage_flag):
     """
     Function that returns a depth flag string if the read depth at a position is
     within a pre-specified percentage of the depth threshold
@@ -24,29 +24,26 @@ def depth_near_threshold(depth,pileup,depth_threshold,coverage_flag):
         return(np.nan)
 
 
-def minor_allele_freq(depth,pileup,alt,maf_flag,hold_flag):
+def minor_allele_freq(depth,alt_allele_freq,maf_flag,hold_flag):
     """
     Function that returns a MAF flag string if the cumulative minor allele frequency
     at a position is higher than a pre-specified value and indicates if the position
     is a candidate within host variant, or a potentially worrisome mixed position
     """
     
-    # determine the allele frequency of the listed alt allele
-    AF = float(pileup.count(alt)/depth)
-    
     # convert the flag thresholds to decimals
     maf = maf_flag/100.0
     hold = hold_flag/100.0
     
     # the case that there are no flags
-    if AF<maf or AF>(1-maf):
-        return(AF,np.nan,np.nan)
+    if alt_allele_freq<maf or alt_allele_freq>(1-maf):
+        return(np.nan,np.nan)
     
     # if there are flags, distinguish between the isnv and mixed scenarios
-    if maf<=AF<hold or (1-hold)<AF<=(1-maf):
-        return(AF,'%0.2f<maf<%0.2f' % (maf,hold),np.nan)
-    elif hold<=AF<=(1-hold):
-        return(AF,np.nan,'mixed position')
+    if maf<=alt_allele_freq<hold or (1-hold)<alt_allele_freq<=(1-maf):
+        return('%0.2f<maf<%0.2f' % (maf,hold),np.nan)
+    elif hold<=alt_allele_freq<=(1-hold):
+        return(np.nan,'mixed position')
 
 
 def allele_in_ntc(pos,alt,depth,ntc_bamfile,snp_depth_factor):
@@ -133,35 +130,38 @@ def variant_caller_mismatch(supp_vec):
         sys.exit('%s is not a valid support vector' % supp_vec)
 
 
-def strand_bias_detected(strandAF,strand_threshold):
+def strand_bias_detected(info,alt,strand_threshold):
     """ 
     Function that returns a flag string if a variant is called unequally on the forward and reverse strands
     strandAF order is: positive alts, total positive reads, negative alts, total negative reads
     """
     
-    # parse the strandAF string
-    strandAF = [int(x) for x in strandAF.split(',')]
+    pos_alleles = info['POSITIVE_STRAND_FREQUENCIES']
+    neg_alleles = info['NEGATIVE_STRAND_FREQUENCIES']
     
-    # get frequency for each strand
-    if strandAF[1]>0:
-        posAF = float(strandAF[0]/strandAF[1])*100
-    else:
-        posAF=0.0
+    pos_alleles = [int(x) for x in pos_alleles.split(',')]
+    neg_alleles = [int(x) for x in neg_alleles.split(',')]
     
-    if strandAF[3]>0:
-        negAF = float(strandAF[2]/strandAF[3])*100
-    else:
-        negAF=0.0
+    # get the alternate allele frequency on each strand
+    idx = ['A','C','G','T','N','O'].index(alt)
+    posAF = [float(pos_alleles[idx]/sum(pos_alleles)) if sum(pos_alleles)>0 else 0.0][0]
+    negAF = [float(neg_alleles[idx]/sum(neg_alleles)) if sum(neg_alleles)>0 else 0.0][0]
+    
+    # get the strand counts on each strand
+    strand_counts = [pos_alleles[idx],sum(pos_alleles),neg_alleles[idx],sum(neg_alleles)]
+    strand_counts = ','.join(str(x) for x in strand_counts)
+    
+    strand_threshold = strand_threshold/100.0
     
     # compare frequencies to threshold
     if (posAF<strand_threshold) and (negAF<strand_threshold):
-        return(np.nan) # no bias if both are low frequency
+        return(np.nan,strand_counts) # no bias if both are low frequency
     elif posAF<strand_threshold:
-        return('strand bias: low +AF')
+        return('strand bias: low +AF',strand_counts)
     elif negAF<strand_threshold:
-        return('strand bias: low -AF')
+        return('strand bias: low -AF',strand_counts)
     else:
-        return(np.nan) # no bias if both are high frequency
+        return(np.nan,strand_counts) # no bias if both are high frequency
 
 
 def ambig_in_key_position(pos,vcf_nextstrain,cons):
