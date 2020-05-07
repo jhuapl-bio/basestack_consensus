@@ -232,12 +232,12 @@ mutation_collapse[select_many] <- paste(mutation_counts[select_many], "SNPs")
 postfilt <- postfilt[,!(names(postfilt) %in% "Flagged.Positions")]
 
 # remove any outlier samples from mutation table
-mutation_table <- subset(mutation_no_low_coverage, subset=rowSums(mutation_no_low_coverage[,!select_many] != "") != 0, select=!select_many)
-mutation_bool <- subset(mutation_no_low_coverage_bool, subset=rowSums(mutation_no_low_coverage_bool[,!select_many] > 0) != 0, select=!select_many)
+mutation_table <- subset(mutation_no_low_coverage, subset=rowSums(subset(mutation_no_low_coverage, select=!select_many) != "") != 0, select=!select_many)
+mutation_bool <- subset(mutation_no_low_coverage_bool, subset=rowSums(subset(mutation_no_low_coverage_bool, select=!select_many) > 0) != 0, select=!select_many)
 samples_with_asterisks <- dimnames(mutation_table)[[2]]
 if(sum(select_many)>0) {
   mutation_table_many <- subset(mutation_no_low_coverage, select=select_many)
-  new_cols <- subset(mutation_no_low_coverage, subset=rowSums(mutation_no_low_coverage[,!select_many] > 0) != 0, select=select_many)
+  new_cols <- subset(mutation_no_low_coverage, subset=rowSums(subset(mutation_no_low_coverage, select=!select_many) > 0) != 0, select=select_many)
   if(dim(new_cols)[2] > 0) {
     if(dim(new_cols)[2] == 1) {
       new_names_with_asterisks <- list(sapply(dimnames(mutation_table_many)[[2]], paste0, "*"))
@@ -250,7 +250,7 @@ if(sum(select_many)>0) {
   }
   
   mutation_bool_many <- subset(mutation_no_low_coverage_bool, select=select_many)
-  new_cols <- subset(mutation_no_low_coverage_bool, subset=rowSums(mutation_no_low_coverage_bool[,!select_many] > 0) != 0, select=select_many)
+  new_cols <- subset(mutation_no_low_coverage_bool, subset=rowSums(subset(mutation_no_low_coverage_bool, select=!select_many) > 0) != 0, select=select_many)
   if(dim(new_cols)[2] > 0) {
     dimnames(new_cols)[[2]] <- dimnames(mutation_bool_many)[[2]]
     mutation_bool <- cbind(mutation_bool, new_cols)
