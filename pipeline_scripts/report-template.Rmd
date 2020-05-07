@@ -3,7 +3,7 @@ title: "SARS-CoV-2 Run Report"
 author: "Plate <PLATE>, Row <ROW>"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 params:
-  path: "/home/tom/data/ref/ncov/sequencing_runs/20200423_2326_MN22437_FAN26114_3c2b7763"
+  path: "<RUN_PATH>"
 always_allow_html: true
 output:
   pdf_document:
