@@ -110,7 +110,7 @@ run_configuration="${sequencing_run}/run_config.txt"
 gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
 
 # log file
-logfile=${sequencing_run}/pipeline.log
+logfile=${sequencing_run}/artic-pipeline/pipeline.log
 
 # reference sequence
 reference="$scheme_dir/$protocol/nCoV-2019.reference.fasta"

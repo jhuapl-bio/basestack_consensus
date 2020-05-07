@@ -115,7 +115,7 @@ fi
 software_path=/home/idies/workspace/covid19/code
 
 # log file
-logfile=${sequencing_run}/pipeline.log
+logfile=${sequencing_run}/artic-pipeline/pipeline.log
 
 # input files, these files should be in the sequencing run directory
 manifest=${sequencing_run}/manifest.txt

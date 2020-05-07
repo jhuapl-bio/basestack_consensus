@@ -102,7 +102,7 @@ fi
 # location of programs used by pipeline
 
 # log file
-logfile=${sequencing_run}/pipeline.log
+logfile=${sequencing_run}/artic-pipeline/pipeline.log
 
 # input files, these files should be located in the sequencing run directory
 manifest=${sequencing_run}/manifest.txt

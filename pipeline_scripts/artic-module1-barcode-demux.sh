@@ -113,7 +113,7 @@ software_path=/home/idies/workspace/covid19/code
 guppy_barcoder_path=${software_path}/ont-guppy-cpu/bin
 
 # log file
-logfile=${sequencing_run}/pipeline.log
+logfile=${sequencing_run}/artic-pipeline/pipeline.log
 
 # input files, these files should be in the sequencing run directory
 run_configuration="${sequencing_run}/run_config.txt"
