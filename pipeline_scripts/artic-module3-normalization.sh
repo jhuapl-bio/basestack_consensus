@@ -1,6 +1,5 @@
 #!/bin/bash
 source /home/idies/workspace/covid19/bashrc
-#. "/home/idies/workspace/Storage/ernluaw1/persistent/Miniconda3/etc/profile.d/conda.sh"
 conda activate artic-ncov2019-medaka
 
 #---------------------------------------------------------------------------------------------------
@@ -28,10 +27,8 @@ usage() {
 	echo -e ""
 	echo -e "OPTIONS:"
 	echo -e "   -h      show this message"
-	echo -e "   -i      path/to/sequencing run folder"
+	echo -e "   -i      path to 2-length-filter fastq file (i.e. full/path/sequencing_run/artic-pipeline/2-length-filter/<sample>.fq)"
     echo -e "   -t      number of threads"
-	#echo -e "   -b      repository path (working on calculating this directly)"
-	#echo -e "   -1      barcode demux folder (default: ${CYAN}<run-folder>/artic-pipeline/3-normalization${NC})"
 	echo -e ""
 }
 
@@ -42,10 +39,8 @@ while getopts "hi:t:" OPTION
 do
 	case $OPTION in
 		h) usage; exit 1 ;;
-		i) sequencing_run=$OPTARG ;;
+		i) fastq=$OPTARG ;;
         t) threads=$OPTARG ;;
-		#b) bin_path=$OPTARG ;;
-		#1) demux_path=$OPTARG ;;
 		?) usage; exit ;;
 	esac
 done
@@ -76,23 +71,25 @@ echo_log() {
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -d ${sequencing_run} ];then
-    >&2 echo "Error Sequencing run ${sequencing_run} does not exist"
+sequencing_run=$(dirname $(dirname $(dirname "$fastq")))
+
+if [ ! -s ${fastq} ];then
+    >&2 echo_log "Error Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
 
 if [ ! -s ${sequencing_run}/run_config.txt ];then
-    >&2 echo "Error Require a run_config.txt file in the sequencing run directory"
+    >&2 echo_log "Error Require a run_config.txt file in the sequencing run directory"
     exit 1
 fi
 
 if [ ! -s ${sequencing_run}/manifest.txt ];then
-    >&2 echo "Error Require a manifest.txt file in the sequencing run directory"
+    >&2 echo_log "Error Require a manifest.txt file in the sequencing run directory"
     exit 1
 fi
 
-if [ ! -d ${sequencing_run}/artic-pipeline/2-length-filter ];then
-    >&2 echo "Error Require module 2-length-filter output"
+if [ ! -s $fastq ];then
+    >&2 echo_log "Error: Module 2 output '${fastq}' not found"
     exit 1
 fi
 
@@ -106,24 +103,31 @@ JAVA_PATH="${software_path}/jdk-14.0.1/bin"
 samtools_path="${software_path}/samtools-1.10/bin"
 NormalizeCoveragePath="${software_path}/CoverageNormalization"
 
-# log file
-logfile=${sequencing_run}/pipeline.log
-
-# input files, these files should be in the sequencing run directory
+# input files and directories
+base=$(basename "${fastq%.fastq}")
 manifest=${sequencing_run}/manifest.txt
 run_configuration="${sequencing_run}/run_config.txt"
 gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
 
+# log file
+logfile=${sequencing_run}/pipeline.log
+
+# reference sequence
+reference="$scheme_dir/$protocol/nCoV-2019.reference.fasta"
+
 # location for primer schemes
-scheme_dir=${software_path}/artic-ncov2019/primer_schemes
+scheme_dir="$software_path/artic-ncov2019/primer_schemes"
 
 # primer protocol
-protocol=$(awk '/primers/{ print $2 }' "${run_configuration}")
+protocol=$(awk '/primers/{ print $2 }' "${sequencing_run}/run_config.txt")
+
+# reference fasta
+reference="$scheme_dir/$protocol/nCoV-2019.reference.fasta"
 
 # Output directories
-normalize_dir=${sequencing_run}/artic-pipeline/3-normalization
+normalize_dir="${sequencing_run}/artic-pipeline/3-normalization/$base"
 
-# Optional program parameters
+# Optional program parameters - check with Tom , even_strand or median_strand
 norm_parameters="coverage_threshold=150 --qual_sort --even_strand" 
 
 #===================================================================================================
@@ -146,62 +150,55 @@ echo_log "------ processing pipeline output ------"
 # module 3
 #---------------------------------------------------------------------------------------------------
 
-echo_log "Starting normalize module 3 $sequencing_run"
-
-while read barcode name; do
+echo_log "Starting normalize module 3 ${sequencing_run}"
 
 # create output directories, need separate directories for each sample 
-mkdir -p $normalize_dir/${name}_${barcode}
-cd $normalize_dir/${name}_${barcode}
+mkdir -p $normalize_dir
+cd $normalize_dir
 
 # create alignment file
-align_out=${name}_${barcode}.sam
+align_out="$normalize_dir/$base.sam"
+echo $align_out
 
 minimap2 -a \
--x map-ont \
--t $threads \
-$scheme_dir/$protocol/nCoV-2019.reference.fasta \
-$gather_dir/${name}_${barcode}.fastq > $normalize_dir/${name}_${barcode}/$align_out
+	-x map-ont \
+	-t 32 \
+	"$reference" \
+	"$fastq" > "$align_out"
 
-samtools sort "$align_out" > ${align_out%.sam}.bam"
+samtools sort $align_out > ${align_out%.sam}.bam
 samtools depth -a -d 0 "${align_out%.sam}.bam" > "${align_out%.sam}.depth"
 
 # normalization, txt file output went to working directory
-out_sam=$normalize_dir/${name}_${barcode}/${name}_${barcode}.covfiltered.sam
+out_sam="${align_out%.sam}.covfiltered.sam"
 
 $JAVA_PATH/java \
 	-cp $NormalizeCoveragePath/src \
 	NormalizeCoverage \
-	input=$normalize_dir/${name}_${barcode}/$align_out \
+	input="$align_out" \
 	$norm_parameters
 
 # fastq conversion
-$samtools_path/samtools fastq $out_sam > $normalize_dir/${name}_${barcode}/${name}_${barcode}.covfiltered.fq
+samtools fastq "${out_sam}" > "${out_sam%.sam}.fq"
 
-samtools sort "$out_sam" > ${out_sam%.sam}.bam"
+samtools sort "${out_sam}" > "${out_sam%.sam}.bam"
 samtools depth -a -d 0 "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth"
 
-done < "${manifest}"
-    
 #---------------------------------------------------------------------------------------------------
 
-echo_log "run complete"
 #chgrp -R 5102 $demux_dir
 
 #===================================================================================================
 # QUALITY CHECKING AND MODULE 4 JOB SUBMISSION
 #===================================================================================================
 
-if [ ! -d $normalize_dir ];then
-    >&2 echo_log "Error $normalize_dir not created"
+if [ ! -f "${out_sam%.sam}.fq" ];then
+    >&2 echo_log "Error: Module 3 output "${out_sam%.sam}.fq" not found"
     exit 1
+else
+  echo_log "Module 3 complete for sample '${base}'"
+  # sciserver_job-submit_module4.py -i "${out_sam%.sam}.fq -t 6
 fi
 
-#if find "$normalize_dir" -maxdepth 0 -empty | read;
-#    echo_log "$normalize_dir" empty."
-#else
-#    echo_log "Begin submitting module 3"
-#    python <submit_module2>.py
-#fi
 
 

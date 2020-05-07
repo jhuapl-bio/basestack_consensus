@@ -81,6 +81,10 @@ if ! [[ -d "$run_path" ]]; then
 	exit
 fi
 
+if [[ -z "$out_file" ]]; then
+	out_file="$run_path/artic-pipeline/run_stats/$(basename $run_path)-report.pdf"
+fi
+
 if ! [[ -s "$run_info" ]]; then
 	run_info="$run_path/run_info.txt"
 	if ! [[ -s "$run_info" ]]; then

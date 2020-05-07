@@ -301,14 +301,10 @@ levels(annotation_snp$common.SNP) = c("other", "common")
 annotation_snp$SnpEff <- factor(snpeff_annotations, levels = c(levels(snpeff_report$ANN), "none"))
 
 # create color object for annotations
-if(length(levels(snpeff_report$ANN)) >= 3) {
-	snpeff_colors <- c(brewer.pal(n=length(levels(snpeff_report$ANN)), name="Dark2"), "white")
-} else {
-	snpeff_colors <- rep("gray50", length(levels(snpeff_report$ANN)))
-}
+cols <- brewer.pal(n=5, name="Dark2")
+snpeff_colors <- c("downstream_gene_variant" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "upstream_gene_variant" = cols[5], "stop_gained" = cols[4], "none" = "white")
 annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]], common.SNP = c("common"="#000000", "other"="#FFFFFF"), Variants = c("#FFFFFF", "gray30", "gray70"), SnpEff = snpeff_colors)
 
-names(annotation_colors$SnpEff) <- "none" # list(levels(annotation_snp$SnpEff))
 #-------------------------------------------------
 ```
 
