@@ -3,7 +3,7 @@ title: "SARS-CoV-2 Run Report"
 author: "Plate <PLATE>, Row <ROW>"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 params:
-  path: "<RUN_PATH>"
+  path: "/home/tom/data/ref/ncov/sequencing_runs/20200423_2326_MN22437_FAN26114_3c2b7763"
 always_allow_html: true
 output:
   pdf_document:
@@ -289,7 +289,8 @@ annotation_sample$Flag <- factor(annotation_sample$Flag, levels = c("Yes", "Yes*
 
 # add SNP annotations
 snpeff_annotations <- rep("none", length(combined_rows))
-snpeff_annotations[combined_rows %in% snpeff_report$POS] <- as.character(snpeff_report$ANN[snpeff_report$POS %in% combined_rows])
+snpeff_options <- snpeff_report[snpeff_report$POS %in% combined_rows, c(2,6)]
+snpeff_annotations[combined_rows %in% snpeff_report$POS] <- as.character(unique(snpeff_options)[,2])
 annotation_snp <- data.frame(common.SNP = combined_rows %in% important_positions$POS, SnpEff = snpeff_annotations)
 rownames(annotation_snp) <- combined_rows
 annotation_snp$common.SNP <- factor(annotation_snp$common.SNP)
@@ -297,8 +298,8 @@ levels(annotation_snp$common.SNP) = c("other", "common")
 annotation_snp$SnpEff <- factor(snpeff_annotations, levels = c(levels(snpeff_report$ANN), "none"))
 
 # create color object for annotations
-cols <- brewer.pal(n=5, name="Dark2")
-snpeff_colors <- c("downstream_gene_variant" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "upstream_gene_variant" = cols[5], "stop_gained" = cols[4], "none" = "white")
+cols <- brewer.pal(n=6, name="Dark2")
+snpeff_colors <- c("downstream_gene_variant" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "upstream_gene_variant" = cols[5], "stop_gained" = cols[4], "start_lost" = cols[6], "none" = "white")
 annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]], common.SNP = c("common"="#000000", "other"="#FFFFFF"), Variants = c("#FFFFFF", "gray30", "gray70"), SnpEff = snpeff_colors)
 
 #-------------------------------------------------
@@ -501,24 +502,28 @@ plot_homoplasy_heatmap <- function() {
   
   plot_matrix <- mutation_bool
 
-  sample_sel <- summary$Sample %in% dimnames(plot_matrix)[[2]]
-  snp_sel <- dimnames(annotation_snp)[[1]] %in% dimnames(plot_matrix)[[1]]
-
-  pheatmap(plot_matrix,
-          labels_col=samples_with_asterisks,
-          labels_row=dimnames(plot_matrix)[[1]],
-          col=annotation_colors$Variants,
-          ylab="mutation position",
-          fontsize_row=8, fontsize_col=10,
-          margins=c(10,5),
-          legend=FALSE,
- #         legend_breaks=c(0,1,2),
- #         legend_labels=c("Wuhan-Hu-1","Variant","Ambiguous"),
-          annotation_col=subset(annotation_sample, sample_sel),
-          annotation_row=subset(annotation_snp, snp_sel),
-          annotation_colors=annotation_colors
-          )
-  grid.text("Variant position (nucleotide)", x=0.83, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
+  if(dim(plot_matrix)[1] == 0) {
+    cat("\nError: all samples are registering as outliers. Plot will not display.\n")
+  } else {
+    sample_sel <- summary$Sample %in% dimnames(plot_matrix)[[2]]
+    snp_sel <- dimnames(annotation_snp)[[1]] %in% dimnames(plot_matrix)[[1]]
+  
+    pheatmap(plot_matrix,
+            labels_col=samples_with_asterisks,
+            labels_row=dimnames(plot_matrix)[[1]],
+            col=annotation_colors$Variants,
+            ylab="mutation position",
+            fontsize_row=8, fontsize_col=10,
+            margins=c(10,5),
+            legend=FALSE,
+   #         legend_breaks=c(0,1,2),
+   #         legend_labels=c("Wuhan-Hu-1","Variant","Ambiguous"),
+            annotation_col=subset(annotation_sample, sample_sel),
+            annotation_row=subset(annotation_snp, snp_sel),
+            annotation_colors=annotation_colors
+            )
+    grid.text("Variant position (nucleotide)", x=0.83, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
+  }
 }
 #-------------------------------------------------
 draw_flag_table2 <- function(dt) {
@@ -805,19 +810,8 @@ if(sum(select_many) > 0) {
 }
 ```
 
-## Nextstrain
-
-### Nextstrain tanglegram
-<!-- ![](`r "/home/tom/data/ref/ncov/sequencing_runs/1-GLOBAL_MDHP_tanglegram.png"`) -->
-
-### Nextstrain global transmission
-<!-- ![](`r "/home/tom/data/ref/ncov/sequencing_runs/0-GLOBAL_Transmission_map.png"`) -->
-
-### MDHP-only time tree
-<!-- ![](`r "/home/tom/data/ref/ncov/sequencing_runs/2-MDHP_AA_MUTS_tree.png"`) -->
-
-### MDHP-only divergence tree
-<!-- ![](`r "/home/tom/data/ref/ncov/sequencing_runs/3-MDHP_AA_MUTS_divergence.png"`) -->
+## Neighbor-joining trees
+(under construction)
 
 # Flags
 \label{sec:flags}
