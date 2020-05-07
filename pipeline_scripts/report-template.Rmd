@@ -196,18 +196,18 @@ for(i in 1:length(flagList)){
 summary$Consensus <- factor(summary$Consensus, levels = c("Yes", "Yes*", "Maybe", "No", "NA"))
 summary$Raw.Reads <- paste0(summary$Raw.Reads, " (", sprintf("%0.1f", 100*as.numeric(gsub(",", "", summary$Raw.Reads))/sum(as.numeric(gsub(",", "", summary$Raw.Reads)))),"%)")
 summary$Depth <- rep("NA", dim(summary)[1])
-summary$Depth[summary$Barcode != "uncalled"] <- c(paste0(format(round(tapply(depth_all[,4],depth_all[,1], sum)/29903, 0), big.mark=",", trim=T), "x"))
+summary$Depth[!uncalled_row] <- c(paste0(format(round(tapply(depth_all[,4],factor(depth_all[,1], levels=sample_barcodes), sum)/29903, 0), big.mark=",", trim=T), "x"))
 summary$Coverage <- sapply(as.matrix(summary$Coverage), function(s) { return(strsplit(s, " ")[[1]][1] )})
 summary$Lineage <- rep("", dim(summary)[1])
 if(dim(clade_report)[1]>0) {
-  summary$Lineage[clade_report$taxon %in% summary$Sample] <- as.matrix(clade_report$lineage)
+  summary$Lineage[clade_report$taxon %in% sample_barcodes] <- as.matrix(clade_report$lineage)
 }
 summary <- summary[,c("Sample", "Barcode", "Raw.Reads", "Coverage", "Depth", "Consensus", "Lineage")]
 levels(summary$Consensus) <- paste0(colorlevels(levels(summary$Consensus), FALSE), "{", levels(summary$Consensus), "}")
 names(summary) <- gsub("\\.", " ", names(summary))
 
 # identify low coverage regions
-threshold <- postfilt_all$depth_thresh[1]
+threshold <- postfilt_all$ont_depth_thresh[1]
 below_threshold <- function(v) { return(v<threshold) }
 amplicon_region <- depth_norm[,3] >= 55 & depth_norm[,3]<=29836
 low_coverage_regions <- tapply(depth_norm[amplicon_region,4], depth_norm[amplicon_region,1], below_threshold)
@@ -232,15 +232,11 @@ mutation_samples <- sapply(names(mutation_collapse), function(s){ return(strspli
 postfilt <- postfilt[,!(names(postfilt) %in% "Flagged.Positions")]
 
 # remove any outlier samples from mutation table
-mutation_table <- mutation_no_low_coverage[,!select_many]
-mutation_table <- mutation_table[rowSums(mutation_table != "") != 0,]
-mutation_bool <- mutation_no_low_coverage_bool[,!select_many]
-mutation_bool <- mutation_bool[rowSums(mutation_bool > 0) != 0,]
+mutation_table <- subset(mutation_no_low_coverage, subset=rowSums(mutation_no_low_coverage != "") != 0, select=!select_many)
+mutation_bool <- subset(mutation_no_low_coverage_bool, subset=rowSums(mutation_no_low_coverage_bool > 0) != 0, select=!select_many)
 if(sum(select_many)>0) {
-  mutation_table_many <- matrix(mutation_no_low_coverage[,select_many], ncol=sum(select_many))
-  dimnames(mutation_table_many)[[1]] <- rownames(mutation_no_low_coverage)
-  dimnames(mutation_table_many)[[2]] <- names(mutation_collapse[select_many])
-  new_cols <- matrix(mutation_table_many[rownames(mutation_table),], ncol=sum(select_many))
+  mutation_table_many <- subset(mutation_no_low_coverage, select=select_many)
+  new_cols <- subset(mutation_no_low_coverage, subset=rowSums(mutation_no_low_coverage > 0) != 0, select=select_many)
   if(dim(new_cols)[2] > 0) {
     if(dim(new_cols)[2] == 1) {
       new_names <- list(sapply(dimnames(mutation_table_many)[[2]], paste0, "*"))
@@ -251,27 +247,30 @@ if(sum(select_many)>0) {
     mutation_table <- cbind(mutation_table, new_cols)
   }
   
-  mutation_bool_many <- matrix(mutation_no_low_coverage_bool[,select_many], ncol=sum(select_many))
-  dimnames(mutation_bool_many)[[1]] <- rownames(mutation_no_low_coverage_bool)
-  dimnames(mutation_bool_many)[[2]] <- names(mutation_collapse[select_many])
+  mutation_bool_many <- subset(mutation_no_low_coverage_bool, select=select_many)
   new_cols <- matrix(mutation_bool_many[rownames(mutation_bool),], ncol=sum(select_many))
   if(dim(new_cols)[2] > 0) {
     if(dim(new_cols)[2] == 1) {
-      new_names <- list(sapply(dimnames(mutation_table_many)[[2]], paste0, "*"))
+      new_names <- list(sapply(dimnames(mutation_bool_many)[[2]], paste0, "*"))
     } else {
-      new_names <- sapply(dimnames(mutation_table_many)[[2]], paste0, "*")
+      new_names <- sapply(dimnames(mutation_bool_many)[[2]], paste0, "*")
     }
+    dimnames(new_cols)[[2]] <- new_names
     mutation_bool <- cbind(mutation_bool, new_cols)
   }
 }
 
-depth_plot_all = NULL
-for(i in levels(depth_all[,1])) {
+depth_plot_all <- NULL
+for(i in sample_barcodes) {
 	d <- as.matrix(depth_all[depth_all[,1]==i,2:4])
 	b <- rep(-1,dim(amplicons)[[1]])
-	for(i in 1:dim(amplicons)[[1]]) {
-		sel <- as.numeric(d[,2]) >= amplicons$unique.start[i] & as.numeric(d[,2]) <= amplicons$unique.stop[i]
-		b[i] <- mean(as.numeric(d[sel,3]))
+	for(a in 1:dim(amplicons)[[1]]) {
+		sel <- as.numeric(d[,2]) >= amplicons$unique.start[a] & as.numeric(d[,2]) <= amplicons$unique.stop[a]
+		if(sum(sel) > 0) {
+  		b[a] <- mean(as.numeric(d[sel,3]))
+		} else {
+		  b[a] <- 0
+		}
 	}
   depth_plot_all <- rbind(depth_plot_all, b)
 }
@@ -358,7 +357,7 @@ plot_barcode_barplot <- function() {
   # re-order Flag levels for legend display
   df$Flag <- factor(df$Flag, levels = c("Yes", "Yes*", "Maybe", "No", "NA"))
   
-  ggplot(df, aes(x = reorder(sample, desc(sample)), y = log10(reads), fill = Flag)) +
+  ggplot(df, aes(x = reorder(sample, -sample), y = log10(reads), fill = Flag)) +
     geom_bar(stat="identity", width=0.6, position=position_stack(reverse = TRUE)) +
     coord_flip() +
     scale_fill_manual(name = "Flag", values = flagColors) +
@@ -404,23 +403,14 @@ depth_heatmap <- function(plot_sel, title_additional, norm=F) {
   if(norm) {
     plot_dat <- plot_norm
     plot_dat[plot_dat > 200] <- 200
-    plot_dat[plot_dat < 1] <- 1
   } else {
     plot_dat <- plot_all
     plot_dat[plot_dat > 200] <- 200
-    plot_dat[plot_dat < 1] <- 1
   }
   plot_dat <- log10(plot_dat)
+  plot_dat[plot_dat < 1 | is.infinite(plot_dat) | is.na(plot_dat)] <- 1
   rownames(plot_dat) <- sample_barcodes
   
-  #sample_sel <- summary$Sample %in% gsub("(_NB[0-9]{2})?(\\*)?", "", sample_barcodes)
-
-  # annotation_row <- data.frame(Flag = flagList[!uncalled_row])
-  # rownames(annotation_row) <- sample_barcodes
-  # re-order Flag levels for legend display
-  annotation_row <- annotation_sample
-  annotation_row$Flag <- factor(annotation_row$Flag, levels = c("Yes", "Yes*", "Maybe", "No", "NA"))
-
   pheatmap(as.data.frame(plot_dat),
            cluster_rows=FALSE, cluster_cols=FALSE,
            color=colorRampPalette(c("#FFFFFF", brewer.pal(n = 7, name = "Blues")))(8),
@@ -429,8 +419,8 @@ depth_heatmap <- function(plot_sel, title_additional, norm=F) {
            border_color=NA,
            labels_row=rownames(plot_dat),
            labels_col="",
-           annotation_row=annotation_row,
-           annotation_colors=list(Flag = flagColors[flagColors != flagColors["NA"]])
+           annotation_row=annotation_sample,
+           annotation_colors=list(Flag = flagColors)
         )
 }
 #-------------------------------------------------
