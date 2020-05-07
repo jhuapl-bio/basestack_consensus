@@ -182,6 +182,7 @@ mutation_full_bool[(mutation_full_bool > 0) & !(consensus_call %in% c("A","C","G
 # set up color objects for our data (needs to be streamlined)
 flagList <- summary$Consensus
 flagList <- as.character(flagList)
+flagList[flagList == ""] <- "No"
 flagList[is.na(flagList)] <- "NA"
 flagFill <- factor(flagList)
 levels(flagFill) <- colorlevels(levels(factor(flagList)), TRUE)
@@ -200,7 +201,7 @@ summary$Depth[!uncalled_row] <- c(paste0(format(round(tapply(depth_all[,4],facto
 summary$Coverage <- sapply(as.matrix(summary$Coverage), function(s) { return(strsplit(s, " ")[[1]][1] )})
 summary$Lineage <- rep("", dim(summary)[1])
 if(dim(clade_report)[1]>0) {
-  summary$Lineage[clade_report$taxon %in% sample_barcodes] <- as.matrix(clade_report$lineage)
+  summary$Lineage[paste(summary$Sample, summary$Barcode, sep="_") %in% clade_report$taxon] <- as.matrix(clade_report$lineage)
 }
 summary <- summary[,c("Sample", "Barcode", "Raw.Reads", "Coverage", "Depth", "Consensus", "Lineage")]
 levels(summary$Consensus) <- paste0(colorlevels(levels(summary$Consensus), FALSE), "{", levels(summary$Consensus), "}")
@@ -209,7 +210,7 @@ names(summary) <- gsub("\\.", " ", names(summary))
 # identify low coverage regions
 threshold <- postfilt_all$ont_depth_thresh[1]
 below_threshold <- function(v) { return(v<threshold) }
-amplicon_region <- depth_norm[,3] >= 55 & depth_norm[,3]<=29836
+amplicon_region <- depth_norm[,3] >= 1 & depth_norm[,3]<=29903
 low_coverage_regions <- tapply(depth_norm[amplicon_region,4], depth_norm[amplicon_region,1], below_threshold)
 low_coverage_totals <- unlist(lapply(low_coverage_regions, sum))
 names(low_coverage_totals) <- gsub("depth-norm-", "", names(low_coverage_totals))
@@ -228,34 +229,30 @@ mutation_collapse <- apply(mutation_no_low_coverage, 2, f)
 mutation_counts <- nchar(gsub("[^,]", "", mutation_collapse))+1
 select_many <- mutation_counts > 30
 mutation_collapse[select_many] <- paste(mutation_counts[select_many], "SNPs")
-mutation_samples <- sapply(names(mutation_collapse), function(s){ return(strsplit(s,"_")[[1]][1])})
 postfilt <- postfilt[,!(names(postfilt) %in% "Flagged.Positions")]
 
 # remove any outlier samples from mutation table
-mutation_table <- subset(mutation_no_low_coverage, subset=rowSums(mutation_no_low_coverage != "") != 0, select=!select_many)
-mutation_bool <- subset(mutation_no_low_coverage_bool, subset=rowSums(mutation_no_low_coverage_bool > 0) != 0, select=!select_many)
+mutation_table <- subset(mutation_no_low_coverage, subset=rowSums(mutation_no_low_coverage[,!select_many] != "") != 0, select=!select_many)
+mutation_bool <- subset(mutation_no_low_coverage_bool, subset=rowSums(mutation_no_low_coverage_bool[,!select_many] > 0) != 0, select=!select_many)
+samples_with_asterisks <- dimnames(mutation_table)[[2]]
 if(sum(select_many)>0) {
   mutation_table_many <- subset(mutation_no_low_coverage, select=select_many)
-  new_cols <- subset(mutation_no_low_coverage, subset=rowSums(mutation_no_low_coverage > 0) != 0, select=select_many)
+  new_cols <- subset(mutation_no_low_coverage, subset=rowSums(mutation_no_low_coverage[,!select_many] > 0) != 0, select=select_many)
   if(dim(new_cols)[2] > 0) {
     if(dim(new_cols)[2] == 1) {
-      new_names <- list(sapply(dimnames(mutation_table_many)[[2]], paste0, "*"))
+      new_names_with_asterisks <- list(sapply(dimnames(mutation_table_many)[[2]], paste0, "*"))
     } else {
-      new_names <- sapply(dimnames(mutation_table_many)[[2]], paste0, "*")
+      new_names_with_asterisks <- sapply(dimnames(mutation_table_many)[[2]], paste0, "*")
     }
-    dimnames(new_cols)[[2]] <- new_names
+    dimnames(new_cols)[[2]] <- dimnames(mutation_table_many)[[2]]
+    samples_with_asterisks <- c(samples_with_asterisks, new_names_with_asterisks)
     mutation_table <- cbind(mutation_table, new_cols)
   }
   
   mutation_bool_many <- subset(mutation_no_low_coverage_bool, select=select_many)
-  new_cols <- matrix(mutation_bool_many[rownames(mutation_bool),], ncol=sum(select_many))
+  new_cols <- subset(mutation_no_low_coverage_bool, subset=rowSums(mutation_no_low_coverage_bool[,!select_many] > 0) != 0, select=select_many)
   if(dim(new_cols)[2] > 0) {
-    if(dim(new_cols)[2] == 1) {
-      new_names <- list(sapply(dimnames(mutation_bool_many)[[2]], paste0, "*"))
-    } else {
-      new_names <- sapply(dimnames(mutation_bool_many)[[2]], paste0, "*")
-    }
-    dimnames(new_cols)[[2]] <- new_names
+    dimnames(new_cols)[[2]] <- dimnames(mutation_bool_many)[[2]]
     mutation_bool <- cbind(mutation_bool, new_cols)
   }
 }
@@ -279,7 +276,7 @@ rownames(depth_plot_all) <- sample_barcodes
 postfilt_rows <- levels(factor(postfilt_all$pos))
 postfilt_cols <- levels(factor(postfilt_all$sample))
 mut_rows <- dimnames(mutation_bool)[[1]]
-mut_cols <- gsub("(_NB[0-9]{2})?(\\*)?", "", dimnames(mutation_bool)[[2]])
+mut_cols <- dimnames(mutation_bool)[[2]]
 
 combined_rows <- sort(as.numeric(c(postfilt_rows, mut_rows[!(mut_rows %in% postfilt_rows)])))
 combined_cols <- postfilt_cols
@@ -357,7 +354,7 @@ plot_barcode_barplot <- function() {
   # re-order Flag levels for legend display
   df$Flag <- factor(df$Flag, levels = c("Yes", "Yes*", "Maybe", "No", "NA"))
   
-  ggplot(df, aes(x = reorder(sample, -sample), y = log10(reads), fill = Flag)) +
+  ggplot(df, aes(x = sample, y = log10(reads), fill = Flag)) +
     geom_bar(stat="identity", width=0.6, position=position_stack(reverse = TRUE)) +
     coord_flip() +
     scale_fill_manual(name = "Flag", values = flagColors) +
@@ -376,7 +373,7 @@ print_low_depth_regions <- function() {
   get_regions <- function(i){
     d <- depth_norm[amplicon_region,]
     l <- levels(factor(d[,1]))
-    r <- d[d[,1]==l[i] & low_coverage_regions[[i]], 3]
+    r <- d[d[,1]==l[i] & low_coverage_regions[[i]] & d[,3] >= 55 & d[,3]<=29836, 3]
     if(length(r) > 0) {
       return(region_collapse(r))
     } else {
@@ -504,11 +501,11 @@ plot_homoplasy_heatmap <- function() {
   
   plot_matrix <- mutation_bool
 
-  sample_sel <- summary$Sample %in% gsub("(_NB[0-9]{2})?(\\*)?", "", dimnames(plot_matrix)[[2]])
+  sample_sel <- summary$Sample %in% dimnames(plot_matrix)[[2]]
   snp_sel <- dimnames(annotation_snp)[[1]] %in% dimnames(plot_matrix)[[1]]
 
   pheatmap(plot_matrix,
-          labels_col=dimnames(plot_matrix)[[2]],
+          labels_col=samples_with_asterisks,
           labels_row=dimnames(plot_matrix)[[1]],
           col=annotation_colors$Variants,
           ylab="mutation position",
