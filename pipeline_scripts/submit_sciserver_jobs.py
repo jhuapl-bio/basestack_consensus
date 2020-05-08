@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # submit a shell command as a batch job.
 # See https://github.com/sciserver/SciScript-Python/blob/Feature_Jobs/py3/SciServer/Jobs.py
 
@@ -124,16 +125,10 @@ dataVolumes = None, resultsFolderPath = "", jobAlias = ""):
     else:
         raise Exception("User token is not defined. First log into SciServer.")
 
-#argument parsing for job submission
-parser = argparse.ArgumentParser(description="Submit Bash Command as Job on Sciserver\nJob Config\n\tImage: Sciserver Essentials\n\tVolume: 'COVID-19'")
-parser.add_argument("-s", "--script", help="bash script to be executed as job")
-parser.add_argument("-i", "--input", help="input file to be processed by job")
-parser.add_argument("-t", "--threads", type=int, help="threads", default=1)
-args = parser.parse_args()
-
 # ### Sciserver User Config
 token=Authentication.getToken()
-USERNAME=Authentication.getKeystoneUserWithToken(token)
+user=Authentication.getKeystoneUserWithToken(token)
+USERNAME=user.userName
 
 # define the required job environment
 DOMAIN='COVID-19 Jobs'  # change with name of new compute domain
@@ -144,7 +139,6 @@ USERVOLUMES=['Storage/'+ USERNAME + '/persistent','Temporary/'+ USERNAME +'/scra
 DATAVOLUMES=['COVID-19']
 
 RESULTSFOLDERPATH = "/home/idies/workspace/Temporary/" + USERNAME + "/scratch/jobs"
-JOBALIAS = arg.script.split(".")[0]
 
 domains=Jobs.getDockerComputeDomains()
 domain=None
@@ -168,9 +162,36 @@ for d in domains:
                                     ,'owner':uv['owner'],'needsWriteAccess':True})
         break
 
-# Create command: merge bash script with parameters and input files for analysis...
-command = arg.script + " -i " + arg.input + " -t " + arg.threads
+#argument parsing for job submission
+parser = argparse.ArgumentParser(description="Submit Bash Command as Job on Sciserver\nJob Config\n\tImage: Sciserver Essentials\n\tVolume: 'COVID-19'") 
+parser.add_argument("-s", "--script", help="bash script to be executed as job", default=None)
+parser.add_argument("-m", "--module", type=int, help="module from which to begin processing pipeline", choices=[0,1,2,3,4,5], default=None)
+parser.add_argument("-i", "--input", help="input file to be processed by job")
+parser.add_argument("-t", "--threads", help="threads", default=1)
+#args = parser.parse_args()
+args, unknown = parser.parse_known_args()
 
+### define script to run
+def get_module_script(module): 
+	script = {
+		0: "still gotta make this", 
+		1: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module1-barcode-demux.sh", 
+		2: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module2-length-filter.sh",
+		3: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module3-normalization.sh", 
+		4: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module4-bundle.sh",
+		5: "in progress"
+	} 
+	return script.get(module, "Invalid module number") 
+
+if args.module is not None and args.script==None:
+	args.script=get_module_script(args.module)
+else:
+	"Must provide script full path or module number for job execution"
+
+# Create command: merge bash script with parameters and input files for analysis...
+command = "bash -x " + args.script + " -i " + args.input + " -t " + str(args.threads)
+
+JOBALIAS = args.script.split("/")[-1]
 job=submitShellCommandJob(shellCommand=command
                             , dockerComputeDomain = domain
                             , dockerImageName = IMAGE
