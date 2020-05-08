@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-​
 # submit a shell command as a batch job.
 # See https://github.com/sciserver/SciScript-Python/blob/Feature_Jobs/py3/SciServer/Jobs.py
 ​
