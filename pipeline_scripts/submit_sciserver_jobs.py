@@ -1,19 +1,18 @@
 # submit a shell command as a batch job.
 # See https://github.com/sciserver/SciScript-Python/blob/Feature_Jobs/py3/SciServer/Jobs.py
-​
+
 from SciServer import Jobs,Authentication,Config
 import json
 import requests
-import ipywidgets as widgets
 import time
 import re
 import argparse
-​
+
 ### Functions to submit the job
-​
+
 def pathForUserVolume(uv):
     return '{0}/{1}/{2}'.format(uv['rootVolumeName'],uv['owner'],uv['name'])
-​
+
 # the following code replaces similar function in SciServer.Jobs
 # That verison does not yet support writing to a data volume
 def submitShellCommandJob(shellCommand, dockerComputeDomain = None, dockerImageName = None, userVolumes = None,
@@ -36,29 +35,28 @@ dataVolumes = None, resultsFolderPath = "", jobAlias = ""):
     :example: dockerComputeDomain = Jobs.getDockerComputeDomains()[0]; job = Jobs.submitShellCommandJob('pwd', dockerComputeDomain, 'Python (astro)', [{'name':'persistent'},{'name':'scratch', 'needsWriteAccess':True}],[{'name':'SDSS_DAS'}], 'myNewJob')
     .. seealso:: Jobs.submitNotebookJob, Jobs.getJobStatus, Jobs.getDockerComputeDomains, Jobs.cancelJob
     """
-​
+
     token = Authentication.getToken()
     if token is not None and token != "":
-​
+
         if Config.isSciServerComputeEnvironment():
             taskName = "Compute.SciScript-Python.Jobs.submitShellCommandJob"
         else:
             taskName = "SciScript-Python.Jobs.submitShellCommandJob"
-​
+
         if dockerComputeDomain is None:
             dockerComputeDomains = getDockerComputeDomains();
             if dockerComputeDomains .__len__() > 0:
                 dockerComputeDomain = dockerComputeDomains[0];
             else:
                 raise Exception("There are no dockerComputeDomains available for the user.");
-​
         if dockerImageName is None:
             images = dockerComputeDomain.get('images');
             if images.__len__() > 0:
                 dockerImageName = images[0].get('name')
             else:
                 raise Exception("dockerComputeDomain has no docker images available for the user.");
-​
+
         uVols = [];
         for uVol in userVolumes:
             found = False;
@@ -75,10 +73,10 @@ dataVolumes = None, resultsFolderPath = "", jobAlias = ""):
                             uVols.append({'userVolumeId': vol.get('id'), 'needsWriteAccess': True});
                         else:
                             uVols.append({'userVolumeId': vol.get('id'), 'needsWriteAccess': False});
-​
+
             if not found:
                 raise Exception("User volume '" + uVol.get('name') + "' not found within Compute domain")
-​
+
         datVols = [];
         for dVol in dataVolumes:
             found = False;
@@ -99,13 +97,12 @@ dataVolumes = None, resultsFolderPath = "", jobAlias = ""):
                         else:
                             datVols.append({'name': name, 'writable': False});
                     found = True;
-​
+
             if not found:
                 raise Exception("Data volume '" + dVol.get('name') + "' not found within Compute domain")
-​
-​
+
         dockerComputeEndpoint = dockerComputeDomain.get('apiEndpoint');
-​
+
         dockerJobModel = {
             "command": shellCommand,
             "submitterDID": jobAlias,
@@ -119,38 +116,36 @@ dataVolumes = None, resultsFolderPath = "", jobAlias = ""):
         url = Config.RacmApiURL + "/jobm/rest/jobs/docker?TaskName="+taskName;
         headers = {'X-Auth-Token': token, "Content-Type": "application/json"}
         res = requests.post(url, data=data, headers=headers, stream=True)
-​
+
         if res.status_code != 200:
-            raise Exception("Error when submitting a job to the JOBM API.\nHttp Response from JOBM API returned 
-status code " + str(res.status_code) + ":\n" + res.content.decode());
+            raise Exception("Error when submitting a job to the JOBM API.\nHttp Response from JOBM API returned status code " + str(res.status_code) + ":\n" + res.content.decode());
         else:
             return (json.loads(res.content.decode())).get('id')
     else:
         raise Exception("User token is not defined. First log into SciServer.")
-​
+
 #argument parsing for job submission
-parser = argparse.ArgumentParser(description="Submit Bash Command as Job on Sciserver\nJob Config\n\tImage: 
-Sciserver Essentials\n\tVolume: 'COVID-19'")
+parser = argparse.ArgumentParser(description="Submit Bash Command as Job on Sciserver\nJob Config\n\tImage: Sciserver Essentials\n\tVolume: 'COVID-19'")
 parser.add_argument("-s", "--script", help="bash script to be executed as job")
 parser.add_argument("-i", "--input", help="input file to be processed by job")
 parser.add_argument("-t", "--threads", type=int, help="threads", default=1)
 args = parser.parse_args()
-​
+
 # ### Sciserver User Config
-​token = Authentication.getToken()
-USERNAME = Authentication.getKeystoneUserWithToken(token)
+token=Authentication.getToken()
+USERNAME=Authentication.getKeystoneUserWithToken(token)
 
 # define the required job environment
 DOMAIN='COVID-19 Jobs'  # change with name of new compute domain
 IMAGE='SciServer Essentials'
-​
+
 # define lists of user and data volumes that should be mounted
 USERVOLUMES=['Storage/'+ USERNAME + '/persistent','Temporary/'+ USERNAME +'/scratch']
 DATAVOLUMES=['COVID-19']
-​
+
 RESULTSFOLDERPATH = "/home/idies/workspace/Temporary/" + USERNAME + "/scratch/jobs"
 JOBALIAS = arg.script.split(".")[0]
-​
+
 domains=Jobs.getDockerComputeDomains()
 domain=None
 image=None
@@ -172,12 +167,10 @@ for d in domains:
                 userVolumes.append({'name':uv['name'],'rootVolumeName':uv['rootVolumeName']
                                     ,'owner':uv['owner'],'needsWriteAccess':True})
         break
-​
-​
+
 # Create command: merge bash script with parameters and input files for analysis...
 command = arg.script + " -i " + arg.input + " -t " + arg.threads
-​
-​
+
 job=submitShellCommandJob(shellCommand=command
                             , dockerComputeDomain = domain
                             , dockerImageName = IMAGE
