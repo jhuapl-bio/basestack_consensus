@@ -189,7 +189,7 @@ fi
 if [ -s $demux_dir/1-barcode-demux.complete ]; then
     conda activate jhu-ncov
     while read name barcode; do
-        echo_log "RUN: $(basename ${sequencing_run}): " 'executing submit_sciserver_ont_job.py artic-module2-length-filter.sh "$demux_dir"/"$name"'       
+        echo_log "RUN: $(basename ${sequencing_run}): " 'executing submit_sciserver_ont_job.py -m 2 i "$demux_dir"/"$name"'       
         submit_sciserver_ont_job.py -m 2 -i "$demux_dir"/"$name"
     done < $manifest
 fi
