@@ -126,7 +126,7 @@ consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
 mkdir -p $consensus_dir
 
 # log file
-logfile=${consensus_dir}/module4-medaka-$(basename ${normalized_fastq%.covfiltered.fq}-$(date +"%F-%H%M%S").log
+logfile=${consensus_dir}/module4-medaka-$(basename ${normalized_fastq%.covfiltered.fq})-$(date +"%F-%H%M%S").log
 
 # Optional program parameters
 out_prefix="$consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}.medaka)"
