@@ -109,9 +109,6 @@ manifest=${sequencing_run}/manifest.txt
 run_configuration="${sequencing_run}/run_config.txt"
 gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
 
-# log file
-logfile=${sequencing_run}/artic-pipeline/pipeline.log
-
 # reference sequence
 reference="$scheme_dir/$protocol/nCoV-2019.reference.fasta"
 
@@ -127,8 +124,16 @@ reference="$scheme_dir/$protocol/nCoV-2019.reference.fasta"
 # Output directories
 normalize_dir="${sequencing_run}/artic-pipeline/3-normalization/$base"
 
+
 # Optional program parameters - check with Tom , even_strand or median_strand
 norm_parameters="coverage_threshold=150 --qual_sort --even_strand" 
+
+# create output directories, need separate directories for each sample 
+mkdir -p $normalize_dir
+
+# log file
+logfile="${sequencing_run}/artic-pipeline/3-normalization/$(date +"%F %T")-module3.log"
+
 
 #===================================================================================================
 # MAIN BODY
@@ -150,24 +155,22 @@ echo_log "SAMPLE ${base}: ------ processing pipeline output ------"
 # module 3
 #---------------------------------------------------------------------------------------------------
 
-echo_log "Starting normalize module 3 ${sequencing_run}"
+echo_log "SAMPLE ${base}: Starting normalize module 3"
 
-# create output directories, need separate directories for each sample 
-mkdir -p $normalize_dir
 cd $normalize_dir
 
 # create alignment file
 align_out="$normalize_dir/$base.sam"
-echo $align_out
+echo_log "SAMPLE ${base}: output file = $align_out" 
 
 minimap2 -a \
 	-x map-ont \
 	-t 32 \
 	"$reference" \
-	"$fastq" > "$align_out"
+	"$fastq" > "$align_out" 2>> "$logfile"
 
-samtools sort $align_out > ${align_out%.sam}.bam
-samtools depth -a -d 0 "${align_out%.sam}.bam" > "${align_out%.sam}.depth"
+samtools sort $align_out > ${align_out%.sam}.bam 2>> "$logfile"
+samtools depth -a -d 0 "${align_out%.sam}.bam" > "${align_out%.sam}.depth" 2>> "$logfile"
 
 # normalization, txt file output went to working directory
 out_sam="${align_out%.sam}.covfiltered.sam"
@@ -176,13 +179,13 @@ $JAVA_PATH/java \
 	-cp $NormalizeCoveragePath/src \
 	NormalizeCoverage \
 	input="$align_out" \
-	$norm_parameters
+	$norm_parameters 2>> "$logfile"
 
 # fastq conversion
-samtools fastq "${out_sam}" > "${out_sam%.sam}.fq"
+samtools fastq "${out_sam}" > "${out_sam%.sam}.fq" 2>> "$logfile"
 
-samtools sort "${out_sam}" > "${out_sam%.sam}.bam"
-samtools depth -a -d 0 "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth"
+samtools sort "${out_sam}" > "${out_sam%.sam}.bam" 2>> "$logfile"
+samtools depth -a -d 0 "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth" 2>> "$logfile"
 
 #---------------------------------------------------------------------------------------------------
 
@@ -197,7 +200,7 @@ if [ ! -f "${out_sam%.sam}.fq" ];then
     exit 1
 else
 	echo_log "SAMPLE ${base}: Module 3 complete for sample '${base}'"
-	submit_sciserver_ont_job.py -m 3 -i "${out_sam%.sam}.fq -t 5
+	submit_sciserver_ont_job.py -m 3 -i "${out_sam%.sam}.fq -t 5 2>> "$logfile" 
 fi
 
 

@@ -115,9 +115,6 @@ fi
 software_path=/home/idies/workspace/covid19/code
 guppy_barcoder_path=${software_path}/ont-guppy-cpu/bin
 
-# log file
-logfile=${sequencing_run}/artic-pipeline/pipeline.log
-
 # input files, these files should be in the sequencing run directory
 run_configuration="${sequencing_run}/run_config.txt"
 barcode_file=$(awk '/barcoding/{ print $2 }' "${run_configuration}")
@@ -127,36 +124,39 @@ manifest=${sequencing_run}/manifest.txt
 # Output directories
 demux_dir=${sequencing_run}/artic-pipeline/1-barcode-demux
 
+# log file
+logfile=${demux_dir}/$(date +"%F %T")-module1.log
+
 #===================================================================================================
 # MAIN BODY
 #===================================================================================================
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
-echo_log "  sequencing run folder: ${CYAN}$sequencing_run${NC}"
-echo_log "recording software version numbers"
-echo_log $(${guppy_barcoder_path}/guppy_barcoder --version)
-echo_log "run configuration file: ${sequencing_run}/run_config.txt"
-echo_log "run manifest file: ${sequencing_run}/manifest.txt"
-echo_log "inputs: fastq_directory: ${fastq_dir}, arrangements files: ${barcode_file}"
-echo_log "output demultiplex directory: ${demux_dir}"
-echo_log "------ processing pipeline output ------"
+echo_log "RUN: $(basename ${sequencing_run}): sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "RUN: $(basename ${sequencing_run}): recording software version numbers"
+echo_log "RUN: $(basename ${sequencing_run}): $(${guppy_barcoder_path}/guppy_barcoder --version)"
+echo_log "RUN: $(basename ${sequencing_run}): run configuration file: ${sequencing_run}/run_config.txt"
+echo_log "RUN: $(basename ${sequencing_run}): run manifest file: ${sequencing_run}/manifest.txt"
+echo_log "RUN: $(basename ${sequencing_run}): inputs: fastq_directory: ${fastq_dir}, arrangements files: ${barcode_file}"
+echo_log "RUN: $(basename ${sequencing_run}): output demultiplex directory: ${demux_dir}"
+echo_log "RUN: $(basename ${sequencing_run}): ------ processing pipeline output ------"
 
 #---------------------------------------------------------------------------------------------------
 # module 1 
 #---------------------------------------------------------------------------------------------------
 
-echo_log "Starting guppy demux module 1 $sequencing_run"
+echo_log "RUN: $(basename ${sequencing_run}): Starting guppy demux module 1"
 
 $guppy_barcoder_path/guppy_barcoder \
 	--require_barcodes_both_ends \
 	-i "$fastq_dir" \
 	-s "$demux_dir" \
-	--arrangements_files $barcode_file
+	--arrangements_files $barcode_file 2>> "$logfile"
 
 while read barcode name; do
 mv "$demux_dir"/"${barcode/NB/barcode}" "$demux_dir"/"${barcode}"
-done < "$manifest"
+done < "$manifest" 2>> "$logfile"
     
 #---------------------------------------------------------------------------------------------------
 
@@ -167,7 +167,7 @@ done < "$manifest"
 #===================================================================================================
 
 if [ ! -d $demux_dir ];then
-    >&2 echo_log "Error $demux_dir not created"
+    >&2 echo_log "RUN: $(basename ${sequencing_run}): Error $demux_dir not created"
     exit 1
 fi
 
@@ -176,7 +176,7 @@ while read name barcode; do
         complete=TRUE
     else
         complete=FALSE
-        echo_log Error "$demux_dir"/"$name" does not exist
+        echo_log "RUN: $(basename ${sequencing_run}): Error "$demux_dir"/"$name" does not exist"
         exit 1
     fi
 done < $manifest
@@ -191,7 +191,7 @@ if [ -s $demux_dir/1-barcode-demux.complete ]; then
     while read name barcode; do
         echo_log "RUN: $(basename ${sequencing_run}): " 'executing submit_sciserver_ont_job.py -m 2 i "$demux_dir"/"$name"'       
         submit_sciserver_ont_job.py -m 2 -i "$demux_dir"/"$name"
-    done < $manifest
+    done < $manifest 2>> "$logfile"
 fi
 
 

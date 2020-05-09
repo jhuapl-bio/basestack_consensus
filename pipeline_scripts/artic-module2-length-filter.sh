@@ -101,9 +101,6 @@ fi
 
 # location of programs used by pipeline
 
-# log file
-logfile=${sequencing_run}/artic-pipeline/pipeline.log
-
 # input files, these files should be located in the sequencing run directory
 manifest=${sequencing_run}/manifest.txt
 
@@ -112,6 +109,10 @@ name=$(grep $(basename $barcode_dir) ${manifest} | cut -d $'\t' -f 2)
 
 # Output directories
 gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
+mkdir -p $gather_dir
+
+# log file
+logfile=${gather_dir}/$(date +"%F %T")-module2.log
 
 
 #===================================================================================================
@@ -120,28 +121,27 @@ gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
-echo_log "  sequencing run folder: ${CYAN}$sequencing_run${NC}"
-echo_log "Software version and inputs:"
-echo_log "Artic guppyplex from: $(artic --version)"
-echo_log "input barcode directory: ${barcode_dir}"
-echo_log "run manifest file: ${manifest}"
-echo_log "sample name extracted from manifest: ${name}"
-echo_log "output gather directory: ${gather_dir}"
-echo_log "------ processing pipeline output ------"
+echo_log "SAMPLE: ${name}: sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "SAMPLE: ${name}: Software version and inputs:"
+echo_log "SAMPLE: ${name}: Artic guppyplex from: $(artic --version)"
+echo_log "SAMPLE: ${name}: input barcode directory: ${barcode_dir}"
+echo_log "SAMPLE: ${name}: run manifest file: ${manifest}"
+echo_log "SAMPLE: ${name}: sample name extracted from manifest: ${name}"
+echo_log "SAMPLE: ${name}: output gather directory: ${gather_dir}"
+echo_log "SAMPLE: ${name}: ------ processing pipeline output ------"
 
 #---------------------------------------------------------------------------------------------------
 # module 2
 #---------------------------------------------------------------------------------------------------
 
-echo_log "Starting artic guppyplex module 2 on $sequencing_run, sample ${name}"
-mkdir -p $gather_dir
+echo_log "SAMPLE: ${name}: Starting artic guppyplex module 2 on $sequencing_run, sample ${name}"
 
 artic guppyplex \
 	--skip-quality-check \
 	--min-length 400 \
 	--max-length 700 \
 	--directory "${barcode_dir}" \
-    --prefix "$gather_dir"/"${name}"
+    --prefix "$gather_dir"/"${name}" 2>> "$logfile"
 
 
 #---------------------------------------------------------------------------------------------------
@@ -162,8 +162,8 @@ if [ ! -f "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq ];then
     >&2 echo_log "SAMPLE: ${name}: Error: Module 2 output for sample '${name}' not found"
     exit 1
 else
- 	echo_log "SAMPLE ${name}: Module 2, Guppyplex complete"
+ 	echo_log "SAMPLE ${name}: Module 2 - Guppyplex complete"
 	echo_log "SAMPLE ${name}: executing submit_sciserver_ont_job.py -m 3 -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq"
 	conda activate jhu-ncov 
-	submit_sciserver_ont_job.py -m 3 -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq
+	submit_sciserver_ont_job.py -m 3 -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq 2>> "$logfile"
 fi

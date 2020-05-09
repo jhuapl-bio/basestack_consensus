@@ -111,9 +111,6 @@ fi
 # location of programs used by pipeline
 software_path=/home/idies/workspace/covid19/code
 
-# log file
-logfile=${sequencing_run}/artic-pipeline/pipeline.log
-
 # input files, these files should be in the sequencing run directory
 manifest=${sequencing_run}/manifest.txt
 run_configuration="${sequencing_run}/run_config.txt"
@@ -126,6 +123,10 @@ protocol=$(awk '/primers/{ print $2 }' "${run_configuration}")
 
 # Output directories
 consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
+mkdir -p $consensus_dir
+
+# log file
+logfile=${consensus_dir}/$(date +"%F %T")-module4-medaka.log
 
 # Optional program parameters
 out_prefix="$consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}.medaka)"
@@ -137,22 +138,21 @@ out_prefix="$consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}.medaka
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
-echo_log "------ Medaka Paramters:"
-echo_log "sequencing run folder: ${CYAN}$sequencing_run${NC}"
-echo_log "recording software version numbers..."
-echo_log "Software version: $(medaka --version)"
-echo_log "run configuration file: ${sequencing_run}/run_config.txt"
-echo_log "run manifest file: ${manifest}"
-echo_log "fasta file: ${normalized_fastq}"
-echo_log "output medaka directory: ${consensus_dir}"
-echo_log "------ processing pipeline output ------"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): ------ Medaka Paramters:"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): recording software version numbers..."
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Software version: $(medaka --version)"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): run configuration file: ${sequencing_run}/run_config.txt"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): run manifest file: ${manifest}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): fasta file: ${normalized_fastq}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): output medaka directory: ${consensus_dir}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): ------ processing pipeline output ------"
 
 #---------------------------------------------------------------------------------------------------
 # module 4
 #---------------------------------------------------------------------------------------------------
 
-echo_log "Starting Module 4 Medaka on $normalized_fastq"
-mkdir -p $consensus_dir
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Starting Module 4 Medaka on $normalized_fastq"
 
 artic minion \
         --medaka \
@@ -160,12 +160,12 @@ artic minion \
         --threads $threads \
         --scheme-directory "$scheme_dir" \
         --read-file $normalized_fastq \
-        "$protocol" "$out_prefix"
+        "$protocol" "$out_prefix" 2>> "$logfile"
 
 
 
 #---------------------------------------------------------------------------------------------------
 
-echo_log "Module 4 Medaka: processing complete"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Module 4 Medaka: processing complete"
 #chgrp -R 5102 $demux_dir
 
