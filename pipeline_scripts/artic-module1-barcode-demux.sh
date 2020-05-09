@@ -125,7 +125,7 @@ manifest=${sequencing_run}/manifest.txt
 demux_dir=${sequencing_run}/artic-pipeline/1-barcode-demux
 
 # log file
-logfile=${demux_dir}/$(date +"%F-%H%M%s"-module1.log
+logfile=${demux_dir}/$(date +"%F-%H%M%S")-module1.log
 
 #===================================================================================================
 # MAIN BODY

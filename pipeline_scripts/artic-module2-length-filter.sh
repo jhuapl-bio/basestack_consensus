@@ -112,7 +112,7 @@ gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
 mkdir -p $gather_dir
 
 # log file
-logfile=${gather_dir}/$(date +"%F-%H%M%s"-module2.log
+logfile=${gather_dir}/$(date +"%F-%H%M%S")-module2.log
 
 
 #===================================================================================================
