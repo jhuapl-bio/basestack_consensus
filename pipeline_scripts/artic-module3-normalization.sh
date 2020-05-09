@@ -136,15 +136,15 @@ norm_parameters="coverage_threshold=150 --qual_sort --even_strand"
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
-echo_log "  sequencing run folder: ${CYAN}$sequencing_run${NC}"
-echo_log "recording software version numbers"
-echo_log "Coverage Normalization from: https://github.com/mkirsche/CoverageNormalization"
-echo_log "Coverage Normalization parameters: $norm_parameters"
-echo_log "run configuration file: ${sequencing_run}/run_config.txt"
-echo_log "run manifest file: ${manifest}"
-echo_log "inputs: Length directory: ${gather_dir}"
-echo_log "output normalization directory: ${normalize_dir}"
-echo_log "------ processing pipeline output ------"
+echo_log "SAMPLE ${base}:  sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "SAMPLE ${base}: recording software version numbers"
+echo_log "SAMPLE ${base}: Coverage Normalization from: https://github.com/mkirsche/CoverageNormalization"
+echo_log "SAMPLE ${base}: Coverage Normalization parameters: $norm_parameters"
+echo_log "SAMPLE ${base}: run configuration file: ${sequencing_run}/run_config.txt"
+echo_log "SAMPLE ${base}: run manifest file: ${manifest}"
+echo_log "SAMPLE ${base}: inputs: Length directory: ${gather_dir}"
+echo_log "SAMPLE ${base}: output normalization directory: ${normalize_dir}"
+echo_log "SAMPLE ${base}: ------ processing pipeline output ------"
 
 #---------------------------------------------------------------------------------------------------
 # module 3
@@ -193,11 +193,11 @@ samtools depth -a -d 0 "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth"
 #===================================================================================================
 
 if [ ! -f "${out_sam%.sam}.fq" ];then
-    >&2 echo_log "Error: Module 3 output "${out_sam%.sam}.fq" not found"
+    >&2 echo_log "SAMPLE ${base}: Error: Module 3 output "${out_sam%.sam}.fq" not found"
     exit 1
 else
-  echo_log "Module 3 complete for sample '${base}'"
-  # sciserver_job-submit_module4.py -i "${out_sam%.sam}.fq -t 6
+	echo_log "SAMPLE ${base}: Module 3 complete for sample '${base}'"
+	submit_sciserver_ont_job.py -m 3 -i "${out_sam%.sam}.fq -t 5
 fi
 
 

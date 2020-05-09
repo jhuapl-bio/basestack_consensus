@@ -154,14 +154,16 @@ artic guppyplex \
 #===================================================================================================
 
 if [ ! -d $gather_dir ];then
-    >&2 echo_log "Error: $gather_dir not created"
+    >&2 echo_log "SAMPLE ${name}: Error: $gather_dir not created"
     exit 1
 fi
 
 if [ ! -f "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq ];then
-    >&2 echo_log "Error: Module 2 output for sample '${name}' not found"
+    >&2 echo_log "SAMPLE: ${name}: Error: Module 2 output for sample '${name}' not found"
     exit 1
 else
-  echo_log "Module 2 complete for sample '${name}'"
-  # sciserver_job-submit_module2.py -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq
+ 	echo_log "SAMPLE ${name}: Module 2, Guppyplex complete"
+	echo_log "SAMPLE ${name}: executing submit_sciserver_ont_job.py -m 3 -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq"
+	conda activate jhu-ncov 
+	submit_sciserver_ont_job.py -m 3 -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq
 fi

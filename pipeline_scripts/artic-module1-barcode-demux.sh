@@ -1,5 +1,6 @@
 #!/bin/bash
 source /home/idies/workspace/covid19/bashrc
+conda activate artic-ncov2019-medaka
 
 #---------------------------------------------------------------------------------------------------
 
@@ -180,13 +181,14 @@ done < $manifest
 
 if complete=TRUE; then
    touch $demux_dir/1-barcode-demux.complete
-   echo_log "run complete"
+   echo_log "RUN $(basename ${sequencing_run}): Module 1, Guppy Barcoder complete"
 fi
     
 if [ -s $demux_dir/1-barcode-demux.complete ]; then
+    conda activate jhu-ncov
     while read name barcode; do
-        echo_log executing <submit_module2>.py artic-module2-length-filter.sh "$demux_dir"/"$name"       
-        #python <submit_module2.py>
+        echo_log "RUN: $(basename ${sequencing_run}): " 'executing submit_sciserver_ont_job.py artic-module2-length-filter.sh "$demux_dir"/"$name"'       
+        submit_sciserver_ont_job.py -m 2 -i "$demux_dir"/"$name"
     done < $manifest
 fi
 
