@@ -173,21 +173,20 @@ if [ ! -d $demux_dir ];then
 fi
 
 while read name barcode; do
-    if [ -d "$demux_dir"/"$name" ]; then
+    if [ -d "$demux_dir""$name" ]; then
         complete=TRUE
     else
         complete=FALSE
         echo_log "RUN $(basename ${sequencing_run}): Error "$demux_dir"/"$name" does not exist"
-        exit 1
     fi
 done < $manifest
 
-if complete=TRUE; then
+if [[ $complete==TRUE ]]; then
    touch $demux_dir/1-barcode-demux.complete
    echo_log "RUN $(basename ${sequencing_run}): Module 1, Guppy Barcoder complete"
 fi
     
-if [ -s $demux_dir/1-barcode-demux.complete ]; then
+if [ -f $demux_dir/1-barcode-demux.complete ]; then
     conda activate jhu-ncov
     while read name barcode; do
         echo_log "RUN $(basename ${sequencing_run}): " 'executing submit_sciserver_ont_job.py -m 2 i "$demux_dir"/"$name"'       

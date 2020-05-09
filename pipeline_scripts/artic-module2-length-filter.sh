@@ -163,7 +163,10 @@ if [ ! -f "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq ];then
     exit 1
 else
  	echo_log "SAMPLE ${name}: Module 2 - Guppyplex complete"
+	touch "$gather_dir"/module2-"$name".complete
+
 	echo_log "SAMPLE ${name}: executing submit_sciserver_ont_job.py -m 3 -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq"
+
 	conda activate jhu-ncov 
 	submit_sciserver_ont_job.py -m 3 -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq 2>> "$logfile"
 fi

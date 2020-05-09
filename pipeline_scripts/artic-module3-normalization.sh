@@ -157,6 +157,8 @@ echo_log "SAMPLE ${base}: ------ processing pipeline output ------"
 
 echo_log "SAMPLE ${base}: Starting normalize module 3"
 
+
+#### bad coding here... any way to fix? does module 3 require presence inside dir?
 cd $normalize_dir
 
 # create alignment file
@@ -195,11 +197,14 @@ samtools depth -a -d 0 "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth" 2>> "$log
 # QUALITY CHECKING AND MODULE 4 JOB SUBMISSION
 #===================================================================================================
 
-if [ ! -f "${out_sam%.sam}.fq" ];then
+if [ ! -f "$normalize_dir"/"${out_sam%.sam}.fq" ];then
     >&2 echo_log "SAMPLE ${base}: Error: Module 3 output "${out_sam%.sam}.fq" not found"
     exit 1
 else
 	echo_log "SAMPLE ${base}: Module 3 complete for sample '${base}'"
+        touch "$normalize_dir"/module3-"$base".complete
+
+	conda activate jhu-ncov
 	submit_sciserver_ont_job.py -m 4 -i "${out_sam%.sam}.fq -t 5 2>> "$logfile" 
 fi
 
