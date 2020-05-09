@@ -73,6 +73,8 @@ echo_log() {
 if [ ! -d ${sequencing_run} ];then
     >&2 echo "Error Sequencing run ${sequencing_run} does not exist"
     exit 1
+else
+    mkdir -p "${sequencing_run}/artic-pipeline"
 fi
 
 # check for existence of run_config.txt and for barcoding 
