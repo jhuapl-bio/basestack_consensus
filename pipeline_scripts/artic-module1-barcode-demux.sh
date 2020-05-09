@@ -134,20 +134,20 @@ logfile=${demux_dir}/$(date +"%F-%H%M%S")-module1.log
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
-echo_log "RUN: $(basename ${sequencing_run}): sequencing run folder: ${CYAN}$sequencing_run${NC}"
-echo_log "RUN: $(basename ${sequencing_run}): recording software version numbers"
-echo_log "RUN: $(basename ${sequencing_run}): $(${guppy_barcoder_path}/guppy_barcoder --version)"
-echo_log "RUN: $(basename ${sequencing_run}): run configuration file: ${sequencing_run}/run_config.txt"
-echo_log "RUN: $(basename ${sequencing_run}): run manifest file: ${sequencing_run}/manifest.txt"
-echo_log "RUN: $(basename ${sequencing_run}): inputs: fastq_directory: ${fastq_dir}, arrangements files: ${barcode_file}"
-echo_log "RUN: $(basename ${sequencing_run}): output demultiplex directory: ${demux_dir}"
-echo_log "RUN: $(basename ${sequencing_run}): ------ processing pipeline output ------"
+echo_log "RUN $(basename ${sequencing_run}): sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "RUN $(basename ${sequencing_run}): recording software version numbers"
+echo_log "RUN $(basename ${sequencing_run}): $(${guppy_barcoder_path}/guppy_barcoder --version)"
+echo_log "RUN $(basename ${sequencing_run}): run configuration file: ${sequencing_run}/run_config.txt"
+echo_log "RUN $(basename ${sequencing_run}): run manifest file: ${sequencing_run}/manifest.txt"
+echo_log "RUN $(basename ${sequencing_run}): inputs: fastq_directory: ${fastq_dir}, arrangements files: ${barcode_file}"
+echo_log "RUN $(basename ${sequencing_run}): output demultiplex directory: ${demux_dir}"
+echo_log "RUN $(basename ${sequencing_run}): ------ processing pipeline output ------"
 
 #---------------------------------------------------------------------------------------------------
 # module 1 
 #---------------------------------------------------------------------------------------------------
 
-echo_log "RUN: $(basename ${sequencing_run}): Starting guppy demux module 1"
+echo_log "RUN $(basename ${sequencing_run}): Starting guppy demux module 1"
 
 $guppy_barcoder_path/guppy_barcoder \
 	--require_barcodes_both_ends \
@@ -168,7 +168,7 @@ done < "$manifest" 2>> "$logfile"
 #===================================================================================================
 
 if [ ! -d $demux_dir ];then
-    >&2 echo_log "RUN: $(basename ${sequencing_run}): Error $demux_dir not created"
+    >&2 echo_log "RUN $(basename ${sequencing_run}): Error $demux_dir not created"
     exit 1
 fi
 
@@ -177,7 +177,7 @@ while read name barcode; do
         complete=TRUE
     else
         complete=FALSE
-        echo_log "RUN: $(basename ${sequencing_run}): Error "$demux_dir"/"$name" does not exist"
+        echo_log "RUN $(basename ${sequencing_run}): Error "$demux_dir"/"$name" does not exist"
         exit 1
     fi
 done < $manifest
@@ -190,7 +190,7 @@ fi
 if [ -s $demux_dir/1-barcode-demux.complete ]; then
     conda activate jhu-ncov
     while read name barcode; do
-        echo_log "RUN: $(basename ${sequencing_run}): " 'executing submit_sciserver_ont_job.py -m 2 i "$demux_dir"/"$name"'       
+        echo_log "RUN $(basename ${sequencing_run}): " 'executing submit_sciserver_ont_job.py -m 2 i "$demux_dir"/"$name"'       
         submit_sciserver_ont_job.py -m 2 -i "$demux_dir"/"$name"
     done < $manifest 2>> "$logfile"
 fi
