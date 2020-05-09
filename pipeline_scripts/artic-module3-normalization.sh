@@ -200,7 +200,7 @@ if [ ! -f "${out_sam%.sam}.fq" ];then
     exit 1
 else
 	echo_log "SAMPLE ${base}: Module 3 complete for sample '${base}'"
-	submit_sciserver_ont_job.py -m 3 -i "${out_sam%.sam}.fq -t 5 2>> "$logfile" 
+	submit_sciserver_ont_job.py -m 4 -i "${out_sam%.sam}.fq -t 5 2>> "$logfile" 
 fi
 
 
