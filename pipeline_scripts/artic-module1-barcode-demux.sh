@@ -1,6 +1,6 @@
 #!/bin/bash
 source /home/idies/workspace/covid19/bashrc
-conda activate artic-ncov2019-medaka
+#conda activate artic-ncov2019-medaka
 
 #---------------------------------------------------------------------------------------------------
 
@@ -91,19 +91,19 @@ fi
 
 # check for existence of manifest.txt and that it has two columns
 if [ ! -s ${sequencing_run}/manifest.txt ];then 
-    >&2 echo "Error Require a manifest.txt file in the sequencing run directory"
+    >&2 echo "Error: Require a manifest.txt file in the sequencing run directory"
     exit 1
 else
     columns=$( awk -F' ' '{print NF}' ${sequencing_run}/manifest3.txt )
     if [ $columns -ne 2 ];then 
-        >&2 echo "Error manifest.txt file does not have two columns"
+        >&2 echo "Error: manifest.txt file does not have two columns"
         exit 1
     fi
 fi
 
 # check for existence of fastq_pass directory
 if [ ! -d ${sequencing_run}/fastq_pass ];then
-    >&2 echo "Error Require fastq_pass directory in the sequencing run directory"
+    >&2 echo "Error: Require fastq_pass directory in the sequencing run directory"
     exit 1
 fi
 
