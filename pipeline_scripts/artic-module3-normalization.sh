@@ -132,7 +132,7 @@ norm_parameters="coverage_threshold=150 --qual_sort --even_strand"
 mkdir -p $normalize_dir
 
 # log file
-logfile="${sequencing_run}/artic-pipeline/3-normalization/$(date +"%F-%H%M%S")-module3.log"
+logfile="${sequencing_run}/artic-pipeline/3-normalization/module3-${base}-$(date +"%F-%H%M%S").log"
 
 
 #===================================================================================================
@@ -205,7 +205,7 @@ else
         touch "$normalize_dir"/module3-"$base".complete
 
 	conda activate jhu-ncov
-	submit_sciserver_ont_job.py -m 4 -i "${out_sam%.sam}.fq -t 5 2>> "$logfile" 
+	submit_sciserver_ont_job.py -m 4 -i "${out_sam%.sam}.fq" -t 5 2>> "$logfile" 
 fi
 
 

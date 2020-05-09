@@ -132,7 +132,7 @@ consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
 mkdir -p $consensus_dir
 
 # log file
-logfile=${consensus_dir}/$(date +"%F-%H%M%S")-module4-nanopolish.log
+logfile=${consensus_dir}/module4-nanopolish-$(basename ${normalized_fastq%.covfiltered.fq}-$(date +"%F-%H%M%S").log
 
 
 # Optional program parameters

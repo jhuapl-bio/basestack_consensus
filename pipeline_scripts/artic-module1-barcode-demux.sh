@@ -126,7 +126,7 @@ demux_dir=${sequencing_run}/artic-pipeline/1-barcode-demux
 mkdir -p $demux_dir
 
 # log file
-logfile=${demux_dir}/$(date +"%F-%H%M%S")-module1.log
+logfile=${demux_dir}/module1-$(date +"%F-%H%M%S").log
 
 #===================================================================================================
 # MAIN BODY
@@ -191,6 +191,7 @@ if [ -f $demux_dir/1-barcode-demux.complete ]; then
     while read name barcode; do
         echo_log "RUN $(basename ${sequencing_run}): " 'executing submit_sciserver_ont_job.py -m 2 i "$demux_dir"/"$name"'       
         submit_sciserver_ont_job.py -m 2 -i "$demux_dir"/"$name"
+	sleep 30
     done < $manifest 2>> "$logfile"
 fi
 
