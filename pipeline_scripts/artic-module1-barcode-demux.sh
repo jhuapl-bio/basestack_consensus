@@ -94,7 +94,7 @@ if [ ! -s ${sequencing_run}/manifest.txt ];then
     >&2 echo "Error: Require a manifest.txt file in the sequencing run directory"
     exit 1
 else
-    columns=$( awk -F' ' '{print NF}' ${sequencing_run}/manifest3.txt )
+    columns=$( awk -F' ' '{print NF}' ${sequencing_run}/manifest.txt )
     if [ $columns -ne 2 ];then 
         >&2 echo "Error: manifest.txt file does not have two columns"
         exit 1
@@ -123,6 +123,7 @@ manifest=${sequencing_run}/manifest.txt
 
 # Output directories
 demux_dir=${sequencing_run}/artic-pipeline/1-barcode-demux
+mkdir -p $demux_dir
 
 # log file
 logfile=${demux_dir}/$(date +"%F-%H%M%S")-module1.log
