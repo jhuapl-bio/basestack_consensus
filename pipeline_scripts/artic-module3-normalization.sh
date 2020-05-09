@@ -132,7 +132,7 @@ norm_parameters="coverage_threshold=150 --qual_sort --even_strand"
 mkdir -p $normalize_dir
 
 # log file
-logfile="${sequencing_run}/artic-pipeline/3-normalization/$(date +"%F %T")-module3.log"
+logfile="${sequencing_run}/artic-pipeline/3-normalization/$(date +"%F-%H%M%s"-module3.log"
 
 
 #===================================================================================================
