@@ -137,7 +137,7 @@ if [ ! -f "${gather_dir}/module2-${base}.complete" ];then
     exit 1
 else
     mkdir -p ${normalize_dir}
-    mkdir -p $(dirname ${normalizedir})/logs
+    mkdir -p $(dirname ${normalize_dir})/logs
 fi
 
 # check for existence of a module 3 output "complete" files.  will not overwrite previous processing.
