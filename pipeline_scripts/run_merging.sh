@@ -11,16 +11,16 @@ RUN=$1
 # get known directory names
 DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus"
 
-REF="$BINDIR/VariantValidator/nCoV-2019.reference.fasta"
+REF="/home/idies/workspace/covid19/ncov_reference/sequence.fasta"
 
-for consfile in $DIR/*.consensus.fasta; do
+for bamfile in `ls $DIR/*.nanopolish.primertrimmed.rg.sorted.bam`; do
 
-    sample=${consfile##*/}
+    sample=${bamfile##*/}
     samplename=${sample%%_*}
 
     # loop through all non-NTC samples
     if [ ! "$samplename" = "NTC" ]; then
-
+	continue
         echo $samplename
 
         nanopolishvcfunzipped=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/$samplename*.nanopolish.merged.vcf`
@@ -39,7 +39,6 @@ for consfile in $DIR/*.consensus.fasta; do
             gunzip -c $medakavcffile > $medakavcfunzipped          
         fi
 
-        bamfile=`ls $DIR/$samplename*.nanopolish.primertrimmed.rg.sorted.bam`
         prefix=`echo $bamfile`
         prefix=${prefix##*/}
         prefix=${prefix%%.*}
@@ -53,6 +52,11 @@ for consfile in $DIR/*.consensus.fasta; do
 
 	# run script
         $BINDIR/VariantValidator/run.sh $REF $bamfile $nanopolishvcfunzipped,$medakavcfunzipped $DIR/$prefix
+    else
+	prefix=`echo $bamfile`
+        prefix=${prefix##*/}
+        prefix=${prefix%%.*}
+        samtools mpileup --reference $REF $bamfile -o $DIR/$prefix.mpileup
     fi
 done
 
