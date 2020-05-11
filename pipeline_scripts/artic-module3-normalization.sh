@@ -105,7 +105,7 @@ normalize_dir="${sequencing_run}/artic-pipeline/3-normalization/$base"
 norm_parameters="coverage_threshold=150 --qual_sort --even_strand" 
 
 # log file
-logfile="${sequencing_run}/artic-pipeline/3-normalization/logs/module3-${base}-$(date +"%F-%H%M%S").log"
+logfile=$(dirname ${normalize_dir})/logs/module3-${base}-$(date +"%F-%H%M%S").log
 
 
 #===================================================================================================
@@ -136,11 +136,12 @@ if [ ! -f "${gather_dir}/module2-${base}.complete" ];then
     >&2 echo "Error: Processing for Module 2 for sample ${base} is incomplete (cannot locate ${gather_dir}/module2-${base}.complete"
     exit 1
 else
-    mkdir -p "$normalize_dir/logs"
+    mkdir -p ${normalize_dir}
+    mkdir -p $(dirname ${normalizedir})/logs
 fi
 
 # check for existence of a module 3 output "complete" files.  will not overwrite previous processing.
-if [ -s "${sequencing_run}/artic-pipeline/3-normalization/module3-${base}.complete" ];then
+if [ -s $(dirname ${normalizedir})/logs/module3-${base}.complete ];then
     >&2 echo "Error: Module 3 processing for this sample already completed: ${sequencing_run}/artic-pipeline/3-normalization/module3-${base}.complete"
     >&2 echo "    Archive Module 3 and all subsequent module processing prior to rerunning."
     exit 1
@@ -209,7 +210,7 @@ samtools depth -a -d 0 "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth" 2>> "$log
 # QUALITY CHECKING AND MODULE 4 JOB SUBMISSION
 #===================================================================================================
 
-if [ ! -f "${out_sam%.sam}.fq" ]; then
+if [ ! -s "${out_sam%.sam}.fq" ]; then
     >&2 echo_log "SAMPLE ${base}: Error: Module 3 output "${out_sam%.sam}.fq" not found"
     exit 1
 else
