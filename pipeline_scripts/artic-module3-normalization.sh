@@ -67,35 +67,12 @@ echo_log() {
 	echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
 
-#===================================================================================================
-# QUALITY CHECKING
-#===================================================================================================
-
-sequencing_run=$(dirname $(dirname $(dirname "$fastq")))
-
-if [ ! -s ${fastq} ];then
-    >&2 echo_log "Error Sequencing run ${sequencing_run} does not exist"
-    exit 1
-fi
-
-if [ ! -s ${sequencing_run}/run_config.txt ];then
-    >&2 echo_log "Error Require a run_config.txt file in the sequencing run directory"
-    exit 1
-fi
-
-if [ ! -s ${sequencing_run}/manifest.txt ];then
-    >&2 echo_log "Error Require a manifest.txt file in the sequencing run directory"
-    exit 1
-fi
-
-if [ ! -s $fastq ];then
-    >&2 echo_log "Error: Module 2 output '${fastq}' not found"
-    exit 1
-fi
 
 #===================================================================================================
 # Default values
 #===================================================================================================
+
+sequencing_run=$(dirname $(dirname $(dirname "$fastq")))
 
 # location of programs used by pipeline
 software_path=/home/idies/workspace/covid19/code
@@ -124,15 +101,50 @@ reference="$scheme_dir/$protocol/nCoV-2019.reference.fasta"
 # Output directories
 normalize_dir="${sequencing_run}/artic-pipeline/3-normalization/$base"
 
-
 # Optional program parameters - check with Tom , even_strand or median_strand
 norm_parameters="coverage_threshold=150 --qual_sort --even_strand" 
 
-# create output directories, need separate directories for each sample 
-mkdir -p $normalize_dir
-
 # log file
-logfile="${sequencing_run}/artic-pipeline/3-normalization/module3-${base}-$(date +"%F-%H%M%S").log"
+logfile="${sequencing_run}/artic-pipeline/3-normalization/logs/module3-${base}-$(date +"%F-%H%M%S").log"
+
+
+#===================================================================================================
+# QUALITY CHECKING
+#===================================================================================================
+
+if [ ! -s ${fastq} ];then
+    >&2 echo_log "Error Sequencing run ${sequencing_run} does not exist"
+    exit 1
+fi
+
+if [ ! -s ${run_configuration} ];then
+    >&2 echo_log "Error Require a run_config.txt file in the sequencing run directory"
+    exit 1
+fi
+
+if [ ! -s ${manifest} ];then
+    >&2 echo_log "Error Require a manifest.txt file in the sequencing run directory"
+    exit 1
+fi
+
+if [ ! -s ${fastq} ];then
+    >&2 echo_log "Error: Module 2 output '${fastq}' not found"
+    exit 1
+fi
+
+if [ ! -f ${gather_dir}/module2-"$name".complete ];then
+    >&2 echo "Error: Processing for Module 2 for sample ${name }is incomplete (cannot locate ${gather_dir}/module2-${name}.complete"
+    exit 1
+else
+    mkdir -p "$normalize_dir/logs"
+fi
+
+# check for existence of a module 3 output "complete" files.  will not overwrite previous processing.
+if [ -s ${sequencing_run}/artic-pipeline/3-normalization/module3-"$base".complete ];then
+    >&2 echo "Error: Module 3 processing for this sample already completed: ${sequencing_run}/artic-pipeline/3-normalization/module3-${base}.complete"
+    >&2 echo "    Archive Module 3 and all subsequent module processing prior to rerunning."
+    exit 1
+fi
 
 
 #===================================================================================================

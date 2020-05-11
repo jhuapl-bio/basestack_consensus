@@ -131,7 +131,8 @@ fi
 
 # check for existence of a module 1 complete file.  will not overwrite previous processing
 if [ -f $demux_dir/1-barcode-demux.complete ];then
-    >&2 echo "Error: Processing for Module 1 was prevously completed: ${demux_dir}1-barcode-demux.complete\n\tArchive all previously run modules prior to beginning a new processing chain."
+    >&2 echo "Error: Processing for Module 1 was prevously completed: ${demux_dir}1-barcode-demux.complete"
+    >&2 echo "     Archive all previously run modules prior to beginning a new processing chain."
     exit 1
 fi
 
