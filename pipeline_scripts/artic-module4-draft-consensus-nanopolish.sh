@@ -132,7 +132,7 @@ consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
 mkdir -p $consensus_dir
 
 # log file
-logfile='${consensus_dir}/module4-nanopolish-$(basename ${normalized_fastq%.covfiltered.fq})-$(date +"%F-%H%M%S").log'
+logfile=${consensus_dir}/module4-nanopolish-$(basename ${normalized_fastq%.covfiltered.fq})-$(date +"%F-%H%M%S").log
 
 
 # Optional program parameters
@@ -159,7 +159,7 @@ echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):------ processi
 # module 4
 #---------------------------------------------------------------------------------------------------
 
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}: Starting Module 4 Nanopolish"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Starting Module 4 Nanopolish"
 
 # run ARTIC pipeline - nanopolish
 artic minion \
@@ -175,6 +175,6 @@ artic minion \
 
   #---------------------------------------------------------------------------------------------------
   
-  echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}: Module 4 Nanopolish: processing complete"
+  echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Module 4 Nanopolish: processing complete"
   #chgrp -R 5102 $demux_dir
 
