@@ -20,7 +20,6 @@ for bamfile in `ls $DIR/*.nanopolish.primertrimmed.rg.sorted.bam`; do
 
     # loop through all non-NTC samples
     if [ ! "$samplename" = "NTC" ]; then
-	continue
         echo $samplename
 
         nanopolishvcfunzipped=`ls /home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/$samplename*.nanopolish.merged.vcf`
@@ -53,6 +52,7 @@ for bamfile in `ls $DIR/*.nanopolish.primertrimmed.rg.sorted.bam`; do
 	# run script
         $BINDIR/VariantValidator/run.sh $REF $bamfile $nanopolishvcfunzipped,$medakavcfunzipped $DIR/$prefix
     else
+        echo $samplename
 	prefix=`echo $bamfile`
         prefix=${prefix##*/}
         prefix=${prefix%%.*}
