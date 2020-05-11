@@ -172,7 +172,7 @@ if [ ! -f "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq ];then
     exit 1
 else
  	echo_log "SAMPLE ${name}: Module 2 - Guppyplex complete"
-	touch "$gather_dir"/module2-"$name".complete
+	touch "$gather_dir"/module2-"$name"_$(basename ${barcode_dir}).complete
 
 	echo_log "SAMPLE ${name}: executing submit_sciserver_ont_job.py -m 3 -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq"
 
