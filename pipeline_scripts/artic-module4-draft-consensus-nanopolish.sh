@@ -145,15 +145,15 @@ out_prefix="$consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}.nanopo
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}: ------ Nanopolish Paramters:"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}: sequencing run folder: ${CYAN}$sequencing_run${NC}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}: recording software version numbers..."
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}: Software version: $(nanopolish --version | awk 'NR==1; END{print}')"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}: run configuration file: ${sequencing_run}/run_config.txt"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}: run manifest file: ${manifest}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}: fasta file: ${normalized_fastq}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}: output nanopolish directory: ${consensus_dir}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}:------ processing nanopolish --------"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): ------ Nanopolish Paramters:"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): recording software version numbers..."
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Software version: $(nanopolish --version | awk 'NR==1; END{print}')"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): run configuration file: ${sequencing_run}/run_config.txt"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): run manifest file: ${manifest}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): fasta file: ${normalized_fastq}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): output nanopolish directory: ${consensus_dir}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):------ processing nanopolish --------"
 
 #---------------------------------------------------------------------------------------------------
 # module 4
