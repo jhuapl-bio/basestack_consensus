@@ -23,7 +23,7 @@ def collect_depths(bamfile):
     depths = [0] * bamFile.get_reference_length(refName)
 
     # generate the pileup
-    for pileupcolumn in bamFile.pileup(refName, max_depth=10000, truncate=False, min_base_quality=13):
+    for pileupcolumn in bamFile.pileup(refName, max_depth=10000, truncate=False, min_base_quality=0):
 
         # process the pileup column
         for pileupread in pileupcolumn.pileups:
@@ -59,7 +59,7 @@ def collect_position_pileup(bamfile,position):
     # pileup uses 0-based indexing, so need position-1 for actual genomic position
     pileup = []
     pileup.append(0)
-    for pileupcolumn in bamFile.pileup(refName, start=position, stop=position+1, max_depth=10000, min_base_quality=13):
+    for pileupcolumn in bamFile.pileup(refName, start=position, stop=position+1, max_depth=10000, min_base_quality=0):
         for pileupread in pileupcolumn.pileups:
             if pileupcolumn.pos == position and not pileupread.is_refskip:
                 pileup[0] += 1

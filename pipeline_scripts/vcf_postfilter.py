@@ -189,6 +189,7 @@ def parse_arguments():
    parser.add_argument('--mpileup', type=str, help='path to mpileup of bam file of sample')
    parser.add_argument('--depthfile', type=str, help='path to depth of bam file of sample')
    parser.add_argument('--consensus', type=str, help='path to fasta file of sample consensus sequence')
+   parser.add_argument('--ntc-mpileup', type=str, help='path to mpileup file of negative control')
    parser.add_argument('--ntc-depthfile', type=str, help='path to depth file of negative control')
    parser.add_argument('--vcf-nextstrain', type=str, help='path to vcf containing all nextstrain snps')
    parser.add_argument('--case-defs', type=str, help='path to csv containing case numbers and definitions')
@@ -288,7 +289,7 @@ def main():
         data['new_flag'] = fl.snp_in_nextstrain(pos, data['ref'], data['alt'], args.vcf_nextstrain, args.ns_snp_threshold)
         data['vc_flag'] = fl.variant_caller_mismatch(info['SUPP_VEC'])
         data['sb_flag'],data['ont_strand_counts'] = fl.strand_bias_detected(info,data['alt'],args.strand_threshold)
-        data['ntc_flag'] = fl.allele_in_ntc(pos, data['alt'], depth, args.ntc_bamfile, args.snp_depth_factor)
+        data['ntc_flag'] = fl.allele_in_ntc(pos, data['alt'], depth, args.ntc_mpileup, args.snp_depth_factor)
         data['homopolymer'] = fl.in_homopolymer_region(pos)
         data['maf_flag'],data['mixed_flag'] = fl.minor_allele_freq(depth, alt_allele_freq, args.maf_flag, args.hold_flag)
         data['illumina_support'] = [fl.get_illumina_support(illumina_alt_allele_freq,info['SUPP_VEC'],args.maf_flag) if illumina and illumina_depth>=20 else np.nan][0]
