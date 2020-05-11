@@ -61,13 +61,13 @@ def mask_consensus_sites(consensus,depthfile,depth_threshold,outdir,prefix):
         # save bases that were already 'N'
         # mask based on coverage
         if base=='N':
-            ambig.append(pos)
+            ambig.append(pos+1)
             continue
         else:
             rd = [cov[pos+1] if (pos+1) in cov.keys() else 0][0]
             if rd < depth_threshold:
                 cons[pos] = 'N'
-                newmask.append(pos)
+                newmask.append(pos+1)
     
     # output newly-masked bases to file
     filename=os.path.join(outdir,prefix+'.new_masked_sites.txt')
