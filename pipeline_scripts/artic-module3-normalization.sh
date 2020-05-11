@@ -133,7 +133,7 @@ if [ ! -s ${fastq} ];then
 fi
 
 if [ ! -f "${gather_dir}/module2-${base}.complete" ];then
-    >&2 echo "Error: Processing for Module 2 for sample ${name }is incomplete (cannot locate ${gather_dir}/module2-${base}.complete"
+    >&2 echo "Error: Processing for Module 2 for sample ${base} is incomplete (cannot locate ${gather_dir}/module2-${base}.complete"
     exit 1
 else
     mkdir -p "$normalize_dir/logs"
