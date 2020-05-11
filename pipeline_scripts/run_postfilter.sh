@@ -14,7 +14,7 @@ fi
 
 # save path to NTC depthfile and mpileup
 ntc_depthfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*nanopolish.primertrimmed.rg.sorted.depth"
-ntc_mpileup="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*mpileup"
+ntc_bamfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*nanopolish.primertrimmed.rg.sorted.bam"
 
 # save path to nextstrain vcf
 vcf_next="/home/idies/workspace/covid19/nextstrain/latest/alpha/alignments.vcf"
@@ -46,7 +46,7 @@ for consfile in $DIR/*nanopolish.consensus.fasta; do
 		--mpileup $mpileup \
 		--depthfile $depth \
 		--consensus $consensus \
-		--ntc-mpileup $ntc_mpileup \
+		--ntc-bamfile $ntc_bamfile \
 		--ntc-depthfile $ntc_depthfile \
 		--vcf-nextstrain $vcf_next \
 		--case-defs $case_defs \

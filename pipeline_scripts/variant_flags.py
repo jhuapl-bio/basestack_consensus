@@ -4,6 +4,8 @@ import sys
 import numpy as np
 import pandas as pd
 
+from samtools_funcs import collect_position_pileup
+
 def depth_near_threshold(depth,depth_threshold,coverage_flag):
     """
     Function that returns a depth flag string if the read depth at a position is
@@ -44,25 +46,18 @@ def minor_allele_freq(depth,alt_allele_freq,maf_flag,hold_flag):
         return(np.nan,'mixed position')
 
 
-def allele_in_ntc(pos,alt,depth,ntc_mpileup,snp_depth_factor):
+def allele_in_ntc(pos,alt,depth,ntc_bamfile,snp_depth_factor):
     """ 
     Function that returns a flag string if the alternate allele is present in the negative control
     and the coverage in the sample is not more than snp_depth_factor * coverage in negative control
     """
     
     # get the pileup at this position in the negative control
-    names=['chrom', 'pos', 'ref', 'depth', 'pileup','qual']
-    ntc_pileup = pd.read_csv(ntc_mpileup,sep='\t',names=names)
+    ntc_pileup = collect_position_pileup(ntc_bamfile, pos)
     
-    if pos not in ntc_pileup.pos:
-        return(np.nan)
-    else:
-        ntc_pileup = ntc_pileup[ntc_pileup.pos==pos].pileup.values[0]
-        ntc_depth = ntc_pileup[ntc_pileup.pos==pos].depth.values[0]
-    
-    if (alt.upper() in ntc_pileup) or (alt.lower() in ntc_pileup):
+    if alt in ntc_pileup:
         # require coverage at this sample to be some multiple of the negative control
-        if depth <= (snp_depth_factor * ntc_depth):
+        if depth <= (snp_depth_factor * ntc_pileup[0]):
             return('allele in NTC')
     
     # if alt not in negative control or depth is high enough
