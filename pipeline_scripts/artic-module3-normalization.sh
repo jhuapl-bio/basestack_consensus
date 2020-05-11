@@ -215,7 +215,7 @@ if [ ! -s "${out_sam%.sam}.fq" ]; then
     exit 1
 else
 	echo_log "SAMPLE ${base}: Module 3 complete for sample '${base}'"
-        touch $(dirname ${normalizedir})/module3-${base}.complete
+        touch $(dirname ${normalize_dir})/module3-${base}.complete
 
 	conda activate jhu-ncov
 	submit_sciserver_ont_job.py -m 4 -i "${out_sam%.sam}.fq" -t 5 2>> "$logfile" 
