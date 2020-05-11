@@ -132,15 +132,15 @@ if [ ! -s ${fastq} ];then
     exit 1
 fi
 
-if [ ! -f ${gather_dir}/module2-"$name".complete ];then
-    >&2 echo "Error: Processing for Module 2 for sample ${name }is incomplete (cannot locate ${gather_dir}/module2-${name}.complete"
+if [ ! -f "${gather_dir}/module2-${base}.complete" ];then
+    >&2 echo "Error: Processing for Module 2 for sample ${name }is incomplete (cannot locate ${gather_dir}/module2-${base}.complete"
     exit 1
 else
     mkdir -p "$normalize_dir/logs"
 fi
 
 # check for existence of a module 3 output "complete" files.  will not overwrite previous processing.
-if [ -s ${sequencing_run}/artic-pipeline/3-normalization/module3-"$base".complete ];then
+if [ -s "${sequencing_run}/artic-pipeline/3-normalization/module3-${base}.complete" ];then
     >&2 echo "Error: Module 3 processing for this sample already completed: ${sequencing_run}/artic-pipeline/3-normalization/module3-${base}.complete"
     >&2 echo "    Archive Module 3 and all subsequent module processing prior to rerunning."
     exit 1
