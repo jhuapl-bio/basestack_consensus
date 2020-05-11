@@ -159,7 +159,7 @@ artic minion \
         --normalise 1000000 \
         --threads $threads \
         --scheme-directory "$scheme_dir" \
-        --read-file $normalized_fastq \
+        --read-file "$normalized_fastq" \
         "$protocol" "$out_prefix" 2>> "$logfile"
 
 
