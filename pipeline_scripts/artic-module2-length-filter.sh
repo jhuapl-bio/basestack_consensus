@@ -99,13 +99,18 @@ if [ ! -s ${sequencing_run}/run_config.txt ];then
     exit 1
 fi
 
-if [ ! -s ${sequencing_run}/manifest.txt ];then
+if [ ! -s ${manifest} ];then
     >&2 echo "Error: Require a manifest.txt file in the sequencing run directory"
     exit 1
 fi
 
 if [ ! -d ${sequencing_run}/artic-pipeline/1-barcode-demux ];then
     >&2 echo "Error: Require Module 1-barcode-demux output. Module 1 Output: '${sequencing_run}/artic-pipeline/1-barcode-demux' does not exist"
+    exit 1
+fi
+
+if [ ! -d ${barcode_dir} ];then
+    >&2 echo "Error: Input barcode directory does not exist: '${sequencing_run}/artic-pipeline/1-barcode-demux'"
     exit 1
 fi
 
@@ -117,7 +122,7 @@ else
 fi
 
 # check for existence of a module 2 ouput directory.  will not overwrite previously processing
-if [ -f ${gather_dir}/module2-"$name".complete ];then
+if [ -f ${gather_dir}/module2-"$name"_$(basename ${barcode_dir}).complete ];then
     >&2 echo "Error: Processing for Module 2 already completed for this sample: ${gather_dir}/module2-${name}.complete"
     >&2 echo "    Archive the previously run Module 2 output and all subsequent module ouput prior to rerunning."
     exit 1
