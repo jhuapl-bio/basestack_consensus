@@ -141,7 +141,7 @@ else
 fi
 
 # check for existence of a module 3 output "complete" files.  will not overwrite previous processing.
-if [ -s $(dirname ${normalizedir})/logs/module3-${base}.complete ];then
+if [ -s $(dirname ${normalizedir})/module3-${base}.complete ];then
     >&2 echo "Error: Module 3 processing for this sample already completed: ${sequencing_run}/artic-pipeline/3-normalization/module3-${base}.complete"
     >&2 echo "    Archive Module 3 and all subsequent module processing prior to rerunning."
     exit 1
@@ -215,7 +215,7 @@ if [ ! -s "${out_sam%.sam}.fq" ]; then
     exit 1
 else
 	echo_log "SAMPLE ${base}: Module 3 complete for sample '${base}'"
-        touch "$normalize_dir"/module3-"$base".complete
+        touch $(dirname ${normalizedir})/module3-${base}.complete
 
 	conda activate jhu-ncov
 	submit_sciserver_ont_job.py -m 4 -i "${out_sam%.sam}.fq" -t 5 2>> "$logfile" 
