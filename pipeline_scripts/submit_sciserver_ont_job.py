@@ -3,6 +3,7 @@
 # See https://github.com/sciserver/SciScript-Python/blob/Feature_Jobs/py3/SciServer/Jobs.py
 
 from SciServer import Jobs,Authentication,Config
+import sys
 import json
 import requests
 import time
@@ -125,50 +126,60 @@ dataVolumes = None, resultsFolderPath = "", jobAlias = ""):
     else:
         raise Exception("User token is not defined. First log into SciServer.")
 
+
 # ### Sciserver User Config
-token=Authentication.getToken()
-user=Authentication.getKeystoneUserWithToken(token)
-USERNAME=user.userName
+def authenticate_user():
+	try:
+		token=Authentication.getToken()
+		user=Authentication.getKeystoneUserWithToken(token)
+		USERNAME=user.userName
+	except requests.exceptions.ConnectionError as e:
+		print("Connection Error: Authentication Token was not generated.")
+		print("     Please log back in to SciServer and try again.")
+		sys.exit(1)
+	except:
+		print("Unexpected error:", sys.exc_info()[0])
+		raise
+		sys.exit(1)
+	finally:
+		return(token, USERNAME)
+
 
 # define the required job environment
-DOMAIN='COVID-19 Jobs'  # change with name of new compute domain
-IMAGE='SciServer Essentials'
+def get_job_environment(token, USERNAME):
+	DOMAIN='COVID-19 Jobs'  #hardcoded for now
+	IMAGE='SciServer Essentials' #hardcoded for now
 
-# define lists of user and data volumes that should be mounted
-USERVOLUMES=['Storage/'+ USERNAME + '/persistent','Temporary/'+ USERNAME +'/scratch']
-DATAVOLUMES=['COVID-19']
+	# define lists of user and data volumes that should be mounted
+	USERVOLUMES=['Storage/'+ USERNAME + '/persistent','Temporary/'+ USERNAME +'/scratch']
+	DATAVOLUMES=['COVID-19']
 
-RESULTSFOLDERPATH = "/home/idies/workspace/Temporary/" + USERNAME + "/scratch/jobs"
+	RESULTSFOLDERPATH = "/home/idies/workspace/Temporary/" + USERNAME + "/scratch/jobs"
 
-domains=Jobs.getDockerComputeDomains()
-domain=None
-image=None
-volumes=[]
-userVolumes=[]
-dataVolumes=[]
-for d in domains:
-    if d['name'] == DOMAIN:
-        domain=d
-        for im in d['images']:
-            if im['name'] == IMAGE:
-                image = im
-        for v in d['volumes']:
-            if v['name'] in DATAVOLUMES:
-                dataVolumes.append({"name":v['name'],'needsWriteAccess':True})
-        for uv in d['userVolumes']:
-            path=pathForUserVolume(uv)
-            if path in USERVOLUMES:
-                userVolumes.append({'name':uv['name'],'rootVolumeName':uv['rootVolumeName']
-                                    ,'owner':uv['owner'],'needsWriteAccess':True})
-        break
+	domains=Jobs.getDockerComputeDomains()
+	domain=None
+	image=None
+	volumes=[]
+	userVolumes=[]
+	dataVolumes=[]
+	for d in domains:
+		if d['name'] == DOMAIN:
+			domain=d
+			for im in d['images']:
+				if im['name'] == IMAGE:
+					image = im
+			for v in d['volumes']:
+				if v['name'] in DATAVOLUMES:
+					dataVolumes.append({"name":v['name'],'needsWriteAccess':True})
+			for uv in d['userVolumes']:
+				path=pathForUserVolume(uv)
+				if path in USERVOLUMES:
+					userVolumes.append({'name':uv['name'],'rootVolumeName':uv['rootVolumeName']
+						,'owner':uv['owner'],'needsWriteAccess':True})
+			break
 
-#argument parsing for job submission
-parser = argparse.ArgumentParser(description="Submit Bash Command as Job on Sciserver\nJob Config\n\tImage: Sciserver Essentials\n\tVolume: 'COVID-19'") 
-parser.add_argument("-s", "--script", help="bash script to be executed as job", default=None)
-parser.add_argument("-m", "--module", type=int, help="module from which to begin processing pipeline", choices=[0,1,2,3,4,5], default=None)
-parser.add_argument("-i", "--input", help="input file to be processed by job")
-parser.add_argument("-t", "--threads", help="threads", default=None)
-args, unknown = parser.parse_known_args()
+	return(image, domain, userVOLUMES, dataVOLUMES, RESULTSFOLDERPATH)
+
 
 ### define script to run
 def get_module_script(module): 
@@ -182,21 +193,44 @@ def get_module_script(module):
 	} 
 	return script.get(module, "Invalid module number") 
 
-if args.module is not None and args.script==None:
-	args.script=get_module_script(args.module)
-else:
-	"Must provide script full path or module number for job execution"
+def get_command(args):
+	if args.module is not None and args.script==None:
+		args.script=get_module_script(args.module)
+	else:
+		raise Exception("Must provide script's full path or module number for job execution")
+	
+	# Create command: merge bash script with parameters and input files for analysis...
+	if args.threads is not None:
+		command = "bash -x " + args.script + " -i " + args.input + " -t " + str(args.threads)
+	else:
+		command = "bash -x " + args.script + " -i " + args.input
+	
+	return command 
 
-# Create command: merge bash script with parameters and input files for analysis...
-if args.threads is not None:
-	command = "bash -x " + args.script + " -i " + args.input + " -t " + str(args.threads)
-else:
-	command = "bash -x " + args.script + " -i " + args.input
 
-JOBALIAS = args.script.split("/")[-1]
+
+#argument parsing for job submission
+parser = argparse.ArgumentParser(description="Submit Bash Command as Job on Sciserver\nJob Config\n\tImage: Sciserver Essentials\n\tVolume: 'COVID-19'") 
+parser.add_argument("-s", "--script", help="bash script to be executed as job", default=None)
+parser.add_argument("-m", "--module", type=int, help="module from which to begin processing pipeline", choices=[0,1,2,3,4,5], default=None)
+parser.add_argument("-i", "--input", help="input file to be processed by job")
+parser.add_argument("-t", "--threads", help="threads", default=None)
+args, unknown = parser.parse_known_args()
+
+
+
+#MAIN
+token, username = authenticate_user()
+
+image, domain, userVOLUMES, dataVOLUMES, RESULTSFOLDERPATH = get_job_environment(token=token, USERNAME=username)
+
+command=get_command(args)
+
+JOBALIAS=args.script.split("/")[-1]
+
 job=submitShellCommandJob(shellCommand=command
                             , dockerComputeDomain = domain
-                            , dockerImageName = IMAGE
+                            , dockerImageName = image
                             , userVolumes = userVolumes, dataVolumes=dataVolumes
                             , resultsFolderPath = RESULTSFOLDERPATH
                             , jobAlias = JOBALIAS)
