@@ -75,6 +75,37 @@ echo_log() {
 sequencing_run=$(dirname $(dirname $(dirname $(dirname "$normalized_fastq"))))
 
 #===================================================================================================
+# Default values
+#===================================================================================================
+
+# location of programs used by pipeline
+software_path=/home/idies/workspace/covid19/code
+
+# input files, these files should be in the sequencing run directory
+manifest=${sequencing_run}/manifest.txt
+run_configuration="${sequencing_run}/run_config.txt"
+
+# location for primer schemes
+scheme_dir=${software_path}/artic-ncov2019/primer_schemes
+
+# primer protocol
+protocol=$(awk '/primers/{ print $2 }' "${run_configuration}")
+
+#sequencing summary for input into nanopolish
+summary=$(find "$sequencing_run" -maxdepth 2 -name "*sequencing_summary*.txt")
+
+# Output directories
+consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
+mkdir -p $consensus_dir/logs
+
+# log file
+logfile=${consensus_dir}/logs/module4-nanopolish-$(basename ${normalized_fastq%.covfiltered.fq})-$(date +"%F-%H%M%S").log
+
+
+# Optional program parameters
+out_prefix="$consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}.nanopolish)"
+
+#===================================================================================================
 # QUALITY CHECKING
 #===================================================================================================
 
@@ -101,42 +132,19 @@ if [ ! -s ${sequencing_run}/manifest.txt ];then
     exit 1
 fi
 
-if [ ! -d ${sequencing_run}/artic-pipeline/3-normalization ];then
-    >&2 echo "Error Require module 3 normalization output"
-    >&2 echo "${sequencing_run}/artic-pipeline/3-normalization does not exist"
+if [ ! -f ${sequencing_run}/artic-pipeline/3-normalization/module3-$(basename ${normalized_fastq%.covfiltered.fq}).complete ];then
+    >&2 echo "Error: Module 3 Normalization must be completed prior to running Module 4."
+    >&2 echo "${sequencing_run}/artic-pipeline/3-normalization/module3-$(basename ${normalized_fastq%.covfiltered.fq}).complete does not exist"
     exit 1
 fi
 
-#===================================================================================================
-# Default values
-#===================================================================================================
-
-# location of programs used by pipeline
-software_path=/home/idies/workspace/covid19/code
-
-# input files, these files should be in the sequencing run directory
-manifest=${sequencing_run}/manifest.txt
-run_configuration="${sequencing_run}/run_config.txt"
-
-# location for primer schemes
-scheme_dir=${software_path}/artic-ncov2019/primer_schemes
-
-# primer protocol
-protocol=$(awk '/primers/{ print $2 }' "${run_configuration}")
-
-#sequencing summary for input into nanopolish
-summary=$(find "$sequencing_run" -maxdepth 2 -name "*sequencing_summary*.txt")
-
-# Output directories
-consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
-mkdir -p $consensus_dir
-
-# log file
-logfile=${consensus_dir}/module4-nanopolish-$(basename ${normalized_fastq%.covfiltered.fq})-$(date +"%F-%H%M%S").log
+if [ -s $consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}).nanopolish.merged.vcf ];then
+    >&2 echo "Error: Nanopolish VCF already exsists for this sample: $consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}).nanopolish.merged.vcf"
+    >&2 echo "    Archive all previous nanopolish processing before rerunning."
+    exit 1
+fi
 
 
-# Optional program parameters
-out_prefix="$consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}.nanopolish)"
 
 
 #===================================================================================================
@@ -172,7 +180,7 @@ artic minion \
     "$protocol" "$out_prefix" 2>> "$logfile"
 
 
-
+samtools depth -a -d 0 "$out_prefix".primertrimmed.rg.sorted.bam > "$out_prefix".primertrimmed.rg.sorted.depth
   #---------------------------------------------------------------------------------------------------
   
   echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Module 4 Nanopolish: processing complete"

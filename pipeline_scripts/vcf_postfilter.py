@@ -11,23 +11,22 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 from variant_status import status_by_case
-from samtools_funcs import collect_depths
 import variant_flags as fl
 
 
-def calculate_depth_threshold(ntc_bamfile,call_depth_factor):
+def calculate_depth_threshold(ntc_depthfile,call_depth_factor):
     """
     Determine the read depth threshold to use for calling non-ambiguous bases
     based on a negative control (NTC) included on the same sequencing run
     """
     
     # get negative control depth
-    cov = collect_depths(ntc_bamfile)
-    median_depth = np.median(cov)
+    cov = pd.read_csv(ntc_depthfile,sep='\t',header=None,names=['chrom','pos','depth'])
+    median_depth = cov.depth.median()
     return(call_depth_factor*median_depth)
 
 
-def mask_consensus_sites(consensus,mpileup,depth_threshold,outdir,prefix):
+def mask_consensus_sites(consensus,depthfile,depth_threshold,outdir,prefix):
     """
     Mask sites in the consensus genome based on the depth threshold
     calculated from the negative control on the same run
@@ -37,8 +36,7 @@ def mask_consensus_sites(consensus,mpileup,depth_threshold,outdir,prefix):
     """
     
     # get depth across genome
-    names=['chrom', 'pos', 'ref', 'depth', 'pileup','qual']
-    cov = pd.read_csv(mpileup,sep='\t',names=names)
+    cov = pd.read_csv(depthfile,sep='\t',header=None,names=['chrom','pos','depth'])
     cov = pd.Series(cov.depth.values,index=cov.pos).to_dict()
     
     # load current consensus sequence
@@ -63,13 +61,13 @@ def mask_consensus_sites(consensus,mpileup,depth_threshold,outdir,prefix):
         # save bases that were already 'N'
         # mask based on coverage
         if base=='N':
-            ambig.append(pos)
+            ambig.append(pos+1)
             continue
         else:
             rd = [cov[pos+1] if (pos+1) in cov.keys() else 0][0]
             if rd < depth_threshold:
                 cons[pos] = 'N'
-                newmask.append(pos)
+                newmask.append(pos+1)
     
     # output newly-masked bases to file
     filename=os.path.join(outdir,prefix+'.new_masked_sites.txt')
@@ -189,8 +187,10 @@ def parse_arguments():
    parser = argparse.ArgumentParser()
    parser.add_argument('--vcffile', type=str, help='path to vcf file of sample')
    parser.add_argument('--mpileup', type=str, help='path to mpileup of bam file of sample')
+   parser.add_argument('--depthfile', type=str, help='path to depth of bam file of sample')
    parser.add_argument('--consensus', type=str, help='path to fasta file of sample consensus sequence')
    parser.add_argument('--ntc-bamfile', type=str, help='path to bam file of negative control')
+   parser.add_argument('--ntc-depthfile', type=str, help='path to depth file of negative control')
    parser.add_argument('--vcf-nextstrain', type=str, help='path to vcf containing all nextstrain snps')
    parser.add_argument('--case-defs', type=str, help='path to csv containing case numbers and definitions')
    
@@ -214,8 +214,8 @@ def main():
     
     args = parse_arguments()
     
-    depth_threshold = max(20,calculate_depth_threshold(args.ntc_bamfile, args.call_depth_factor))
-    mask_cons = mask_consensus_sites(args.consensus, args.mpileup, depth_threshold, args.outdir, args.prefix)
+    depth_threshold = max(20,calculate_depth_threshold(args.ntc_depthfile, args.call_depth_factor))
+    mask_cons = mask_consensus_sites(args.consensus, args.depthfile, depth_threshold, args.outdir, args.prefix)
     
     # read vcf as text file
     vcf_sample = pd.read_csv(args.vcffile,sep='\t',skiprows=2)

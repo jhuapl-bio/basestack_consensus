@@ -66,52 +66,10 @@ echo_log() {
 }
 
 #===================================================================================================
-# QUALITY CHECKING
-#===================================================================================================
-
-# check for the existence of the sequencing run directory
-if [ ! -d ${sequencing_run} ];then
-    >&2 echo "Error Sequencing run ${sequencing_run} does not exist"
-    exit 1
-else
-    mkdir -p "${sequencing_run}/artic-pipeline"
-fi
-
-# check for existence of run_config.txt and for barcoding 
-if [ ! -s ${sequencing_run}/run_config.txt ];then
-    >&2 echo "Error Require a run_config.txt file in the sequencing run directory"
-    exit 1
-else
-    if ! grep -q "barcoding" ${sequencing_run}/run_config.txt;then 
-        echo "require barcoding file"
-        >&2 echo "Error barcode file not found"
-        exit 1
-    fi
-fi
-
-# check for existence of manifest.txt and that it has two columns
-if [ ! -s ${sequencing_run}/manifest.txt ];then 
-    >&2 echo "Error: Require a manifest.txt file in the sequencing run directory"
-    exit 1
-else
-    columns=$( awk -F' ' '{print NF}' ${sequencing_run}/manifest.txt )
-    if [ $columns -ne 2 ];then 
-        >&2 echo "Error: manifest.txt file does not have two columns"
-        exit 1
-    fi
-fi
-
-# check for existence of fastq_pass directory
-if [ ! -d ${sequencing_run}/fastq_pass ];then
-    >&2 echo "Error: Require fastq_pass directory in the sequencing run directory"
-    exit 1
-fi
-
-#===================================================================================================
 # Default values
 #===================================================================================================
 
-# location of programs used by pipeline - double check if source bashrc don't have to hardcode paths
+# location of programs used by pipeline - double check if bashrc doesn't have to hardcoded paths
 software_path=/home/idies/workspace/covid19/code
 guppy_barcoder_path=${software_path}/ont-guppy-cpu/bin
 
@@ -123,10 +81,61 @@ manifest=${sequencing_run}/manifest.txt
 
 # Output directories
 demux_dir=${sequencing_run}/artic-pipeline/1-barcode-demux
-mkdir -p $demux_dir
 
 # log file
-logfile=${demux_dir}/module1-$(date +"%F-%H%M%S").log
+logfile=${demux_dir}/logs/module1-$(date +"%F-%H%M%S").log
+
+
+#===================================================================================================
+# QUALITY CHECKING
+#===================================================================================================
+
+# check for the existence of the sequencing run directory
+if [ ! -d ${sequencing_run} ];then
+    >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
+    exit 1
+else
+    mkdir -p $demux_dir/logs
+
+fi
+
+# check for existence of run_config.txt and for barcoding 
+if [ ! -s ${run_configuration} ];then
+    >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
+    exit 1
+else
+    if ! grep -q "barcoding" ${run_configuration};then 
+        echo "Error: require barcoding file within run_config.txt"
+        >&2 echo "Error: barcode file not found within run_config.txt"
+        exit 1
+    fi
+fi
+
+# check for existence of manifest.txt and that it has two columns
+if [ ! -s ${manifest} ];then 
+    >&2 echo "Error: Require a manifest.txt file in the sequencing run directory"
+    exit 1
+else
+    columns=$( awk -F' ' '{print NF}' ${manifest} )
+    if [ $columns -ne 2 ];then 
+        >&2 echo "Error: manifest.txt must have two columns and be tab delimited.\n\tColumn 1: Barcodes\n\tColumn 2 Sample Names"
+        exit 1
+    fi
+fi
+
+# check for existence of fastq_pass directory
+if [ ! -d ${sequencing_run}/fastq_pass ];then
+    >&2 echo "Error: Require fastq_pass directory in the sequencing run directory"
+    exit 1
+fi
+
+# check for existence of a module 1 complete file.  will not overwrite previous processing
+if [ -f $demux_dir/1-barcode-demux.complete ];then
+    >&2 echo "Error: Processing for Module 1 was prevously completed: ${demux_dir}1-barcode-demux.complete"
+    >&2 echo "     Archive all previously run modules prior to beginning a new processing chain."
+    exit 1
+fi
+
 
 #===================================================================================================
 # MAIN BODY

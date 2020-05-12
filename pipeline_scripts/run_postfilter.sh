@@ -12,7 +12,8 @@ if [ ! -d $outdir ]; then
         mkdir $outdir
 fi
 
-# save path to NTC bamfile
+# save path to NTC depthfile and mpileup
+ntc_depthfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*nanopolish.primertrimmed.rg.sorted.depth"
 ntc_bamfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*nanopolish.primertrimmed.rg.sorted.bam"
 
 # save path to nextstrain vcf
@@ -33,6 +34,7 @@ for consfile in $DIR/*nanopolish.consensus.fasta; do
 
 		vcffile=$DIR/$samplename*all_callers.combined.vcf
 		mpileup="$DIR/$samplename*mpileup"
+		depth="$DIR/$samplename*nanopolish.primertrimmed.rg.sorted.depth"
 		consensus="$DIR/$samplename*nanopolish.consensus.fasta"
 		prefix=`echo $consensus`
 		prefix=${prefix##*/}
@@ -42,8 +44,10 @@ for consfile in $DIR/*nanopolish.consensus.fasta; do
 		python /home/idies/workspace/covid19/code/ncov/pipeline_scripts/vcf_postfilter.py \
 		--vcffile $vcffile \
 		--mpileup $mpileup \
+		--depthfile $depth \
 		--consensus $consensus \
 		--ntc-bamfile $ntc_bamfile \
+		--ntc-depthfile $ntc_depthfile \
 		--vcf-nextstrain $vcf_next \
 		--case-defs $case_defs \
 		--ns-snp-threshold 2 \
