@@ -226,7 +226,15 @@ token, username = authenticate_user()
 
 image, domain, userVolumes, dataVolumes, RESULTSFOLDERPATH = get_job_environment(token=token, USERNAME=username)
 
-command, jobAlias =get_command(args)
+command, jobAlias = get_command(args)
+
+print(commnad)
+print(jobAlias)
+print(domain)
+print(image)
+print(userVolumes)
+print(dataVolumes)
+print(RESULTSFOLDERPATH)
 
 job=submitShellCommandJob(shellCommand=command
                             , dockerComputeDomain = domain
