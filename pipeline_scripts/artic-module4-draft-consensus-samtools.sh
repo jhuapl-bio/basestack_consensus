@@ -126,16 +126,14 @@ fi
 if [ ! -f "${input_nanopolish_vcf}" ];then
     >&2 echo "Error: Nanopolish output vcf file  does not exist"
     exit 1
-fi
-
-if [ ! -f "${input_nanopolish_bamfile}" ];then
+elif [ ! -f "${input_nanopolish_bamfile}" ];then
     >&2 echo "Error: Nanopolish output bam file ${input_nanopolish_bamfile} does not exist"
     exit 1
-fi
-
-if [ ! -f "${input_medaka_vcf_zip}" ];then
+elif [ ! -f "${input_medaka_vcf_zip}" ];then
     >&2 echo "Error: Medaka output vcf file ${input_medaka_vcf_zip} does not exist"
     exit 1
+else
+    mkdir -p ${consensus_dir}/logs
 fi
 
  
