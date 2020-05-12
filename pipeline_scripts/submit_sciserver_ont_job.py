@@ -129,21 +129,24 @@ dataVolumes = None, resultsFolderPath = "", jobAlias = ""):
 
 # ### Sciserver User Config
 def authenticate_user():
-	try:
-		token=Authentication.getToken()
-		user=Authentication.getKeystoneUserWithToken(token)
-		USERNAME=user.userName
-	except requests.exceptions.ConnectionError as e:
-		print("Connection Error: Authentication Token was not generated.")
-		print("     Please log back in to SciServer and try again.")
-		sys.exit(1)
-	except:
-		print("Unexpected error:", sys.exc_info()[0])
-		raise
-		sys.exit(1)
-	finally:
-		return(token, USERNAME)
-
+        try:
+                token=Authentication.getToken()
+                user=Authentication.getKeystoneUserWithToken(token)
+                USERNAME=user.userName
+        except requests.exceptions.ConnectionError as e:
+                print("Connection Error: Authentication Token was not generated.")
+                print("     Please log back in to SciServer and try again.")
+                sys.exit(1)
+        except Exception as e:
+                if "Error when getting the keystone user with token" in str(e.args[0]):
+                        print("Connection Error: Authentication failed.  User not signed in.")
+                        print("     Please log back in to SciServer and try again.")
+                else:
+                        print("Unexpected error:", sys.exc_info()[0])
+                        raise
+                sys.exit(1)
+        else:
+                return(token, USERNAME)
 
 # define the required job environment
 def get_job_environment(token, USERNAME):
