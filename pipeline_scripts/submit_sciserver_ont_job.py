@@ -178,7 +178,7 @@ def get_job_environment(token, USERNAME):
 						,'owner':uv['owner'],'needsWriteAccess':True})
 			break
 
-	return(image, domain, userVolumes, dataVolumes, RESULTSFOLDERPATH)
+	return(IMAGE, domain, userVolumes, dataVolumes, RESULTSFOLDERPATH)
 
 
 ### define script to run
@@ -224,21 +224,13 @@ args, unknown = parser.parse_known_args()
 #MAIN
 token, username = authenticate_user()
 
-image, domain, userVolumes, dataVolumes, RESULTSFOLDERPATH = get_job_environment(token=token, USERNAME=username)
+IMAGE, domain, userVolumes, dataVolumes, RESULTSFOLDERPATH = get_job_environment(token=token, USERNAME=username)
 
 command, jobAlias = get_command(args)
 
-print(commnad)
-print(jobAlias)
-print(domain)
-print(image)
-print(userVolumes)
-print(dataVolumes)
-print(RESULTSFOLDERPATH)
-
 job=submitShellCommandJob(shellCommand=command
                             , dockerComputeDomain = domain
-                            , dockerImageName = image
+                            , dockerImageName = IMAGE
                             , userVolumes = userVolumes, dataVolumes=dataVolumes
                             , resultsFolderPath = RESULTSFOLDERPATH
                             , jobAlias = jobAlias)
