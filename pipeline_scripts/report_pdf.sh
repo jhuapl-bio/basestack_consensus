@@ -45,6 +45,7 @@ hash=$(git rev-parse --short HEAD)
 
 primerscheme_path="$bin_path/../../artic-ncov2019/primer_schemes"
 protocol="nCoV-2019/V3"
+protocol_path="$bin_path/../../artic-ncov2019/rampart"
 reference="$primerscheme_path/$protocol/nCoV-2019.reference.fasta"
 bed="$primerscheme_path/$protocol/nCoV-2019.bed"
 
@@ -81,17 +82,18 @@ if ! [[ -d "$run_path" ]]; then
 	exit
 fi
 
-if [[ -z "$out_file" ]]; then
-	out_file="$run_path/artic-pipeline/run_stats/$(basename $run_path)-report.pdf"
+run_info="$run_path/run_info.txt"
+if ! [[ -s "$run_info" ]]; then
+	echo -e "${RED}Error: run info file ${CYAN}$run_info${RED} does not exist.${NC}"
+	usage
+	exit
 fi
 
-if ! [[ -s "$run_info" ]]; then
-	run_info="$run_path/run_info.txt"
-	if ! [[ -s "$run_info" ]]; then
-		echo -e "${RED}Error: run info file ${CYAN}$run_info${RED} does not exist.${NC}"
-		usage
-		exit
-	fi
+plate=$(grep "plate" "${run_path}/run_info.txt" | cut -f2)
+row=$(grep "row" "${run_path}/run_info.txt" | cut -f2)
+
+if [[ -z "$out_file" ]]; then
+	out_file="$run_path/artic-pipeline/run_stats/plate$plate-row$row-$(basename $run_path)-report.pdf"
 fi
 
 if ! [[ -s "$reference" ]]; then
@@ -227,14 +229,10 @@ echo_log() {
 # BUILD MARKDOWN FILE
 #===================================================================================================
 
-out_rmd="${out_file%.pdf}.Rmd"
-
-plate=$(grep "plate" "${run_path}/run_info.txt" | cut -f2)
-row=$(grep "row" "${run_path}/run_info.txt" | cut -f2)
-
 sed -e "s@<RUN_PATH>@${run_path}@" \
 	-e "s@<PLATE>@${plate}@" \
 	-e "s@<ROW>@${row}@" \
+	-e "s@<PROTOCOL_PATH>@${protocol_path}@" \
 	"$bin_path/report-template.Rmd" > "$out_rmd"
 
 Rscript -e "rmarkdown::render('"$out_rmd"')"
