@@ -34,6 +34,7 @@ dependencies:
   - r-RColorBrewer
   - r-viridis
   - r-magick
+  - r-rjson
   - bioconductor-gviz
   - bioconductor-rtracklayer
   - bioconductor-trackViewer
