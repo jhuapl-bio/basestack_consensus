@@ -3,7 +3,8 @@ title: "SARS-CoV-2 Run Report"
 author: "Plate <PLATE>, Row <ROW>"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 params:
-  path: "<RUN_PATH>"
+  run_path: "<RUN_PATH>"
+  protocol_path: "<PROTOCOL_PATH>"
 always_allow_html: true
 output:
   pdf_document:
@@ -61,14 +62,16 @@ library(viridis, quietly=TRUE)
 library(magick, quietly=TRUE)
 library(tinytex, quietly=TRUE)
 options(tinytex.verbose = TRUE)
-#library(Gviz, quietly=TRUE)
-#library(rtracklayer, quietly=TRUE)
-#library(trackViewer, quietly=TRUE)
+library(Gviz, quietly=TRUE)
+library(rtracklayer, quietly=TRUE)
+library(trackViewer, quietly=TRUE)
+library(rjson, quietly=TRUE)
 ```
 
 ```{r, load-files, echo=FALSE, message=FALSE, warning=FALSE}
-# grab path to run directory from YAML
-run_path <- params$path
+# grab external paths from YAML
+run_path <- params$run_path
+genome_ref <- fromJSON(file=paste0(params$protocol_path, "/genome.json"))
 
 #-------------------------------------------------
 # set up colors
@@ -187,13 +190,24 @@ flagList <- summary$Consensus
 flagList <- as.character(flagList)
 flagList[flagList == ""] <- "No"
 flagList[is.na(flagList)] <- "NA"
+
 flagFill <- factor(flagList)
 levels(flagFill) <- colorlevels(levels(factor(flagList)), TRUE)
 flagFill <- as.character(flagFill)
 flagFill[is.na(flagFill)] <- "#B3B3B3"
+
+flagFillTeX <- factor(flagList)
+levels(flagFillTeX) <- colorlevels(levels(factor(flagList)), FALSE)
+flagFillTeX <- as.character(flagFillTeX)
+flagFillTeX[is.na(flagFillTeX)] <- "\\textcolor{gray70}"
+
+flagDict <- {}
 flagFillDict <- {}
+flagFillTeXDict <- {}
 for(i in 1:length(flagList)){
+  flagDict[as.character(summary$Barcode)[i]] <- flagList[i]
   flagFillDict[as.character(summary$Barcode)[i]] <- flagFill[i]
+  flagFillTeXDict[as.character(summary$Barcode)[i]] <- flagFillTeX[i]
 }
 
 # add additional info to summary
@@ -469,8 +483,7 @@ depth_plot <- function(plot_sel, title_additional) {
 		abline(h=c(1,10,100,1000,1e4,1e5), col="gray80")
 		b <- barplot(bar_data, log='y', axes=F, add=TRUE, col=bar_colors, border=NA, ylim=c(1,1e5))
 		axis(1, at=b[x_tick_sel], labels=x_tick_labels, cex.axis=0.9)
-		minor.tick(nx=n, ny=n, tick.ratio=n)
-  	axis(2, at=c(1,10,100,1000,10000,100000), labels=c(1,10,100,"1k","10k","100k"), las=2, cex.axis=1)
+		axis(2, at=c(1,10,100,1000,10000,100000), labels=c(1,10,100,"1k","10k","100k"), las=2, cex.axis=1)
 		title(ylab="reads", line=2.5, cex.lab=1)
 		title(xlab="amplicon", line=2, cex.lab=1)
 		title(main=paste0(sample, title_additional), line=0.25, cex.main=1)
@@ -536,6 +549,177 @@ plot_homoplasy_heatmap <- function() {
             annotation_colors=annotation_colors
             )
     grid.text("Variant position (nucleotide)", x=0.83, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
+  }
+}
+#-------------------------------------------------
+genome_cartoon_overview <- function(mutation_subset=mutation_no_low_coverage) {
+  features <- GRanges("MN908947.3", IRanges(sapply(genome_ref$genes, function(g){return(g$start)}), 
+                                    width=sapply(genome_ref$genes, function(g){return(g$end-g$start+1)}),
+                                    names=names(genome_ref$genes)),
+#                      fill = rep(c('#2ca25f', '#99d8c9'), 10)[seq(1, length(genome_ref$genes))],
+                      fill = brewer.pal(n=11, name="Set3"),
+                      color = "white",
+                      height = unit(1/8, "inches"))
+
+  # remove positions covered by multi-site variants
+  mutation_subset <- mutation_subset[!(dimnames(mutation_subset)[[1]] %in% c(snpeff_report$POS[sapply(as.character(snpeff_report$REF), nchar)>1]+1)),]
+  mutation_subset <- mutation_subset[,-c(7,8,11)]
+  mutation_subset <- mutation_subset[apply(nchar(mutation_subset), 1, sum) > 0,]
+    
+  SNP <- as.numeric(dimnames(mutation_subset)[[1]])
+  snpeff_subset <- subset(snpeff_report, snpeff_report$POS %in% SNP)
+  
+  labels <- unlist(apply(mutation_subset, 1, function(v){ u <- unique(v); return(paste(u[u!=""], collapse=", "))}))
+  labels[SNP %in% snpeff_subset$POS] <- paste(as.character(snpeff_subset$GENE), as.character(snpeff_subset$AA_MUT), sep=": ")
+  rename_sel <- snpeff_subset$ANN %in% c("upstream_gene_variant","downstream_gene_variant")
+  labels[SNP %in% snpeff_subset$POS][rename_sel] <- paste0(snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)[rename_sel]
+  rename_sel <- snpeff_subset$ANN %in% c("synonymous_variant")
+  labels[SNP %in% snpeff_subset$POS][rename_sel] <- paste0(snpeff_subset$GENE, ": ", snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)[rename_sel]
+  colors <- rep("white", length(SNP))
+  colors[SNP %in% snpeff_subset$POS] <- annotation_colors$SnpEff[as.character(snpeff_subset$ANN)]
+
+  sample.gr <- GRanges("MN908947.3", IRanges(SNP, width=1, names=labels))
+  sample.gr$shape <- rep("triangle_point_down", length(sample.gr), replace=TRUE)
+  sample.gr$color <- colors
+  sample.gr$border <- "black"
+  sample.gr$label.parameter.rot <- 45
+  sample.gr$label.parameter.gp <- gpar(fontsize = 5)
+  
+  sample.gr$score <- rowSums(nchar(mutation_subset) > 0)
+  
+  lolliplot(sample.gr, features, type="circle", xlab="genome position (nucleotide)", ylab="# of samples", xaxis=c(1,seq(5,25,5)*1000,29903), xaxis.gp = gpar(fontsize = 7), legend = list(annotation_colors$SnpEff))
+
+  if(1==2) {
+    # change opacity of labels based on e.g. QUAL?
+    # add pie plot to plot all depth at each SNP?
+    sample.gr$score <- NULL ## must be removed, because pie will consider all the numeric columns except column "color", "fill", "alpha", "shape", "lwd", "id" and "id.col".
+    sample.gr$label <- NULL
+    sample.gr$label.col <- NULL
+    x <- sample.int(100, length(SNP))
+    sample.gr$value1 <- x
+    sample.gr$value2 <- 100 - x
+    ## the length of the color should be no less than that of value1 or value2
+    sample.gr$color <- rep(list(c("#87CEFA", '#98CE31')), length(SNP))
+    sample.gr$border <- "gray30"
+    lolliplot(sample.gr, features, type="pie")
+  
+    # use VCF file directly
+    library(VariantAnnotation)
+    library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+    library(org.Hs.eg.db)
+    fl <- system.file("extdata", "chr22.vcf.gz", package="VariantAnnotation")
+    gr <- GRanges("22", IRanges(50968014, 50970514, names="TYMP"))
+    if(.Platform$OS.type!="windows"){# This line is for avoiding error from VariantAnnotation in the windows platform, which will be removed when VariantAnnotation's issue gets fixed.
+    tab <- TabixFile(fl)
+    vcf <- readVcf(fl, "hg19", param=gr)
+    mutation.frequency <- rowRanges(vcf)
+    mcols(mutation.frequency) <- cbind(mcols(mutation.frequency), 
+                                       VariantAnnotation::info(vcf))
+    mutation.frequency$border <- "gray30"
+    mutation.frequency$color <- 
+        ifelse(grepl("^rs", names(mutation.frequency)), "lightcyan", "lavender")
+    ## Plot Global Allele Frequency based on AC/AN
+    mutation.frequency$score <- mutation.frequency$AF*100
+    seqlevelsStyle(mutation.frequency) <- "UCSC" 
+    }
+    seqlevelsStyle(gr) <- "UCSC" 
+    trs <- geneModelFromTxdb(TxDb.Hsapiens.UCSC.hg19.knownGene,
+                             org.Hs.eg.db,
+                             gr=gr)
+    features <- c(range(trs[[1]]$dat), range(trs[[5]]$dat))
+    names(features) <- c(trs[[1]]$name, trs[[5]]$name)
+    features$fill <- c("lightblue", "mistyrose")
+    features$height <- c(.02, .04)
+    if(.Platform$OS.type!="windows"){
+      lolliplot(mutation.frequency, features, ranges=gr)
+    }
+  }
+}
+#-------------------------------------------------
+genome_cartoons <- function(mutation_subset) {
+  features <- GRanges("MN908947.3", IRanges(sapply(genome_ref$genes, function(g){return(g$start)}), 
+                                    width=sapply(genome_ref$genes, function(g){return(g$end-g$start+1)})),
+#                                    names=names(genome_ref$genes)),
+#                      fill = rep(c('#2ca25f', '#99d8c9'), 10)[seq(1, length(genome_ref$genes))],
+                      fill = brewer.pal(n=11, name="Set3"),
+                      color = "white",
+                      height = unit(1/8, "inches"))
+  sample.gr.all <- list()
+  for(i in 1:dim(mutation_subset)[2]) {
+    sample <- dimnames(mutation_subset)[[2]][i]
+    barcode <- strsplit(sample_barcodes[grepl(sample, sample_barcodes)], "_")[[1]][2]
+    
+    # remove positions covered by multi-site variants
+    mutation_subset <- mutation_subset[!(dimnames(mutation_subset)[[1]] %in% c(snpeff_report$POS[sapply(as.character(snpeff_report$REF), nchar)>1]+1)),]
+    
+    SNP <- as.numeric(names(which(nchar(mutation_subset[,i])>0)))
+    snpeff_subset <- subset(snpeff_report, snpeff_report$POS %in% SNP)
+    
+    labels <- mutation_subset[which(nchar(mutation_subset[,i])>0),i]
+    labels[SNP %in% snpeff_subset$POS] <- paste(as.character(snpeff_subset$GENE), as.character(snpeff_subset$AA_MUT), sep=": ")
+    rename_sel <- snpeff_subset$ANN %in% c("upstream_gene_variant","downstream_gene_variant")
+    labels[SNP %in% snpeff_subset$POS][rename_sel] <- paste0(snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)[rename_sel]
+    rename_sel <- snpeff_subset$ANN %in% c("synonymous_variant")
+    labels[SNP %in% snpeff_subset$POS][rename_sel] <- paste0(snpeff_subset$GENE, ": ", snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)[rename_sel]
+    colors <- rep("white", length(SNP))
+    colors[SNP %in% snpeff_subset$POS] <- annotation_colors$SnpEff[as.character(snpeff_subset$ANN)]
+
+    sample.gr <- GRanges("MN908947.3", IRanges(SNP, width=1, names=labels))
+    sample.gr$shape <- rep("triangle_point_down", length(sample.gr), replace=TRUE)
+    sample.gr$color <- colors
+    sample.gr$border <- "black"
+    sample.gr$label.parameter.rot <- 45
+    sample.gr$label.parameter.gp <- gpar(fontsize = 7)
+    
+    cat(paste0("\n\n### ", flagFillTeXDict[barcode], "{[", flagDict[barcode], "]: ", sample, "}\n\n"))
+    lolliplot(sample.gr, features, type="circle", xlab="genome position (nucleotide)", ylab="", xaxis=c(1,seq(5,25,5)*1000,29903), xaxis.gp = gpar(fontsize = 7))
+  }
+  
+
+  if(1==2) {
+    # change opacity of labels based on e.g. QUAL?
+    # add pie plot to plot all depth at each SNP?
+    sample.gr$score <- NULL ## must be removed, because pie will consider all the numeric columns except column "color", "fill", "alpha", "shape", "lwd", "id" and "id.col".
+    sample.gr$label <- NULL
+    sample.gr$label.col <- NULL
+    x <- sample.int(100, length(SNP))
+    sample.gr$value1 <- x
+    sample.gr$value2 <- 100 - x
+    ## the length of the color should be no less than that of value1 or value2
+    sample.gr$color <- rep(list(c("#87CEFA", '#98CE31')), length(SNP))
+    sample.gr$border <- "gray30"
+    lolliplot(sample.gr, features, type="pie")
+  
+    # use VCF file directly
+    library(VariantAnnotation)
+    library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+    library(org.Hs.eg.db)
+    fl <- system.file("extdata", "chr22.vcf.gz", package="VariantAnnotation")
+    gr <- GRanges("22", IRanges(50968014, 50970514, names="TYMP"))
+    if(.Platform$OS.type!="windows"){# This line is for avoiding error from VariantAnnotation in the windows platform, which will be removed when VariantAnnotation's issue gets fixed.
+    tab <- TabixFile(fl)
+    vcf <- readVcf(fl, "hg19", param=gr)
+    mutation.frequency <- rowRanges(vcf)
+    mcols(mutation.frequency) <- cbind(mcols(mutation.frequency), 
+                                       VariantAnnotation::info(vcf))
+    mutation.frequency$border <- "gray30"
+    mutation.frequency$color <- 
+        ifelse(grepl("^rs", names(mutation.frequency)), "lightcyan", "lavender")
+    ## Plot Global Allele Frequency based on AC/AN
+    mutation.frequency$score <- mutation.frequency$AF*100
+    seqlevelsStyle(mutation.frequency) <- "UCSC" 
+    }
+    seqlevelsStyle(gr) <- "UCSC" 
+    trs <- geneModelFromTxdb(TxDb.Hsapiens.UCSC.hg19.knownGene,
+                             org.Hs.eg.db,
+                             gr=gr)
+    features <- c(range(trs[[1]]$dat), range(trs[[5]]$dat))
+    names(features) <- c(trs[[1]]$name, trs[[5]]$name)
+    features$fill <- c("lightblue", "mistyrose")
+    features$height <- c(.02, .04)
+    if(.Platform$OS.type!="windows"){
+      lolliplot(mutation.frequency, features, ranges=gr)
+    }
   }
 }
 #-------------------------------------------------
@@ -692,6 +876,7 @@ plot_flag_matrix <- function() {
 print_igv_plot <- function(row, flag) {
   sample <- as.character(row$Sample)
   barcode <- as.character(summary$Barcode[summary$Sample == sample])
+  sample_barcode <- paste(sample, barcode, sep="_")
   if(nchar(as.character(row$Flags) > 0)) {
     flags <- strsplit(as.character(row$Flags),"; ")[[1]]
   } else {
@@ -703,7 +888,7 @@ print_igv_plot <- function(row, flag) {
       alleles <- postfilt_all$alleles[postfilt_all$pos == nt & postfilt_all$sample == sample]
       cat(paste0("\n### ", colorlevels(flag), "{[", flag, "]: ", sample, " ", flagString, " - ", alleles, "}\n"))
       if(nt != "see full output") {
-        pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample,"/MN908947.3_",nt,".png")
+        pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample_barcode,"/",sample_barcode,"-MN908947.3_",nt,".png")
         if(file.exists(pngFn)) {
           cat(paste0("\\includegraphics[width=13cm]{",pngFn,"}\n"))
         } else {
@@ -797,17 +982,27 @@ depth_plot((1:98 %% 2 == 0), "-nCoV2019_2")
 # Variant calling
 \label{sec:variants}
 
-## Normalization
-(figure not added in yet)
+## Genome cartoons
+```{r, genome-cartoon-overview, eval=TRUE, echo=FALSE, fig.height=6, results="asis"}
+genome_cartoon_overview(mutation_no_low_coverage)
+```
 
-## Genome clusters
-
-### Genome cartoons
-(under construction)
+```{r, genome-cartoons, eval=TRUE, echo=FALSE, fig.height=2, results="asis"}
+#figures_per_page <- 4
+#num_pages <- ceiling(dim(mutation_no_low_coverage)[2] / figures_per_page)
+#for(i in 1:num_pages) {
+#  first_column <- figures_per_page*(i-1)+1
+#  last_column <- min(figures_per_page*i, dim(mutation_no_low_coverage)[2])
+#  columns <- seq(last_column, first_column, -1)
+#  genome_cartoons(mutation_no_low_coverage[,columns])
+#  cat('\n\n')
+#}
+genome_cartoons(mutation_no_low_coverage)
+```
 
 \pagebreak
 
-### Homoplasy assessment
+## Homoplasy assessment
 Observed nucleotide mutations as compared to Wuhan-Hu-1 reference:
 
 ```{r, homoplasy-cluster, eval=TRUE, echo=FALSE, fig.height=8}
@@ -838,12 +1033,12 @@ if(sum(select_many) > 0) {
 
 \textcolor{myRed}{No = Red} = Incomplete genome
 
+**Flags**: MAF (Minor allele frequency > 0.15), new (present in < 2 GISAID sequences), mismatch (mismatches between variant callers where variant is present in nanopolish (n), medaka (m), and/or samtools(s))
+
 ## Flags identified
 ```{r, flag-table, echo=FALSE}
 draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status"))])
 ```
-
-**Flags**: MAF (Minor allele frequency > 0.15), new (present in < 2 GISAID sequences), mismatch (mismatches between variant callers where variant is present in nanopolish (n), medaka (m), and/or samtools(s))
 
 \pagebreak
 
