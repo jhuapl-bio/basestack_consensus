@@ -384,6 +384,12 @@ while read barcode label; do
 	fi
 
 	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.nanopolish.primertrimmed.rg.sorted.bam")
+	trimmed_depth_outfile="${trimmed_alignment%.bam}.depth"
+	if ! [[ -s "$trimmed_depth_outfile" ]]; then
+		echo_log "  creating trimmed depth file"
+		samtools depth -d 0 -a "$trimmed_alignment" > "$trimmed_depth_outfile"
+	fi
+
 	echo_log "    primer trimmed alignment: $trimmed_alignment"
 	vcf=$(find "$draftconsensus_path" -name "*${barcode}*.all_callers.combined.vcf")
 	outPrefix=$(basename "${vcf%.all_callers.combined.vcf}")
@@ -431,6 +437,12 @@ find "$normalize_path" -name "*.covfiltered.depth" -print0 | while read -d $'\0'
 	base=$(basename "$f")
 	awk -v BASE="${base%.covfiltered.depth}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
 done > "${depthfile/-all/-norm-all}"
+
+echo_log "Calculating depth"
+find "$draftconsensus_path" -name "*.nanopolish.primertrimmed.rg.sorted.depth" -print0 | while read -d $'\0' f; do
+	base=$(basename "$f")
+	awk -v BASE="${base%.nanopolish.primertrimmed.rg.sorted.depth}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
+done > "${depthfile/-all/-trim-all}"
 
 echo_log "Identifying mutations"
 rm "$mutations_all"

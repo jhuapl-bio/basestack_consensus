@@ -111,7 +111,7 @@ if(length(list.files(run_path, "throughput*", full.names=TRUE)) > 0) {
 #read_lengths <- read.table(paste0(run_path,"/artic-pipeline/run_stats/read_lengths.txt"), sep="\t")
 summaryFn <- paste0(run_path,"/artic-pipeline/run_stats/summary.txt")
 depth_allFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-all.txt")
-depth_normFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-norm-all.txt")
+depth_trimFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-trim-all.txt")
 mutation_fullFn <- paste0(run_path, "/artic-pipeline/run_stats/mutations-table.txt")
 postfiltFn <- paste0(run_path, "/artic-pipeline/5-post-filter/postfilt_summary.txt")
 postfilt_allFn <- paste0(run_path, "/artic-pipeline/5-post-filter/postfilt_all.txt")
@@ -130,8 +130,8 @@ if(file.exists(depth_allFn)) {
   }
   depth_all <- rbind(depth_all, depth_one)
 }
-if(file.exists(depth_normFn)) {
-  depth_norm <- read.table(depth_normFn, sep="\t", fill=TRUE)
+if(file.exists(depth_trimFn)) {
+  depth_norm <- read.table(depth_trimFn, sep="\t", fill=TRUE)
 } else {
   depth_norm <- NULL
   for(i in levels(summary$Sample)) {
