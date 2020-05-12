@@ -204,8 +204,10 @@ def get_command(args):
 		command = "bash -x " + args.script + " -i " + args.input + " -t " + str(args.threads)
 	else:
 		command = "bash -x " + args.script + " -i " + args.input
-	
-	return command 
+
+	jobAlias=args.script.split("/")[-1]
+
+	return command, jobAlias
 
 
 
@@ -224,14 +226,12 @@ token, username = authenticate_user()
 
 image, domain, userVolumes, dataVolumes, RESULTSFOLDERPATH = get_job_environment(token=token, USERNAME=username)
 
-command=get_command(args)
-
-JOBALIAS=args.script.split("/")[-1]
+command, jobAlias =get_command(args)
 
 job=submitShellCommandJob(shellCommand=command
                             , dockerComputeDomain = domain
                             , dockerImageName = image
                             , userVolumes = userVolumes, dataVolumes=dataVolumes
                             , resultsFolderPath = RESULTSFOLDERPATH
-                            , jobAlias = JOBALIAS)
+                            , jobAlias = jobAlias)
 
