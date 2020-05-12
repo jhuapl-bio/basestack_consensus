@@ -71,9 +71,11 @@ echo_log() {
 
 medaka=$(which artic-module4-draft-consensus-medaka.sh)
 nanopolish=$(which artic-module4-draft-consensus-nanopolish.sh)
+samtools=$(which artic-module4-draft-consensus-samtools.sh)
 
 bash -x "$medaka" -i "$normalized_fastq" -t $threads
 bash -x "$nanopolish" -i "$normalized_fastq" -t $threads
+bash -x "$samtools" -i "$normalized_fastq"
 
 #---------------------------------------------------------------------------------------------------
 

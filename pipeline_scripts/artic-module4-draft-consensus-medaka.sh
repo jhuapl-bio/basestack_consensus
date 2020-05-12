@@ -90,7 +90,6 @@ protocol=$(awk '/primers/{ print $2 }' "${run_configuration}")
 
 # Output directories
 consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
-mkdir -p $consensus_dir/logs
 
 # log file
 logfile=${consensus_dir}/logs/module4-medaka-$(basename ${normalized_fastq%.covfiltered.fq})-$(date +"%F-%H%M%S").log
@@ -129,6 +128,8 @@ if [ ! -f ${sequencing_run}/artic-pipeline/3-normalization/module3-$(basename ${
     >&2 echo "Error: Module 3 Normalization must be completed prior to running Module 4."
     >&2 echo "${sequencing_run}/artic-pipeline/3-normalization/module3-$(basename ${normalized_fastq%.covfiltered.fq}).complete does not exist"
     exit 1
+else
+    mkdir -p ${consensus_dir}/logs
 fi
 
 if [ -s $consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}).medaka.merged.vcf ];then

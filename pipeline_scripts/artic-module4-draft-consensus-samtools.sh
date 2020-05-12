@@ -66,6 +66,11 @@ echo_log() {
 # sequencing run directory
 sequencing_run=$(dirname $(dirname $(dirname $(dirname "$normalized_fastq"))))
 
+
+#===================================================================================================
+# Default values
+#===================================================================================================
+
 # input files
 samplename=$(basename $normalized_fastq | awk -F '.' '{print $1}')
 consensus_dir="${sequencing_run}/artic-pipeline/4-draft-consensus"
@@ -74,58 +79,11 @@ input_medaka_vcf_zip="${consensus_dir}/${samplename}.medaka.merged.vcf.gz"
 input_medaka_vcf="${consensus_dir}/${samplename}.medaka.merged.vcf"
 input_nanopolish_bamfile="$consensus_dir/${samplename}.nanopolish.primertrimmed.rg.sorted.bam"
 
-#===================================================================================================
-# QUALITY CHECKING
-#===================================================================================================
-
-if [ ! -d ${sequencing_run} ];then
-    >&2 echo_log "Error Sequencing run ${sequencing_run} does not exist"
-    exit 1
-fi
-
-if [ ! -d ${consensus_dir} ];then
-    >&2 echo_log "Error Require module 4 draft consensus output"
-    >&2 echo_log "${consensus_dir} does not exist"
-    exit 1
-fi
-
-if [ ! -s ${sequencing_run}/run_config.txt ];then
-    >&2 echo_log "Error Require a run_config.txt file in the sequencing run directory"
-    exit 1
-fi
-
-if [ ! -f ${normalized_fastq} ];then
-    >&2 echo_log "Fastq file ${normalized_fastq} does not exist"
-    exit 1
-fi
-
-if [ ! -f "${input_nanopolish_vcf}" ];then
-    >&2 echo_log "Nanopolish output vcf file  does not exist"
-    exit 1
-fi
-
-if [ ! -f "${input_nanopolish_bamfile}" ];then
-    >&2 echo_log "Nanopolish output bam file ${input_nanopolish_bamfile} does not exist"
-    exit 1
-fi
-
-if [ ! -f "${input_medaka_vcf_zip}" ];then
-    >&2 echo_log "Medaka output vcf file ${input_medaka_vcf_zip} does not exist"
-    exit 1
-fi
-
-
-#===================================================================================================
-# Default values
-#===================================================================================================
 
 # location of programs used by pipeline
 software_path=/home/idies/workspace/covid19/code
 JAVA_PATH="${software_path}/jdk-14.0.1/bin"
 VariantValidatorPath="${software_path}/ncov/pipeline_scripts/VariantValidator"
-
-# log file
-logfile=${sequencing_run}/artic-pipeline/pipeline.log
 
 # reference sequence
 scheme_dir="$software_path/artic-ncov2019/primer_schemes"
@@ -133,11 +91,53 @@ protocol=$(awk '/primers/{ print $2 }' "${sequencing_run}/run_config.txt")
 reference="$scheme_dir/$protocol/nCoV-2019.reference.fasta"
 
 # Output directories and files
-mpileup=${samplename}.mpileup
-allelefreqcalls=${samplename}.samtools.vcf
-filelist=${samplename}.filelist.txt
+mpileup=${consensus_dir}/${samplename}.mpileup
+allelefreqcalls=${consensus_dir}/${samplename}.samtools.vcf
+filelist=${consensus_dir}/${samplename}.filelist.txt
 
-# Optional program parameters
+# log file
+logfile=${consensus_dir}/logs/module4-samtools-$(basename ${normalized_fastq%.covfiltered.fq})-$(date +"%F-%H%M%S").log
+
+#===================================================================================================
+# QUALITY CHECKING
+#===================================================================================================
+
+if [ ! -d ${sequencing_run} ];then
+    >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
+    exit 1
+fi
+
+if [ ! -d ${consensus_dir} ];then
+    >&2 echo "Error: Require module 4 draft consensus output"
+    >&2 echo "    ${consensus_dir} does not exist"
+    exit 1
+fi
+
+if [ ! -s ${sequencing_run}/run_config.txt ];then
+    >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
+    exit 1
+fi
+
+if [ ! -f ${normalized_fastq} ];then
+    >&2 echo "Error: Fastq file ${normalized_fastq} does not exist"
+    exit 1
+fi
+
+if [ ! -f "${input_nanopolish_vcf}" ];then
+    >&2 echo "Error: Nanopolish output vcf file  does not exist"
+    exit 1
+fi
+
+if [ ! -f "${input_nanopolish_bamfile}" ];then
+    >&2 echo "Error: Nanopolish output bam file ${input_nanopolish_bamfile} does not exist"
+    exit 1
+fi
+
+if [ ! -f "${input_medaka_vcf_zip}" ];then
+    >&2 echo "Error: Medaka output vcf file ${input_medaka_vcf_zip} does not exist"
+    exit 1
+fi
+
  
 #===================================================================================================
 # MAIN BODY
@@ -162,52 +162,52 @@ echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):------ processi
 
 echo_log "Starting Module 4 Samtools on ${input_nanopolish_bamfile}"
 
-samtools mpileup --reference $reference $input_nanopolish_bamfile -o $mpileup
+samtools mpileup --reference ${reference} ${input_nanopolish_bamfile} -o ${mpileup}
 
 # Run samtools-based variant calling
 $JAVA_PATH/java \
--cp $VariantValidatorPath/src CallVariants \
-pileup_file=$mpileup \
-out_file=$allelefreqcalls
+-cp ${VariantValidatorPath}/src CallVariants \
+pileup_file=${mpileup} \
+out_file=${allelefreqcalls}
 
 echo_log "Starting Module 4 Merging and Allele Frequencies on \
-    $input_nanopolish_vcf, $input_medaka_vcf, $mpileup"
+    ${input_nanopolish_vcf}, ${input_medaka_vcf}, ${mpileup}"
 
 # Run merging and allele frequency counts
-if [ ! -r $input_medaka_vcf ]; then
-    echo 'Unzipping '$input_medaka_vcf_zip
-    gunzip -c $input_medaka_vcf_zip > $input_medaka_vcf          
+if [ ! -r ${input_medaka_vcf} ]; then
+    echo 'Unzipping '${input_medaka_vcf_zip}
+    gunzip -c ${input_medaka_vcf_zip} > ${input_medaka_vcf}          
 fi
 
-vcfs=$input_nanopolish_vcf,$input_medaka_vcf
+vcfs=${input_nanopolish_vcf},${input_medaka_vcf}
 
 # Print out vcf filenames with absolute paths to filelist
-vcfarray=$(echo $vcfs | tr "," "\n")
+vcfarray=$(echo ${vcfs} | tr "," "\n")
 
 # Output vcf filenames to a list
-if [ -r $filelist ]
+if [ -r ${filelist} ]
 then
-  rm $filelist
+  rm ${filelist}
 fi
-touch $filelist
-for vcf in $vcfarray
+touch ${filelist}
+for vcf in ${vcfarray}
 do
-    readlink -f $vcf >> $filelist
+    readlink -f ${vcf} >> ${filelist}
 done
-readlink -f $allelefreqcalls >> $filelist
+readlink -f ${allelefreqcalls} >> ${filelist}
 
 # Run merging
 $JAVA_PATH/java \
--cp $VariantValidatorPath/src MergeVariants \
+-cp ${VariantValidatorPath}/src MergeVariants \
 illumina_bam=None \
-file_list=$filelist \
-out_file=${samplename}.all_callers.combined.noallelefreqs.vcf
+file_list=${filelist} \
+out_file=${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf
 
 $JAVA_PATH/java \
 -cp $VariantValidatorPath/src AddAlleleFrequencies \
 vcf_file=${samplename}.all_callers.combined.noallelefreqs.vcf  \
-ont_mpileup=$mpileup \
-out_file=${samplename}.all_callers.combined.vcf
+ont_mpileup=${mpileup} \
+out_file=${consensus_dir}/${samplename}.all_callers.combined.vcf
 
 #---------------------------------------------------------------------------------------------------
 
