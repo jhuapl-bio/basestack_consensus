@@ -10,9 +10,13 @@ RUN=$1
 
 # get known directory names
 DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus"
-
+OUTDIR=$DIR
 REF="/home/idies/workspace/covid19/ncov_reference/sequence.fasta"
 
+if [ ! -d $OUTDIR ]
+then
+    mkdir $OUTDIR
+fi
 for bamfile in `ls $DIR/*.nanopolish.primertrimmed.rg.sorted.bam`; do
 
     sample=${bamfile##*/}
@@ -47,16 +51,16 @@ for bamfile in `ls $DIR/*.nanopolish.primertrimmed.rg.sorted.bam`; do
         echo 'Bam file: '$bamfile
         echo 'Nanopolish VCF: '$nanopolishvcfunzipped
         echo 'Medaka VCF: '$medakavcfunzipped
-        echo 'Out prefix: '$DIR/$prefix
+        echo 'Out prefix: '$OUTDIR/$prefix
 
 	# run script
-        $BINDIR/VariantValidator/run.sh $REF $bamfile $nanopolishvcfunzipped,$medakavcfunzipped $DIR/$prefix
+        $BINDIR/VariantValidator/run.sh $REF $bamfile $nanopolishvcfunzipped,$medakavcfunzipped $OUTDIR/$prefix
     else
         echo $samplename
 	prefix=`echo $bamfile`
         prefix=${prefix##*/}
         prefix=${prefix%%.*}
-        samtools mpileup --reference $REF $bamfile -o $DIR/$prefix.mpileup
+        samtools mpileup --reference $REF $bamfile -o $OUTDIR/$prefix.mpileup
     fi
 done
 
