@@ -162,21 +162,21 @@ echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):------ processi
 
 echo_log "Starting Module 4 Samtools on ${input_nanopolish_bamfile}"
 
-samtools mpileup --reference ${reference} ${input_nanopolish_bamfile} -o ${mpileup}
+samtools mpileup --reference ${reference} ${input_nanopolish_bamfile} -o ${mpileup} 2>> ${logfile}
 
 # Run samtools-based variant calling
 $JAVA_PATH/java \
 -cp ${VariantValidatorPath}/src CallVariants \
 pileup_file=${mpileup} \
-out_file=${allelefreqcalls}
+out_file=${allelefreqcalls} 2>> ${logfile}
 
 echo_log "Starting Module 4 Merging and Allele Frequencies on \
     ${input_nanopolish_vcf}, ${input_medaka_vcf}, ${mpileup}"
 
 # Run merging and allele frequency counts
 if [ ! -r ${input_medaka_vcf} ]; then
-    echo 'Unzipping '${input_medaka_vcf_zip}
-    gunzip -c ${input_medaka_vcf_zip} > ${input_medaka_vcf}          
+    echo_log 'Unzipping '${input_medaka_vcf_zip}
+    gunzip -c ${input_medaka_vcf_zip} > ${input_medaka_vcf} 2>> ${logfile}
 fi
 
 vcfs=${input_nanopolish_vcf},${input_medaka_vcf}
@@ -192,24 +192,31 @@ fi
 touch ${filelist}
 for vcf in ${vcfarray}
 do
-    readlink -f ${vcf} >> ${filelist}
+    readlink -f ${vcf} >> ${filelist} 2>> ${logfile}
 done
-readlink -f ${allelefreqcalls} >> ${filelist}
+readlink -f ${allelefreqcalls} >> ${filelist} 2>> ${logfile}
 
 # Run merging
 $JAVA_PATH/java \
 -cp ${VariantValidatorPath}/src MergeVariants \
 illumina_bam=None \
 file_list=${filelist} \
-out_file=${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf
+out_file=${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf 2>> ${logfile}
 
 $JAVA_PATH/java \
--cp $VariantValidatorPath/src AddAlleleFrequencies \
-vcf_file=${samplename}.all_callers.combined.noallelefreqs.vcf  \
-ont_mpileup=${mpileup} \
-out_file=${consensus_dir}/${samplename}.all_callers.combined.vcf
+-cp ${VariantValidatorPath}/src AddAlleleFrequencies \
+vcf_file=${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf  \
+ont_mpileup=${consensus_dir}/${mpileup} \
+out_file=${consensus_dir}/${samplename}.all_callers.combined.vcf 2>> ${logfile}
 
 #---------------------------------------------------------------------------------------------------
 
-echo_log "Module 4 Samtools and Merging: processing complete"
 
+if [[ -s ${consensus_dir}/${samplename}.all_callers.combined.vcf ]]; then
+	echo_log "Module 4 Samtools and Merging: processing complete"
+	echo_log "Creating ${consensus_dir}/module4-${samplename}.all_callers.complete"
+	touch ${consensus_dir}/module4-${samplename}.all_callers.complete
+else
+	echo_log "Error: Module 4 Samtools and Merging failed."
+	echo_log "   No module4-${samplename}.all_callers.complete file detected."
+fi
