@@ -178,7 +178,7 @@ def get_job_environment(token, USERNAME):
 						,'owner':uv['owner'],'needsWriteAccess':True})
 			break
 
-	return(image, domain, userVOLUMES, dataVOLUMES, RESULTSFOLDERPATH)
+	return(image, domain, userVolumes, dataVolumes, RESULTSFOLDERPATH)
 
 
 ### define script to run
@@ -222,7 +222,7 @@ args, unknown = parser.parse_known_args()
 #MAIN
 token, username = authenticate_user()
 
-image, domain, userVOLUMES, dataVOLUMES, RESULTSFOLDERPATH = get_job_environment(token=token, USERNAME=username)
+image, domain, userVolumes, dataVolumes, RESULTSFOLDERPATH = get_job_environment(token=token, USERNAME=username)
 
 command=get_command(args)
 
