@@ -206,7 +206,7 @@ out_file=${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf 2
 $JAVA_PATH/java \
 -cp ${VariantValidatorPath}/src AddAlleleFrequencies \
 vcf_file=${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf  \
-ont_mpileup=${consensus_dir}/${mpileup} \
+ont_mpileup=${mpileup} \
 out_file=${consensus_dir}/${samplename}.all_callers.combined.vcf 2>> ${logfile}
 
 #---------------------------------------------------------------------------------------------------
@@ -218,5 +218,5 @@ if [[ -s ${consensus_dir}/${samplename}.all_callers.combined.vcf ]]; then
 	touch ${consensus_dir}/module4-${samplename}.all_callers.complete
 else
 	echo_log "Error: Module 4 Samtools and Merging failed."
-	echo_log "   No module4-${samplename}.all_callers.complete file detected."
+	echo_log "   No ${samplename}.all_callers.combined.vcf file detected."
 fi
