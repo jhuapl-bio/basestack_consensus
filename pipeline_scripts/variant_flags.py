@@ -9,17 +9,16 @@ from samtools_funcs import collect_position_pileup
 def depth_near_threshold(depth,depth_threshold,coverage_flag):
     """
     Function that returns a depth flag string if the read depth at a position is
-    within a pre-specified percentage of the depth threshold
+    within a pre-specified percentage of the depth threshold or lower
     """
     
     # get the coverage flag threshold
     frac = float(coverage_flag/100)
-    lowend = depth_threshold - (depth_threshold*frac)
     highend = depth_threshold + (depth_threshold*frac)
     
     # check if coverage is close to depth threshold
-    if lowend<depth<highend:
-        return('depth within %s%% of threshold' % (coverage_flag))
+    if depth<highend:
+        return('depth near threshold')
     else:
         return(np.nan)
 

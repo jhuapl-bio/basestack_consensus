@@ -226,6 +226,10 @@ def main():
     cons = list(SeqIO.parse(open(mask_cons),"fasta"))[0]
     cons = list(cons.seq.upper())
     
+    # get the depth used for masking
+    cov = pd.read_csv(args.depthfile,sep='\t',header=None,names=['chrom','pos','depth'])
+    cov = pd.Series(cov.depth.values,index=cov.pos).to_dict()
+    
     # set up the dataframe to store results
     df = pd.DataFrame(
         columns=['chrom','pos','ref','alt','consensus_base','case','description','status','homopolymer','in_consensus','unambig',
@@ -266,7 +270,9 @@ def main():
         depth,alt_allele_freq,allele_string = parse_allele_counts(info, data['alt'], 'ont')
         
         # ignore this position if the depth is too low
-        if depth < depth_threshold:
+        
+        
+        if cov[pos] < depth_threshold:
             continue
         
         # get illumina read depth and pileup if applicable
