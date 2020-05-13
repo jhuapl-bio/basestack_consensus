@@ -204,7 +204,7 @@ while read barcode name; do
 	if  [[ name != ${control_name} ]]; then
 		if [ ! -s ${postfilter_dir}/${name}_${barcode}*variant_data.txt ]; then
 			echo_log "RUN ${sequencing_run_name}: Error: Postfiltering must be completed for all samples prior to summarization."
-			echo_log "RUN ${sequencing_run_name}:     {postfilter_dir}/${name}_${barcode}*variant_data.txt does not exist"
+			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}*variant_data.txt does not exist"
 			post_filtering_complete_flag="FALSE"
 		fi
 	fi
@@ -258,7 +258,7 @@ while read barcode name; do
 	if  [[ name != ${control_name} ]]; then
 		if [ ! -s ${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf ]; then
 			echo_log "RUN ${sequencing_run_name}:Error: Variants must be combined for all samples prior to running Pangolin and snpEff."
-			echo_log "RUN ${sequencing_run_name}:     {postfilter_dir}/${name}_${barcode}.consensus.combined.vcf does not exist"
+			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf does not exist"
 			combine_variants_complete_flag="FALSE"
 		fi
 	fi
