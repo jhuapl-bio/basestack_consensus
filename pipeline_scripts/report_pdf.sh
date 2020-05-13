@@ -25,6 +25,7 @@ usage() {
 	echo -e "   -h      show this message"
 	echo -e "   -i      sequencing run folder"
 	echo -e "   -o      output PDF"
+	echo -e "   -n      nextstrain path (default: ${CYAN}/home/idies/workspace/covid19/nextstrain${NC})"
 	echo -e ""
 }
 #===================================================================================================
@@ -46,6 +47,7 @@ hash=$(git rev-parse --short HEAD)
 primerscheme_path="$bin_path/../../artic-ncov2019/primer_schemes"
 protocol="nCoV-2019/V3"
 protocol_path="$bin_path/../../artic-ncov2019/rampart"
+nextstrain_path="$bin_path/../../../nextstrain"
 reference="$primerscheme_path/$protocol/nCoV-2019.reference.fasta"
 bed="$primerscheme_path/$protocol/nCoV-2019.bed"
 
@@ -62,12 +64,13 @@ nextstrain_base="artic-pipeline/6-nextstrain"
 #===================================================================================================
 
 # parse input arguments
-while getopts "hi:o:" OPTION
+while getopts "hi:o:n:" OPTION
 do
 	case $OPTION in
 		h) usage; exit 1 ;;
 		i) run_path=$OPTARG ;;
 		o) out_file=$OPTARG ;;
+		n) nextstrain_path=$OPTARG ;;
 		?) usage; exit ;;
 	esac
 done
@@ -95,6 +98,7 @@ row=$(grep "row" "${run_path}/run_info.txt" | cut -f2)
 if [[ -z "$out_file" ]]; then
 	out_file="$run_path/artic-pipeline/run_stats/plate$plate-row$row-$(basename $run_path)-report.pdf"
 fi
+out_rmd="${out_file%.pdf}.Rmd"
 
 if ! [[ -s "$reference" ]]; then
 	echo -e "${RED}Error: reference sequence ${CYAN}$reference${RED} does not exist.${NC}"
@@ -233,6 +237,7 @@ sed -e "s@<RUN_PATH>@${run_path}@" \
 	-e "s@<PLATE>@${plate}@" \
 	-e "s@<ROW>@${row}@" \
 	-e "s@<PROTOCOL_PATH>@${protocol_path}@" \
+	-e "s@<NEXTSTRAIN_PATH>@${nextstrain_path}@" \
 	"$bin_path/report-template.Rmd" > "$out_rmd"
 
 Rscript -e "rmarkdown::render('"$out_rmd"')"
