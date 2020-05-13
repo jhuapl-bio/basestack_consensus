@@ -158,7 +158,7 @@ echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):------ processi
 # module 4
 #---------------------------------------------------------------------------------------------------
 
-echo_log "Starting Module 4 Samtools on ${input_nanopolish_bamfile}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Starting Module 4 Samtools on ${input_nanopolish_bamfile}"
 
 samtools mpileup --reference ${reference} ${input_nanopolish_bamfile} -o ${mpileup} 2>> ${logfile}
 
@@ -210,11 +210,26 @@ out_file=${consensus_dir}/${samplename}.all_callers.combined.vcf 2>> ${logfile}
 #---------------------------------------------------------------------------------------------------
 
 
-if [[ -s ${consensus_dir}/${samplename}.all_callers.combined.vcf ]]; then
+if [[ -s ${consensus_dir}/${samplename}.all_callers.combined.vcf ]] && \
+   [[ -s ${mpileup} ]] && \
+   [[ -s ${consensus_dir}/${samplename}.nanopolish.primertrimmed.rg.sorted.depth ]] && \
+   [[ -s ${consensus_dir}/${samplename}.nanopolish.consensus.fasta ]]; then
 	echo_log "Module 4 Samtools and Merging: processing complete"
 	echo_log "Creating ${consensus_dir}/module4-${samplename}.all_callers.complete"
 	touch ${consensus_dir}/module4-${samplename}.all_callers.complete
 else
 	echo_log "Error: Module 4 Samtools and Merging failed."
-	echo_log "   No ${samplename}.all_callers.combined.vcf file detected."
+	echo_log "   All Module 4 output files for ${samplename} could not be detected with file size greater than zero."
+	exit 1
+fi
+
+module4_complete_flag="TRUE"
+while IFS=$'\t' read barcode name; do
+	if [[ ! -f module4-${name}_${barcode}.all_callers.complete ]]
+		module4_complete_flag="FALSE"
+	fi
+done < ${manifest}
+
+if [[ module4_complete_flag == "TRUE"  ]]
+	submit_sciserver_ont_job.py -m 5 -i "$sequencing_run"
 fi
