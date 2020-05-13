@@ -79,20 +79,20 @@ sequencing_run=$(dirname $(dirname $(dirname $(dirname "$normalized_fastq"))))
 software_path=/home/idies/workspace/covid19/code
 
 # input files, these files should be in the sequencing run directory
-manifest=${sequencing_run}/manifest.txt
+manifest="${sequencing_run}/manifest.txt"
 run_configuration="${sequencing_run}/run_config.txt"
 
 # location for primer schemes
-scheme_dir=${software_path}/artic-ncov2019/primer_schemes
+scheme_dir="${software_path}/artic-ncov2019/primer_schemes"
 
 # primer protocol
 protocol=$(awk '/primers/{ print $2 }' "${run_configuration}")
 
 # Output directories
-consensus_dir=${sequencing_run}/artic-pipeline/4-draft-consensus
+consensus_dir="${sequencing_run}/artic-pipeline/4-draft-consensus"
 
 # log file
-logfile=${consensus_dir}/logs/module4-medaka-$(basename ${normalized_fastq%.covfiltered.fq})-$(date +"%F-%H%M%S").log
+logfile="${consensus_dir}"/logs/module4-medaka-$(basename "${normalized_fastq%.covfiltered.fq}")-$(date +"%F-%H%M%S").log
 
 # Optional program parameters
 out_prefix="$consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}.medaka)"
@@ -101,38 +101,42 @@ out_prefix="$consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}.medaka
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -f ${normalized_fastq} ];then
+if [ ! -f "${normalized_fastq}" ];then
     >&2 echo "Error: Fastq file ${normalized_fastq} does not exist"
     exit 1
 fi
 
-if [ ! -d ${sequencing_run} ];then
+if [ ! -d "${sequencing_run}" ];then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
 
-if [ ! -s ${sequencing_run}/run_config.txt ];then
-    # test why this is getting triggered
+if [ ! -d "${scheme_dir}" ];then
+    >&2 echo "Error: Primer scheme directory ${scheme_dir} does not exist"
+    exit 1
+fi
+
+if [ ! -s "${sequencing_run}/run_config.txt" ];then
     >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
     >&2 echo "${sequencing_run}/run_config.txt does not exist"
     exit 1
 fi
 
-if [ ! -s ${sequencing_run}/manifest.txt ];then
+if [ ! -s "${sequencing_run}/manifest.txt" ];then
     >&2 echo "Error: Require a manifest.txt file in the sequencing run directory"
     >&2 echo "${sequencing_run}/manifest.txt does not exist"
     exit 1
 fi
 
-if [ ! -f ${sequencing_run}/artic-pipeline/3-normalization/module3-$(basename ${normalized_fastq%.covfiltered.fq}).complete ];then
+if [ ! -f "${sequencing_run}"/artic-pipeline/3-normalization/module3-$(basename "${normalized_fastq%.covfiltered.fq}").complete ];then
     >&2 echo "Error: Module 3 Normalization must be completed prior to running Module 4."
     >&2 echo "${sequencing_run}/artic-pipeline/3-normalization/module3-$(basename ${normalized_fastq%.covfiltered.fq}).complete does not exist"
     exit 1
 else
-    mkdir -p ${consensus_dir}/logs
+    mkdir -p "${consensus_dir}/logs"
 fi
 
-if [ -s $consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}).medaka.merged.vcf ];then
+if [ -s "$consensus_dir"/$(basename "${normalized_fastq%.covfiltered.fq"}).medaka.merged.vcf ];then
     >&2 echo "Error: Medaka VCF already exsists for this sample: $consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}).medaka.merged.vcf"
     >&2 echo "    Archive all previous medaka processing before rerunning."
     exit 1
@@ -154,6 +158,8 @@ echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): sequencing run
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): recording software version numbers..."
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Software version: $(medaka --version)"
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): run configuration file: ${sequencing_run}/run_config.txt"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): prep protocol: ${protocol}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): primer schemes: ${scheme_dir}"
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): run manifest file: ${manifest}"
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): fasta file: ${normalized_fastq}"
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): output medaka directory: ${consensus_dir}"

@@ -82,9 +82,9 @@ NormalizeCoveragePath="${software_path}/CoverageNormalization"
 
 # input files and directories
 base=$(basename "${fastq%.fastq}")
-manifest=${sequencing_run}/manifest.txt
+manifest="${sequencing_run}/manifest.txt"
 run_configuration="${sequencing_run}/run_config.txt"
-gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
+gather_dir="${sequencing_run}/artic-pipeline/2-length-filter"
 
 # reference sequence
 reference="$scheme_dir/$protocol/nCoV-2019.reference.fasta"
@@ -105,29 +105,29 @@ normalize_dir="${sequencing_run}/artic-pipeline/3-normalization/$base"
 norm_parameters="coverage_threshold=150 --qual_sort --even_strand" 
 
 # log file
-logfile=$(dirname ${normalize_dir})/logs/module3-${base}-$(date +"%F-%H%M%S").log
+logfile=$(dirname "${normalize_dir}")/logs/module3-"${base}"-$(date +"%F-%H%M%S").log
 
 
 #===================================================================================================
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -s ${fastq} ];then
+if [ ! -s "${fastq}" ];then
     >&2 echo_log "Error Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
 
-if [ ! -s ${run_configuration} ];then
+if [ ! -s "${run_configuration}" ];then
     >&2 echo_log "Error Require a run_config.txt file in the sequencing run directory"
     exit 1
 fi
 
-if [ ! -s ${manifest} ];then
+if [ ! -s "${manifest}" ];then
     >&2 echo_log "Error Require a manifest.txt file in the sequencing run directory"
     exit 1
 fi
 
-if [ ! -s ${fastq} ];then
+if [ ! -s "${fastq}" ];then
     >&2 echo_log "Error: Module 2 output '${fastq}' not found"
     exit 1
 fi
@@ -136,12 +136,12 @@ if [ ! -f "${gather_dir}/module2-${base}.complete" ];then
     >&2 echo "Error: Processing for Module 2 for sample ${base} is incomplete (cannot locate ${gather_dir}/module2-${base}.complete"
     exit 1
 else
-    mkdir -p ${normalize_dir}
-    mkdir -p $(dirname ${normalize_dir})/logs
+    mkdir -p "${normalize_dir}"
+    mkdir -p $(dirname "${normalize_dir}")/logs
 fi
 
 # check for existence of a module 3 output "complete" files.  will not overwrite previous processing.
-if [ -s $(dirname ${normalizedir})/module3-${base}.complete ];then
+if [ -s $(dirname "${normalizedir}")/module3-"${base}".complete ];then
     >&2 echo "Error: Module 3 processing for this sample already completed: ${sequencing_run}/artic-pipeline/3-normalization/module3-${base}.complete"
     >&2 echo "    Archive Module 3 and all subsequent module processing prior to rerunning."
     exit 1
@@ -172,7 +172,7 @@ echo_log "SAMPLE ${base}: Starting normalize module 3"
 
 
 #### bad coding here... any way to fix? does module 3 require presence inside dir?
-cd $normalize_dir
+cd "$normalize_dir"
 
 # create alignment file
 align_out="$normalize_dir/$base.sam"
@@ -184,17 +184,17 @@ minimap2 -a \
 	"$reference" \
 	"$fastq" > "$align_out" 2>> "$logfile"
 
-samtools sort $align_out > ${align_out%.sam}.bam 2>> "$logfile"
+samtools sort "$align_ou"t > "${align_out%.sam}.bam" 2>> "$logfile"
 samtools depth -a -d 0 "${align_out%.sam}.bam" > "${align_out%.sam}.depth" 2>> "$logfile"
 
 # normalization, txt file output went to working directory
 out_sam="${align_out%.sam}.covfiltered.sam"
 
-$JAVA_PATH/java \
-	-cp $NormalizeCoveragePath/src \
+"$JAVA_PATH/java" \
+	-cp "$NormalizeCoveragePath/src" \
 	NormalizeCoverage \
 	input="$align_out" \
-	$norm_parameters 2>> "$logfile"
+	"$norm_parameters" 2>> "$logfile"
 
 # fastq conversion
 samtools fastq "${out_sam}" > "${out_sam%.sam}.fq" 2>> "$logfile"
@@ -211,11 +211,11 @@ samtools depth -a -d 0 "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth" 2>> "$log
 #===================================================================================================
 
 if [ ! -s "${out_sam%.sam}.fq" ]; then
-    >&2 echo_log "SAMPLE ${base}: Error: Module 3 output "${out_sam%.sam}.fq" not found"
+    >&2 echo_log "SAMPLE ${base}: Error: Module 3 output ${out_sam%.sam}.fq not found"
     exit 1
 else
 	echo_log "SAMPLE ${base}: Module 3 complete for sample '${base}'"
-        touch $(dirname ${normalize_dir})/module3-${base}.complete
+        touch $(dirname "${normalize_dir}")/module3-"${base}".complete
 
 	conda activate jhu-ncov
 	submit_sciserver_ont_job.py -m 4 -i "${out_sam%.sam}.fq" -t 5 2>> "$logfile" 

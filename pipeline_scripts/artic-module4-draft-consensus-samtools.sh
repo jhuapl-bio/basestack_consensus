@@ -72,17 +72,17 @@ sequencing_run=$(dirname $(dirname $(dirname $(dirname "$normalized_fastq"))))
 #===================================================================================================
 
 # input files
-samplename=$(basename $normalized_fastq | awk -F '.' '{print $1}')
+samplename=$(basename "$normalized_fastq" | awk -F '.' '{print $1}')
 consensus_dir="${sequencing_run}/artic-pipeline/4-draft-consensus"
 input_nanopolish_vcf="${consensus_dir}/${samplename}.nanopolish.merged.vcf"
 input_medaka_vcf_zip="${consensus_dir}/${samplename}.medaka.merged.vcf.gz"
 input_medaka_vcf="${consensus_dir}/${samplename}.medaka.merged.vcf"
 input_nanopolish_bamfile="$consensus_dir/${samplename}.nanopolish.primertrimmed.rg.sorted.bam"
-manifest=${sequencing_run}/manifest.txt
-run_configuration=${sequencing_run}/run_config.txt
+manifest="${sequencing_run}/manifest.txt"
+run_configuration="${sequencing_run}/run_config.txt"
 
 # location of programs used by pipeline
-software_path=/home/idies/workspace/covid19/code
+software_path="/home/idies/workspace/covid19/code"
 JAVA_PATH="${software_path}/jdk-14.0.1/bin"
 VariantValidatorPath="${software_path}/ncov/pipeline_scripts/VariantValidator"
 
@@ -92,40 +92,40 @@ protocol=$(awk '/primers/{ print $2 }' "${sequencing_run}/run_config.txt")
 reference="$scheme_dir/$protocol/nCoV-2019.reference.fasta"
 
 # Output directories and files
-mpileup=${consensus_dir}/${samplename}.mpileup
-allelefreqcalls=${consensus_dir}/${samplename}.samtools.vcf
-filelist=${consensus_dir}/${samplename}.filelist.txt
+mpileup="${consensus_dir}/${samplename}.mpileup"
+allelefreqcalls="${consensus_dir}/${samplename}.samtools.vcf"
+filelist="${consensus_dir}/${samplename}.filelist.txt"
 
 # log file
-logfile=${consensus_dir}/logs/module4-samtools-$(basename ${normalized_fastq%.covfiltered.fq})-$(date +"%F-%H%M%S").log
+logfile="${consensus_dir}"/logs/module4-samtools-$(basename "${normalized_fastq%.covfiltered.fq}")-$(date +"%F-%H%M%S").log
 
 #===================================================================================================
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -d ${sequencing_run} ];then
+if [ ! -d "${sequencing_run}" ];then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
 
-if [ ! -d ${consensus_dir} ];then
+if [ ! -d "${consensus_dir}" ];then
     >&2 echo "Error: Require module 4 draft consensus output"
     >&2 echo "    ${consensus_dir} does not exist"
     exit 1
 fi
 
-if [ ! -s ${run_configuration} ];then
+if [ ! -s "${run_configuration}" ];then
     >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
     exit 1
 fi
 
-if [ ! -s ${manifest} ];then
+if [ ! -s "${manifest}" ];then
     >&2 echo "Error Require a manifest.txt file in the sequencing run directory"
     >&2 echo "${sequencing_run}/manifest.txt does not exist"
     exit 1
 fi
 
-if [ ! -f ${normalized_fastq} ];then
+if [ ! -f "${normalized_fastq}" ];then
     >&2 echo "Error: Fastq file ${normalized_fastq} does not exist"
     exit 1
 fi
@@ -140,7 +140,7 @@ elif [ ! -f "${input_medaka_vcf_zip}" ];then
     >&2 echo "Error: Medaka output vcf file ${input_medaka_vcf_zip} does not exist"
     exit 1
 else
-    mkdir -p ${consensus_dir}/logs
+    mkdir -p "${consensus_dir}/logs"
 fi
 
  
@@ -167,63 +167,63 @@ echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):------ processi
 
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Starting Module 4 Samtools on ${input_nanopolish_bamfile}"
 
-samtools mpileup --reference ${reference} ${input_nanopolish_bamfile} -o ${mpileup} 2>> ${logfile}
+samtools mpileup --reference "${reference}" "${input_nanopolish_bamfile}" -o "${mpileup}" 2>> "${logfile}"
 
 # Run samtools-based variant calling
-$JAVA_PATH/java \
--cp ${VariantValidatorPath}/src CallVariants \
-pileup_file=${mpileup} \
-out_file=${allelefreqcalls} 2>> ${logfile}
+"$JAVA_PATH/java" \
+-cp "${VariantValidatorPath}/src" CallVariants \
+pileup_file="${mpileup}" \
+out_file="${allelefreqcalls}" 2>> "${logfile}"
 
 echo_log "Starting Module 4 Merging and Allele Frequencies on \
     ${input_nanopolish_vcf}, ${input_medaka_vcf}, ${mpileup}"
 
 # Run merging and allele frequency counts
-if [ ! -r ${input_medaka_vcf} ]; then
-    echo_log 'Unzipping '${input_medaka_vcf_zip}
-    gunzip -c ${input_medaka_vcf_zip} > ${input_medaka_vcf} 2>> ${logfile}
+if [ ! -r "${input_medaka_vcf}" ]; then
+    echo_log "Unzipping ${input_medaka_vcf_zip}"
+    gunzip -c "${input_medaka_vcf_zip}" > "${input_medaka_vcf}" 2>> "${logfile}"
 fi
 
-vcfs=${input_nanopolish_vcf},${input_medaka_vcf}
+vcfs="${input_nanopolish_vcf},${input_medaka_vcf}"
 
 # Print out vcf filenames with absolute paths to filelist
-vcfarray=$(echo ${vcfs} | tr "," "\n")
+vcfarray=$(echo "${vcfs}" | tr "," "\n")
 
 # Output vcf filenames to a list
-if [ -r ${filelist} ]
+if [ -r "${filelist}" ]
 then
-  rm ${filelist}
+  rm "${filelist}"
 fi
-touch ${filelist}
-for vcf in ${vcfarray}
+touch "${filelist}"
+for vcf in "${vcfarray}"
 do
-    readlink -f ${vcf} >> ${filelist} 2>> ${logfile}
+    readlink -f "${vcf}" >> "${filelist}" 2>> "${logfile}"
 done
-readlink -f ${allelefreqcalls} >> ${filelist} 2>> ${logfile}
+readlink -f "${allelefreqcalls}" >> "${filelist}" 2>> "${logfile}"
 
 # Run merging
-$JAVA_PATH/java \
--cp ${VariantValidatorPath}/src MergeVariants \
+"$JAVA_PATH/java" \
+-cp "${VariantValidatorPath}/src" MergeVariants \
 illumina_bam=None \
-file_list=${filelist} \
-out_file=${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf 2>> ${logfile}
+file_list="${filelist}" \
+out_file="${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf" 2>> "${logfile}"
 
-$JAVA_PATH/java \
--cp ${VariantValidatorPath}/src AddAlleleFrequencies \
-vcf_file=${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf  \
-ont_mpileup=${mpileup} \
-out_file=${consensus_dir}/${samplename}.all_callers.combined.vcf 2>> ${logfile}
+"$JAVA_PATH/java" \
+-cp "${VariantValidatorPath}/src" AddAlleleFrequencies \
+vcf_file="${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf"  \
+ont_mpileup="${mpileup}" \
+out_file="${consensus_dir}/${samplename}.all_callers.combined.vcf" 2>> "${logfile}"
 
 #---------------------------------------------------------------------------------------------------
 
 
-if [[ -s ${consensus_dir}/${samplename}.all_callers.combined.vcf ]] && \
-   [[ -s ${mpileup} ]] && \
-   [[ -s ${consensus_dir}/${samplename}.nanopolish.primertrimmed.rg.sorted.depth ]] && \
-   [[ -s ${consensus_dir}/${samplename}.nanopolish.consensus.fasta ]]; then
+if [[ -s "${consensus_dir}/${samplename}.all_callers.combined.vcf" ]] && \
+   [[ -s "${mpileup}" ]] && \
+   [[ -s "${consensus_dir}/${samplename}.nanopolish.primertrimmed.rg.sorted.depth" ]] && \
+   [[ -s "${consensus_dir}/${samplename}.nanopolish.consensus.fasta" ]]; then
 	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Module 4 Samtools and Merging: processing complete"
 	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Creating ${consensus_dir}/module4-${samplename}.all_callers.complete"
-	touch ${consensus_dir}/module4-${samplename}.all_callers.complete
+	touch "${consensus_dir}/module4-${samplename}.all_callers.complete"
 else
 	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Error: Module 4 Samtools and Merging failed."
 	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):    All Module 4 output files for ${samplename} could not be detected with file size greater than zero."
@@ -232,12 +232,12 @@ fi
 
 module4_complete_flag="TRUE"
 while IFS=$'\t' read barcode name; do
-	if [[ ! -f ${consensus_dir}/module4-${name}_${barcode}.all_callers.complete ]]; then
+	if [[ ! -f "${consensus_dir}/module4-${name}_${barcode}.all_callers.complete" ]]; then
 		module4_complete_flag="FALSE"
 	fi
-done < ${manifest}
+done < "${manifest}"
 
-if [[ ${module4_complete_flag} == "TRUE" ]]; then
+if [[ "${module4_complete_flag}" == "TRUE" ]]; then
 	echo_log "Submitting Module 5 job for ${sequencing_run}."
 	submit_sciserver_ont_job.py -m 5 -i "$sequencing_run"
 fi
