@@ -116,6 +116,7 @@ if [[ -f ${postfilter_dir}/module5-${sequencing_run_name}.complete ]]; then
     >&2 echo "Error: Module 5 already completed for ${sequencing_run_name}."
     >&2 echo "    Archive Module 5 output and output for subsequent modules before rerunning"
     exit 1
+fi
 
 if [ ! -d ${consensus_dir} ];then
     >&2 echo "Error: Require Module 4 draft consensus output"
@@ -140,25 +141,25 @@ while IFS=$'\t' read barcode name; do
 done < ${manifest}
 
 ref_files_found_flag="TRUE"
-if [[ -s ${vcf_next} ]] 
+if [[ ! -s ${vcf_next} ]]; then 
 	>&2 echo "Error: Module 5 reference file not found: ${vcf_next}"
 	ref_files_found_flag="FALSE"
 	exit 1
 fi
 
-if [[ -s ${case_defs} ]] 
+if [[ ! -s ${case_defs} ]]; then 
 	>&2 echo "Error: Module 5 reference file not found: ${case_defs}"
 	ref_files_found_flag="FALSE"
 	exit 1
 fi
 
-if [[ -f ${ntc_depthfile} ]] 
+if [[ ! -f ${ntc_depthfile} ]]; then
 	>&2 echo "Error: Control sample depth file not found: ${ntc_depthfile}"
 	ref_files_found_flag="FALSE"
 	exit 1
 fi
 
-if [[ -f ${ntc_bamfile} ]] 
+if [[ ! -f ${ntc_bamfile} ]]; then
 	>&2 echo "Error: Control Sample BAM file not found: ${ntc_bamfile}"
 	ref_files_found_flag="FALSE"
 	exit 1
@@ -167,7 +168,7 @@ fi
 # create logs folder after successful completion of Module 4 for all samples
 if [[ ${module4_complete_flag} == "TRUE" ]] && [[ ${ref_files_found_flag} == "TRUE" ]]; then
 	mkdir -p ${postfilter_dir}/logs
-
+fi
 #===================================================================================================
 # MAIN BODY
 #===================================================================================================
@@ -183,7 +184,7 @@ echo_log "RUN ${sequencing_run_name}: input fasta file: ${normalized_fastq}"
 echo_log "RUN ${sequencing_run_name}: input vcfs: ${input_nanopolish_vcf}, ${input_medaka_vcf_zip}"
 echo_log "RUN ${sequencing_run_name}: iput bam file: ${input_nanopolish_bamfile}"
 echo_log "RUN ${sequencing_run_name}: output consensus directory: ${consensus_dir}"
-echo_log "RUN ${sequencing_run_name}: ------ processing Samtools/Merge ------"
+echo_log "RUN ${sequencing_run_name}: ------ processing Postfiltering and Annotation ------"
 
 #---------------------------------------------------------------------------------------------------
 # Module 5 Postfiler
