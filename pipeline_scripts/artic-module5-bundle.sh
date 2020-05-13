@@ -112,6 +112,11 @@ if [ ! -d ${sequencing_run} ];then
     exit 1
 fi
 
+if [[ -f ${postfilter_dir}/module5-${sequencing_run_name}.complete ]]; then
+    >&2 echo "Error: Module 5 already completed for ${sequencing_run_name}."
+    >&2 echo "    Archive Module 5 output and output for subsequent modules before rerunning"
+    exit 1
+
 if [ ! -d ${consensus_dir} ];then
     >&2 echo "Error: Require Module 4 draft consensus output"
     >&2 echo "    ${consensus_dir} does not exist"
