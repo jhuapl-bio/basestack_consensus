@@ -176,22 +176,22 @@ done < "$manifest" 2>> "$logfile"
 # QUALITY CHECKING AND MODULE 2 JOB SUBMISSION
 #===================================================================================================
 
-if [ ! -d "$demux_dir" ];then
+if [[ ! -d "$demux_dir" ]];then
     >&2 echo_log "RUN $(basename ${sequencing_run}): Error $demux_dir not created"
     exit 1
 fi
 
-while read name barcode; do
-    if [ -d "$demux_dir""$name" ]; then
+while read barcode name; do
+    if [[ -d "$demux_dir/$barcode" ]]; then
         complete=TRUE
     else
         complete=FALSE
-        echo_log "RUN $(basename ${sequencing_run}): Error ${demux_dir}/${name} does not exist"
+        echo_log "RUN $(basename ${sequencing_run}): Error ${demux_dir}/${barcode} does not exist"
     fi
 done < "$manifest"
 
 if [[ "$complete"==TRUE ]]; then
-   "touch $demux_dir/1-barcode-demux.complete"
+   touch "$demux_dir/1-barcode-demux.complete"
    echo_log "RUN $(basename ${sequencing_run}): Module 1, Guppy Barcoder complete"
 fi
     
