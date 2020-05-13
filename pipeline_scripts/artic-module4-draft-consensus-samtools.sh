@@ -237,7 +237,7 @@ while IFS=$'\t' read barcode name; do
 	fi
 done < ${manifest}
 
-if [[ module4_complete_flag == "TRUE" ]]; then
+if [[ ${module4_complete_flag} == "TRUE" ]]; then
 	echo_log "Submitting Module 5 job for ${sequencing_run}."
 	submit_sciserver_ont_job.py -m 5 -i "$sequencing_run"
 fi
