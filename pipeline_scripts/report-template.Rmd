@@ -18,6 +18,7 @@ header-includes:
     \definecolor{myRed}{rgb}{0.93,0.17,0.17}
     \definecolor{variantBlue}{rgb}{0.3,0.3,0.3}
     \definecolor{variantRed}{rgb}{0.7,0.7,0.7}
+    \definecolor{gray70}{rgb}{0.7,0.7,0.7}
 ---
   <!-- \usepackage{amsmath} -->
   <!-- \usepackage{fdsymbol} -->
@@ -72,7 +73,8 @@ library(rjson, quietly=TRUE)
 ```{r, load-files, echo=FALSE, message=FALSE, warning=FALSE}
 # grab external paths from YAML
 run_path <- params$run_path
-genome_ref <- fromJSON(file=paste0(params$protocol_path, "/genome.json"))
+protocol_path <- params$protocol_path
+nextstrain_path <- params$nextstrain_path
 
 #-------------------------------------------------
 # set up colors
@@ -102,9 +104,11 @@ shapes <- list( # from: https://en.wikipedia.org/wiki/Geometric_Shapes
 run_config <- read.table(paste0(run_path,"/run_config.txt"))
 manifest <- read.table(paste0(run_path,"/manifest.txt"))
 amplicons <- read.table(paste0(run_path,"/../amplicons"), sep="\t", header=TRUE)
-important_positions <- read.table(paste0(run_path,"/../clade_related_snps.txt"), sep="\t", header=TRUE)
+problematic_sites <- read.table(paste0(run_path,"/../problematic_sites_sarsCov2.txt"), sep="\t", header=TRUE)
+genome_ref <- fromJSON(file=paste0(protocol_path, "/genome.json"))
+important_positions <- read.table(paste0(nextstrain_path,"/latest/alpha/clade_related_snps.txt"), sep="\t", header=TRUE)
 if(length(list.files(run_path, "throughput*", full.names=TRUE)) > 0) {
-	throughput <-read_csv(list.files(run_path, "throughput*", full.names=TRUE))
+	throughput <- read_csv(list.files(run_path, "throughput*", full.names=TRUE))
 } else {
 	throughput <- NULL
 }
@@ -187,6 +191,8 @@ consensus_call <- substr(mutation_full, nchar(mutation_full), nchar(mutation_ful
 mutation_full_bool[(mutation_full_bool > 0) & !(consensus_call %in% c("A","C","G","T"))] <- 2
 
 # set up color objects for our data (needs to be streamlined)
+summary$Consensus <- rep("NA", dim(summary)[1])
+summary$Consensus[summary$Sample %in% postfilt$Sample] <- as.character(postfilt$Status)
 flagList <- summary$Consensus
 flagList <- as.character(flagList)
 flagList[flagList == ""] <- "No"
@@ -228,8 +234,7 @@ names(summary) <- gsub("\\.", " ", names(summary))
 # identify low coverage regions
 threshold <- postfilt_all$ont_depth_thresh[1]
 below_threshold <- function(v) { return(v<threshold) }
-amplicon_region <- depth_norm[,3] >= 1 & depth_norm[,3]<=29903
-low_coverage_regions <- tapply(depth_norm[amplicon_region,4], depth_norm[amplicon_region,1], below_threshold)
+low_coverage_regions <- tapply(depth_norm[,4], depth_norm[,1], below_threshold)
 low_coverage_totals <- unlist(lapply(low_coverage_regions, sum))
 names(low_coverage_totals) <- gsub("depth-norm-", "", names(low_coverage_totals))
 
@@ -237,8 +242,8 @@ names(low_coverage_totals) <- gsub("depth-norm-", "", names(low_coverage_totals)
 mutation_no_low_coverage <- mutation_full
 mutation_no_low_coverage_bool <- mutation_full_bool
 for(i in seq_along(low_coverage_regions)) {
-  low_coverage_rows <- dimnames(mutation_no_low_coverage)[[1]] %in% (which(low_coverage_regions[[i]])+54)
-  low_coverage_cols <- dimnames(mutation_no_low_coverage)[[2]] %in% sample_barcodes[i]
+  low_coverage_rows <- dimnames(mutation_no_low_coverage)[[1]] %in% which(low_coverage_regions[[i]])
+  low_coverage_cols <- dimnames(mutation_no_low_coverage)[[2]] %in% summary$Sample[i]
   mutation_no_low_coverage[low_coverage_rows, low_coverage_cols] <- ""
   mutation_no_low_coverage_bool[low_coverage_rows, low_coverage_cols] <- FALSE
 }
@@ -390,7 +395,7 @@ print_low_depth_regions <- function() {
                                 paste(i, collapse = ', '))), collapse = ', ')
   }
   get_regions <- function(i){
-    d <- depth_norm[amplicon_region,]
+    d <- depth_norm
     l <- levels(factor(d[,1]))
     r <- d[d[,1]==l[i] & low_coverage_regions[[i]] & d[,3] >= 55 & d[,3]<=29836, 3]
     if(length(r) > 0) {
@@ -553,7 +558,7 @@ plot_homoplasy_heatmap <- function() {
   }
 }
 #-------------------------------------------------
-genome_cartoon_overview <- function(mutation_subset=mutation_no_low_coverage) {
+genome_cartoon_overview <- function(mutation_subset) {
   features <- GRanges("MN908947.3", IRanges(sapply(genome_ref$genes, function(g){return(g$start)}), 
                                     width=sapply(genome_ref$genes, function(g){return(g$end-g$start+1)}),
                                     names=names(genome_ref$genes)),
@@ -952,6 +957,8 @@ plot_readlen()
 plot_barcode_barplot()
 ```
 
+\pagebreak
+
 ## Amplicon depth
 ### Read counts
 ```{r, depth-heatmap-1, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=2.5}
@@ -1136,10 +1143,10 @@ done < "$manifest"
 ```
 
 ### Full `artic minion` pipeline:
-(to be added)
 
 ```{r comment=''}
-#cat(readLines(paste0(run_path,'/artic-pipeline/3-hac-medaka-norm200/NTC_barcode12-hac-medaka-norm200.minion.log.txt'), sep = '\n')
+#filename <- list.files(paste0(run_path, "/artic-pipeline/4-draft-consensus/*.minion.log.txt"), full.names=TRUE)[1]
+#cat(readLines(filename), sep='\n')
 ```
 
 ## Nextstrain
