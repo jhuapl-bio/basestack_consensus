@@ -118,14 +118,13 @@ if [ ! -d ${sequencing_run} ];then
     exit 1
 fi
 
-if [ ! -s ${sequencing_run}/run_config.txt ];then
-    # test why this is getting triggered
+if [ ! -s ${run_configuration} ];then
     >&2 echo "Error Require a run_config.txt file in the sequencing run directory"
     >&2 echo "${sequencing_run}/run_config.txt does not exist"
     exit 1
 fi
 
-if [ ! -s ${sequencing_run}/manifest.txt ];then
+if [ ! -s ${manifest} ];then
     >&2 echo "Error Require a manifest.txt file in the sequencing run directory"
     >&2 echo "${sequencing_run}/manifest.txt does not exist"
     exit 1

@@ -78,7 +78,8 @@ input_nanopolish_vcf="${consensus_dir}/${samplename}.nanopolish.merged.vcf"
 input_medaka_vcf_zip="${consensus_dir}/${samplename}.medaka.merged.vcf.gz"
 input_medaka_vcf="${consensus_dir}/${samplename}.medaka.merged.vcf"
 input_nanopolish_bamfile="$consensus_dir/${samplename}.nanopolish.primertrimmed.rg.sorted.bam"
-
+manifest=${sequencing_run}/manifest.txt
+run_configuration=${sequencing_run}/run_config.txt
 
 # location of programs used by pipeline
 software_path=/home/idies/workspace/covid19/code
@@ -113,8 +114,14 @@ if [ ! -d ${consensus_dir} ];then
     exit 1
 fi
 
-if [ ! -s ${sequencing_run}/run_config.txt ];then
+if [ ! -s ${run_configuration} ];then
     >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
+    exit 1
+fi
+
+if [ ! -s ${manifest} ];then
+    >&2 echo "Error Require a manifest.txt file in the sequencing run directory"
+    >&2 echo "${sequencing_run}/manifest.txt does not exist"
     exit 1
 fi
 
