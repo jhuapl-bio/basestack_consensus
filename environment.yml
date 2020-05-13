@@ -35,6 +35,7 @@ dependencies:
   - r-viridis
   - r-magick
   - r-rjson
+  - r-ggextra
   - bioconductor-gviz
   - bioconductor-rtracklayer
   - bioconductor-trackViewer
