@@ -113,7 +113,7 @@ if [ ! -f "${sequencing_run}"/artic-pipeline/3-normalization/module3-$(basename 
     >&2 echo "${sequencing_run}/artic-pipeline/3-normalization/module3-$(basename ${normalized_fastq%.covfiltered.fq}).complete does not exist"
     exit 1
 else
-    mkdir -p "$outdir"
+    mkdir -p "$outdir/logs"
 fi
 
 if [ -s "$outdir/$name-human-filtered-subset.fast5" ];then
