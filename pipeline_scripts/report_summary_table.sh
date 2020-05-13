@@ -147,11 +147,6 @@ if ! [[ -d "$demux_path" ]]; then
 	usage
 	exit
 fi
-if ! [[ -s "$demux_path/barcoding_summary.txt" ]]; then
-	echo -e "${RED}Error: demux summary ${CYAN}$demux_path/barcoding_summary.txt${RED} does not exist.${NC}"
-	usage
-	exit
-fi
 if [[ -z "$lengthfilter_path" ]]; then
 	lengthfilter_path="$run_path/$lengthfilter_base"
 fi
@@ -299,9 +294,13 @@ if [[ "$make_new_outfile" == "true" ]]; then
 		"Consensus" > "$outfile"
 fi
 
-if ! [[ -s "$stats_path/demux_count.txt" ]]; then
+if ! [[ -s "$demuxfile" ]]; then
 	echo_log "Pulling barcode demux stats"
-	tail -n+2 "$demux_path/barcoding_summary.txt" | cut -f2 | sort | uniq -c | sed 's/barcode/NB/' > "$demuxfile"
+	find "$demux_path" -mindepth 1 -maxdepth 1 -type d | sort | while read barcode; do
+		find "$barcode" -maxdepth 1 -name "*.fastq" | while read f; do
+			wc -l < "$f"
+		done | awk -v BARCODE=$(basename "$barcode") '{sum+=$0}END{printf("%s\t%s\n", sum/4, BARCODE)}' >> "$demuxfile"
+	done
 else
 	echo_log "Demux count already present - will not overwrite it"
 fi
