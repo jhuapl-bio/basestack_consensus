@@ -42,7 +42,7 @@ while getopts "hi:t:" OPTION
 do
        case $OPTION in
                 h) usage; exit 1 ;;
-                i) normalized_fastq=$OPTARG ;;
+                i) samfile=$OPTARG ;;
                 t) threads=$OPTARG ;;
                 ?) usage; exit ;;
        esac
@@ -75,44 +75,24 @@ sequencing_run=$(dirname $(dirname $(dirname $(dirname "$normalized_fastq"))))
 # Default values
 #===================================================================================================
 
-# location of programs used by pipeline
-software_path=/home/idies/workspace/covid19/code
-
 # input files, these files should be in the sequencing run directory
 manifest="${sequencing_run}/manifest.txt"
 run_configuration="${sequencing_run}/run_config.txt"
 
-# location for primer schemes
-scheme_dir="${software_path}/artic-ncov2019/primer_schemes"
-
-# primer protocol
-protocol=$(awk '/primers/{ print $2 }' "${run_configuration}")
-
 # Output directories
-consensus_dir="${sequencing_run}/artic-pipeline/4-draft-consensus"
+outdir="$sequencing_run"/artic-pipeline/fast5_subset_human-filtered
 
 # log file
-logfile="${consensus_dir}"/logs/module4-medaka-$(basename "${normalized_fastq%.covfiltered.fq}")-$(date +"%F-%H%M%S").log
+logfile="${outdir}"/logs/module4-fast5-subset-$(basename "${normalized_fastq%.covfiltered.fq}")-$(date +"%F-%H%M%S").log
 
-# Optional program parameters
-out_prefix="$consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}.medaka)"
+sample_name=$(basename "${samfile%.covfiltered.sam}")
 
 #===================================================================================================
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -f "${normalized_fastq}" ];then
-    >&2 echo "Error: Fastq file ${normalized_fastq} does not exist"
-    exit 1
-fi
-
 if [ ! -d "${sequencing_run}" ];then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
-    exit 1
-fi
-
-if [ ! -d "${scheme_dir}" ];then
-    >&2 echo "Error: Primer scheme directory ${scheme_dir} does not exist"
     exit 1
 fi
 
@@ -133,16 +113,14 @@ if [ ! -f "${sequencing_run}"/artic-pipeline/3-normalization/module3-$(basename 
     >&2 echo "${sequencing_run}/artic-pipeline/3-normalization/module3-$(basename ${normalized_fastq%.covfiltered.fq}).complete does not exist"
     exit 1
 else
-    mkdir -p "${consensus_dir}/logs"
+    mkdir -p "$outdir/logs"
 fi
 
-if [ -s "$consensus_dir"/$(basename "${normalized_fastq%.covfiltered.fq"}).medaka.merged.vcf ];then
-    >&2 echo "Error: Medaka VCF already exsists for this sample: $consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}).medaka.merged.vcf"
-    >&2 echo "    Archive all previous medaka processing before rerunning."
+if [ -s "$outdir/$name-human-filtered-subset.fast5" ];then
+    >&2 echo "Fast5 subset already exists for this sample: $outdir/$name-human-filtered-subset.fast5"
+    >&2 echo "    Archive previous fast5 subset processing before rerunning."
     exit 1
 fi
-
-
 
 
 
@@ -153,36 +131,28 @@ fi
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): ------ Medaka Paramters:"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): sequencing run folder: ${CYAN}$sequencing_run${NC}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): recording software version numbers..."
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Software version: $(medaka --version)"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): run configuration file: ${sequencing_run}/run_config.txt"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): prep protocol: ${protocol}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): primer schemes: ${scheme_dir}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): run manifest file: ${manifest}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): fasta file: ${normalized_fastq}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): output medaka directory: ${consensus_dir}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): ------ processing pipeline output ------"
+echo_log "SAMPLE $(sample_name): ------ Fast5 Subset Paramters:"
+echo_log "SAMPLE $(sample_name): sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "SAMPLE $(sample_name): recording software version numbers..."
+echo_log "SAMPLE $(sample_name): run configuration file: ${sequencing_run}/run_config.txt"
+echo_log "SAMPLE $(sample_name): run manifest file: ${manifest}"
+echo_log "SAMPLE $(sample_name): sample bam: ${bamfile}"
+echo_log "SAMPLE $(sample_name): output directory: ${outdir}"
+echo_log "SAMPLE $(sample_name): ------ processing fast5 subset output ------"
 
 #---------------------------------------------------------------------------------------------------
 # module 4
 #---------------------------------------------------------------------------------------------------
 
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Starting Module 4 Medaka on $normalized_fastq"
+READIDS="$samfile.ids.txt"
 
-artic minion \
-        --medaka \
-        --normalise 1000000 \
-        --threads $threads \
-        --scheme-directory "$scheme_dir" \
-        --read-file "$normalized_fastq" \
-        "$protocol" "$out_prefix" 2>> "$logfile"
+awk '{if ( $1 ~ "^@" ){}else{print $1}}' "$samfile" > "$outdir/$READIDS"
 
+fast5_subset --input "$sequencing_run/fast5_pass" --save_path "${outdir}" --read_id_list "$READIDS" --batch_size 100 -t $threads --recursive
 
 
 #---------------------------------------------------------------------------------------------------
 
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Module 4 Medaka: processing complete"
+echo_log "SAMPLE $(sample_name): Module 4 Medaka: processing complete"
 #chgrp -R 5102 $demux_dir
 

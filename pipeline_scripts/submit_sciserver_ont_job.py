@@ -135,12 +135,12 @@ def authenticate_user():
                 USERNAME=user.userName
         except requests.exceptions.ConnectionError as e:
                 print("Connection Error: Authentication Token was not generated.")
-                print("     Please log back in to SciServer and try again.")
+                print("     Please log back in to SciServer, reboot terminal, and try again.")
                 sys.exit(1)
         except Exception as e:
                 if "Error when getting the keystone user with token" in str(e.args[0]):
                         print("Connection Error: Authentication failed.  User not signed in.")
-                        print("     Please log back in to SciServer and try again.")
+                        print("     Please log back in to SciServer, reboot terminal, and try again.")
                 else:
                         print("Unexpected error:", sys.exc_info()[0])
                         raise
@@ -192,7 +192,7 @@ def get_module_script(module):
 		2: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module2-length-filter.sh",
 		3: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module3-normalization.sh", 
 		4: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module4-bundle.sh",
-		5: "in progress"
+		5: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module5-bundle.sh"
 	} 
 	return script.get(module, "Invalid module number") 
 

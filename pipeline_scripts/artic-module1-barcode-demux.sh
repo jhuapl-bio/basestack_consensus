@@ -71,19 +71,19 @@ echo_log() {
 
 # location of programs used by pipeline - double check if bashrc doesn't have to hardcoded paths
 software_path=/home/idies/workspace/covid19/code
-guppy_barcoder_path=${software_path}/ont-guppy-cpu/bin
+guppy_barcoder_path="${software_path}/ont-guppy-cpu/bin"
 
 # input files, these files should be in the sequencing run directory
 run_configuration="${sequencing_run}/run_config.txt"
 barcode_file=$(awk '/barcoding/{ print $2 }' "${run_configuration}")
-fastq_dir=${sequencing_run}/fastq_pass
-manifest=${sequencing_run}/manifest.txt
+fastq_dir="${sequencing_run}/fastq_pass"
+manifest="${sequencing_run}/manifest.txt"
 
 # Output directories
-demux_dir=${sequencing_run}/artic-pipeline/1-barcode-demux
+demux_dir="${sequencing_run}/artic-pipeline/1-barcode-demux"
 
 # log file
-logfile=${demux_dir}/logs/module1-$(date +"%F-%H%M%S").log
+logfile="${demux_dir}"/logs/module1-$(date +"%F-%H%M%S").log
 
 
 #===================================================================================================
@@ -91,20 +91,20 @@ logfile=${demux_dir}/logs/module1-$(date +"%F-%H%M%S").log
 #===================================================================================================
 
 # check for the existence of the sequencing run directory
-if [ ! -d ${sequencing_run} ];then
+if [ ! -d "${sequencing_run}" ];then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
 else
-    mkdir -p $demux_dir/logs
+    mkdir -p "$demux_dir/logs"
 
 fi
 
 # check for existence of run_config.txt and for barcoding 
-if [ ! -s ${run_configuration} ];then
+if [ ! -s "${run_configuration}" ];then
     >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
     exit 1
 else
-    if ! grep -q "barcoding" ${run_configuration};then 
+    if ! grep -q "barcoding" "${run_configuration}";then 
         echo "Error: require barcoding file within run_config.txt"
         >&2 echo "Error: barcode file not found within run_config.txt"
         exit 1
@@ -112,25 +112,25 @@ else
 fi
 
 # check for existence of manifest.txt and that it has two columns
-if [ ! -s ${manifest} ];then 
+if [ ! -s "${manifest}" ];then 
     >&2 echo "Error: Require a manifest.txt file in the sequencing run directory"
     exit 1
 else
-    columns=$( awk -F' ' '{print NF}' ${manifest} )
-    if [ $columns -ne 2 ];then 
+    columns=$( awk -F' ' '{print NF}' "${manifest}" )
+    if [ "$columns" -ne 2 ];then 
         >&2 echo "Error: manifest.txt must have two columns and be tab delimited.\n\tColumn 1: Barcodes\n\tColumn 2 Sample Names"
         exit 1
     fi
 fi
 
 # check for existence of fastq_pass directory
-if [ ! -d ${sequencing_run}/fastq_pass ];then
+if [ ! -d "${sequencing_run}/fastq_pass" ];then
     >&2 echo "Error: Require fastq_pass directory in the sequencing run directory"
     exit 1
 fi
 
 # check for existence of a module 1 complete file.  will not overwrite previous processing
-if [ -f $demux_dir/1-barcode-demux.complete ];then
+if [ -f "$demux_dir/1-barcode-demux.complete" ];then
     >&2 echo "Error: Processing for Module 1 was prevously completed: ${demux_dir}1-barcode-demux.complete"
     >&2 echo "     Archive all previously run modules prior to beginning a new processing chain."
     exit 1
@@ -158,11 +158,11 @@ echo_log "RUN $(basename ${sequencing_run}): ------ processing pipeline output -
 
 echo_log "RUN $(basename ${sequencing_run}): Starting guppy demux module 1"
 
-$guppy_barcoder_path/guppy_barcoder \
+"$guppy_barcoder_path/guppy_barcoder" \
 	--require_barcodes_both_ends \
 	-i "$fastq_dir" \
 	-s "$demux_dir" \
-	--arrangements_files $barcode_file 2>> "$logfile"
+	--arrangements_files "$barcode_file" 2>> "$logfile"
 
 while read barcode name; do
 mv "$demux_dir"/"${barcode/NB/barcode}" "$demux_dir"/"${barcode}"
@@ -176,32 +176,32 @@ done < "$manifest" 2>> "$logfile"
 # QUALITY CHECKING AND MODULE 2 JOB SUBMISSION
 #===================================================================================================
 
-if [ ! -d $demux_dir ];then
+if [[ ! -d "$demux_dir" ]];then
     >&2 echo_log "RUN $(basename ${sequencing_run}): Error $demux_dir not created"
     exit 1
 fi
 
-while read name barcode; do
-    if [ -d "$demux_dir""$name" ]; then
+while read barcode name; do
+    if [[ -d "$demux_dir/$barcode" ]]; then
         complete=TRUE
     else
         complete=FALSE
-        echo_log "RUN $(basename ${sequencing_run}): Error "$demux_dir"/"$name" does not exist"
+        echo_log "RUN $(basename ${sequencing_run}): Error ${demux_dir}/${barcode} does not exist"
     fi
-done < $manifest
+done < "$manifest"
 
-if [[ $complete==TRUE ]]; then
-   touch $demux_dir/1-barcode-demux.complete
+if [[ "$complete"==TRUE ]]; then
+   touch "$demux_dir/1-barcode-demux.complete"
    echo_log "RUN $(basename ${sequencing_run}): Module 1, Guppy Barcoder complete"
 fi
     
-if [ -f $demux_dir/1-barcode-demux.complete ]; then
+if [ -f "$demux_dir/1-barcode-demux.complete" ]; then
     conda activate jhu-ncov
     while read name barcode; do
         echo_log "RUN $(basename ${sequencing_run}): " 'executing submit_sciserver_ont_job.py -m 2 i "$demux_dir"/"$name"'       
         submit_sciserver_ont_job.py -m 2 -i "$demux_dir"/"$name"
 	sleep 30
-    done < $manifest 2>> "$logfile"
+    done < "$manifest" 2>> "$logfile"
 fi
 
 

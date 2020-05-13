@@ -73,48 +73,48 @@ sequencing_run=$(dirname $(dirname $(dirname "$barcode_dir")))
 # location of programs used by pipeline
 
 # input files, these files should be located in the sequencing run directory
-manifest=${sequencing_run}/manifest.txt
+manifest="${sequencing_run}/manifest.txt"
 
 # grabbing sample name from manifest given input barcode directory
-name=$(grep $(basename $barcode_dir) ${manifest} | cut -d $'\t' -f 2)
+name=$(grep $(basename "$barcode_dir") "${manifest}" | cut -d $'\t' -f 2)
 
 # Output directories
-gather_dir=${sequencing_run}/artic-pipeline/2-length-filter
+gather_dir="${sequencing_run}/artic-pipeline/2-length-filter"
 
 # log file
-logfile=${gather_dir}/logs/module2-${name}-$(date +"%F-%H%M%S").log
+logfile="${gather_dir}"/logs/module2-"${name}"-$(date +"%F-%H%M%S").log
 
 
 #===================================================================================================
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -d ${sequencing_run} ];then
+if [ ! -d "${sequencing_run}" ];then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
 
-if [ ! -s ${sequencing_run}/run_config.txt ];then
+if [ ! -s "${sequencing_run}/run_config.txt" ];then
     >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
     exit 1
 fi
 
-if [ ! -s ${manifest} ];then
+if [ ! -s "${manifest}" ];then
     >&2 echo "Error: Require a manifest.txt file in the sequencing run directory"
     exit 1
 fi
 
-if [ ! -d ${sequencing_run}/artic-pipeline/1-barcode-demux ];then
+if [ ! -d "${sequencing_run}/artic-pipeline/1-barcode-demux" ];then
     >&2 echo "Error: Require Module 1-barcode-demux output. Module 1 Output: '${sequencing_run}/artic-pipeline/1-barcode-demux' does not exist"
     exit 1
 fi
 
-if [ ! -d ${barcode_dir} ];then
+if [ ! -d "${barcode_dir}" ];then
     >&2 echo "Error: Input barcode directory does not exist: '${sequencing_run}/artic-pipeline/1-barcode-demux'"
     exit 1
 fi
 
-if [ ! -f ${sequencing_run}/artic-pipeline/1-barcode-demux/1-barcode-demux.complete];then
+if [ ! -f "${sequencing_run}/artic-pipeline/1-barcode-demux/1-barcode-demux.complete" ];then
     >&2 echo "'Error: 1-barcode-demux.complete file' not detected in Module 1 output directory.  Module 1 must complete on all barcodes prior to proceeding to Module 2.."
     exit 1
 else
@@ -122,7 +122,7 @@ else
 fi
 
 # check for existence of a module 2 ouput directory.  will not overwrite previously processing
-if [ -f ${gather_dir}/module2-"$name"_$(basename ${barcode_dir}).complete ];then
+if [ -f "${gather_dir}"/module2-"$name"_$(basename "${barcode_dir}").complete ];then
     >&2 echo "Error: Processing for Module 2 already completed for this sample: ${gather_dir}/module2-${name}.complete"
     >&2 echo "    Archive the previously run Module 2 output and all subsequent module ouput prior to rerunning."
     exit 1
@@ -167,7 +167,7 @@ artic guppyplex \
 # QUALITY CHECKING AND MODULE 3 JOB SUBMISSION
 #===================================================================================================
 
-if [ ! -d $gather_dir ];then
+if [ ! -d "$gather_dir" ];then
     >&2 echo_log "SAMPLE ${name}: Error: $gather_dir not created"
     exit 1
 fi
@@ -177,9 +177,9 @@ if [ ! -f "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq ];then
     exit 1
 else
  	echo_log "SAMPLE ${name}: Module 2 - Guppyplex complete"
-	touch "$gather_dir"/module2-"$name"_$(basename ${barcode_dir}).complete
+	touch "$gather_dir"/module2-"$name"_$(basename "${barcode_dir}").complete
 
-	echo_log "SAMPLE ${name}: executing submit_sciserver_ont_job.py -m 3 -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq"
+	echo_log "SAMPLE ${name}: executing submit_sciserver_ont_job.py -m 3 -i $gather_dir/${name}_$(basename ${barcode_dir}).fastq"
 
 	conda activate jhu-ncov 
 	submit_sciserver_ont_job.py -m 3 -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq 2>> "$logfile"
