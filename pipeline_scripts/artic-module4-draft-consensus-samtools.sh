@@ -214,18 +214,18 @@ if [[ -s ${consensus_dir}/${samplename}.all_callers.combined.vcf ]] && \
    [[ -s ${mpileup} ]] && \
    [[ -s ${consensus_dir}/${samplename}.nanopolish.primertrimmed.rg.sorted.depth ]] && \
    [[ -s ${consensus_dir}/${samplename}.nanopolish.consensus.fasta ]]; then
-	echo_log "Module 4 Samtools and Merging: processing complete"
-	echo_log "Creating ${consensus_dir}/module4-${samplename}.all_callers.complete"
+	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Module 4 Samtools and Merging: processing complete"
+	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Creating ${consensus_dir}/module4-${samplename}.all_callers.complete"
 	touch ${consensus_dir}/module4-${samplename}.all_callers.complete
 else
-	echo_log "Error: Module 4 Samtools and Merging failed."
-	echo_log "   All Module 4 output files for ${samplename} could not be detected with file size greater than zero."
+	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Error: Module 4 Samtools and Merging failed."
+	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):    All Module 4 output files for ${samplename} could not be detected with file size greater than zero."
 	exit 1
 fi
 
 module4_complete_flag="TRUE"
 while IFS=$'\t' read barcode name; do
-	if [[ ! -f module4-${name}_${barcode}.all_callers.complete ]]
+	if [[ ! -f module4-${name}_${barcode}.all_callers.complete ]]; then
 		module4_complete_flag="FALSE"
 	fi
 done < ${manifest}
