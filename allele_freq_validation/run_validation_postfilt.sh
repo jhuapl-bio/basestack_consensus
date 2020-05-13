@@ -39,7 +39,7 @@ for consfile in $DIR/*nanopolish.consensus.fasta; do
 		prefix=${prefix%%.*}
 
 		# run script
-		python validation_postfilter.py \
+		python /home/idies/workspace/covid19/code/ncov/allele_freq_validation/validation_postfilter.py \
 		--vcffile $vcffile \
 		--mpileup $mpileup \
 		--depthfile $depth \
