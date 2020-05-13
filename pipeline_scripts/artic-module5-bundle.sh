@@ -91,7 +91,7 @@ reference="/home/idies/workspace/covid19/ncov_reference/sequence.fasta"
 reference_annotation="/home/idies/workspace/covid19/ncov_reference/genes.gff3"
 
 # Pangolin reference directory
-pangolin_data="/home/idies/workspace/covid19/ncov_reference/lineages/lineages/data
+pangolin_data="/home/idies/workspace/covid19/ncov_reference/lineages/lineages/data"
 
 # snpEff reference file
 snpEff_config="/home/idies/workspace/covid19/ncov_reference/snpEff.config"

@@ -232,7 +232,7 @@ fi
 
 module4_complete_flag="TRUE"
 while IFS=$'\t' read barcode name; do
-	if [[ ! -f module4-${name}_${barcode}.all_callers.complete ]]; then
+	if [[ ! -f ${consensus_dir}/module4-${name}_${barcode}.all_callers.complete ]]; then
 		module4_complete_flag="FALSE"
 	fi
 done < ${manifest}
