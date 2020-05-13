@@ -148,7 +148,7 @@ READIDS="$samfile.ids.txt"
 
 awk '{if ( $1 ~ "^@" ){}else{print $1}}' "$samfile" > "$outdir/$READIDS"
 
-fast5_subset --input "$sequencing_run/fast5_pass" --save_path "${outdir}" --read_id_list "$READIDS" --batch_size 100 --recursive
+fast5_subset --input "$sequencing_run/fast5_pass" --save_path "${outdir}" --read_id_list "$READIDS" --batch_size 100 -t $threads --recursive
 
 
 #---------------------------------------------------------------------------------------------------
