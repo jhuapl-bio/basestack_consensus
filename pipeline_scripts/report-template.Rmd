@@ -5,6 +5,7 @@ date: "`r format(Sys.time(), '%B %d, %Y')`"
 params:
   run_path: "<RUN_PATH>"
   protocol_path: "<PROTOCOL_PATH>"
+  nextstrain_path: "<NEXTSTRAIN_PATH>"
 always_allow_html: true
 output:
   pdf_document:
@@ -563,7 +564,6 @@ genome_cartoon_overview <- function(mutation_subset=mutation_no_low_coverage) {
 
   # remove positions covered by multi-site variants
   mutation_subset <- mutation_subset[!(dimnames(mutation_subset)[[1]] %in% c(snpeff_report$POS[sapply(as.character(snpeff_report$REF), nchar)>1]+1)),]
-  mutation_subset <- mutation_subset[,-c(7,8,11)]
   mutation_subset <- mutation_subset[apply(nchar(mutation_subset), 1, sum) > 0,]
     
   SNP <- as.numeric(dimnames(mutation_subset)[[1]])
@@ -641,7 +641,7 @@ genome_cartoons <- function(mutation_subset) {
                                     width=sapply(genome_ref$genes, function(g){return(g$end-g$start+1)})),
 #                                    names=names(genome_ref$genes)),
 #                      fill = rep(c('#2ca25f', '#99d8c9'), 10)[seq(1, length(genome_ref$genes))],
-                      fill = brewer.pal(n=11, name="Set3"),
+                      fill = brewer.pal(n=length(genome_ref$genes), name="Set3"),
                       color = "white",
                       height = unit(1/8, "inches"))
   sample.gr.all <- list()
