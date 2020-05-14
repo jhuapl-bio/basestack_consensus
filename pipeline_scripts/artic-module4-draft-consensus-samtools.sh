@@ -1,7 +1,6 @@
 #!/bin/bash
 source /home/idies/workspace/covid19/bashrc
-conda activate jhu-ncov
-
+conda activate artic-ncov2019-medaka
 #---------------------------------------------------------------------------------------------------
 
 # set default values here
