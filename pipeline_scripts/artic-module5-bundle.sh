@@ -164,22 +164,22 @@ if [[ ! -f "${ntc_bamfile}" ]]; then
 fi
 
 if [[ ! -s "${snpEff_config}" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: snpEff Config file not found: ${snpEff_config}"
+	>&2 echo "RUN ${sequencing_run_name}: Error: snpEff Config file not found: ${snpEff_config}"
 	ref_files_found_flag="FALSE"
 fi
 
 if [[ ! -d "${pangolin_data}" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: Pangolin data directory not found: ${pangolin_data}"
+	>&2 echo "RUN ${sequencing_run_name}: Error: Pangolin data directory not found: ${pangolin_data}"
 	ref_files_found_flag="FALSE"
 fi
 
 if [[ ! -s "${reference_annotation}" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: nCoV reference GFF not found: ${reference_annotation}"
+	>&2 echo "RUN ${sequencing_run_name}: Error: nCoV reference GFF not found: ${reference_annotation}"
 	ref_files_found_flag="FALSE"	
 fi
 
 if [[ ! -s "${reference}" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: nCoV reference FASTA not found: ${reference}"
+	>&2 echo "RUN ${sequencing_run_name}: Error: nCoV reference FASTA not found: ${reference}"
 	ref_files_found_flag="FALSE"
 fi
 
@@ -194,25 +194,27 @@ pangolin=$(which artic-module5-pangolin.sh)
 snpeff=$(which artic-module5-snpEff.sh)
 
 if [[ -z "${pangolin}" ]]; then
-	echo_log  "RUN ${sequencing_run_name}: Error: artic-module5-pangolin.sh is not in your path! Please add this script to your path and rerun"
+	echo  "RUN ${sequencing_run_name}: Error: artic-module5-pangolin.sh is not in your path! Please add this script to your path and rerun"
 	paths_found_flag="FALSE"
 fi
 
 if [[ -z "${snpeff}" ]]; then
-	echo_log  "RUN ${sequencing_run_name}: Error: artic-module5-combine.sh is not in your path! Please add this script to your path and rerun"
+	echo  "RUN ${sequencing_run_name}: Error: artic-module5-combine.sh is not in your path! Please add this script to your path and rerun"
+	paths_found_flag="FALSE"
 fi
 
 if [[ -z "$postfilter_summary" ]]; then
-	echo_log  "RUN ${sequencing_run_name}: Error: postfilter_summary.py is not in your path! Please add this script to your path and rerun"
+	echo  "RUN ${sequencing_run_name}: Error: postfilter_summary.py is not in your path! Please add this script to your path and rerun"
 	paths_found_flag="FALSE"
 fi
 
 if [[ -z "${run_postfiler}" ]]; then
-	echo_log  "RUN ${sequencing_run_name}: Error: artic-module5-postfiler.sh is not in your path! Please add this script to your path and rerun"
+	echo  "RUN ${sequencing_run_name}: Error: artic-module5-postfiler.sh is not in your path! Please add this script to your path and rerun"
+	paths_found_flag="FALSE"
 fi
 
 if [[ -z "${combine}" ]]; then
-	echo_log  "RUN ${sequencing_run_name}: Error: artic-module5-combine.sh is not in your path! Please add this script to your path and rerun"
+	echo  "RUN ${sequencing_run_name}: Error: artic-module5-combine.sh is not in your path! Please add this script to your path and rerun"
 	paths_found_flag="FALSE"
 fi
 
@@ -324,8 +326,8 @@ fi
 #---------------------------------------------------------------------------------------------------
 
 module5_complete_flag="TRUE"
-if [[ ! -s "${postfiler_dir}/postfilt_consensus_all.fasta" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: Panglolin output file - ${postfiler_dir}/postfilt_consensus_all.fasta not detected."
+if [[ ! -s "${postfiler_dir}/lineage_report.csv" ]]; then
+	echo_log "RUN ${sequencing_run_name}: Error: Panglolin output file - ${postfiler_dir}/lineage_report.csv not detected."
 	module5_complete_flag="FALSE"
 fi
 

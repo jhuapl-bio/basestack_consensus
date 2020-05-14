@@ -40,7 +40,7 @@ do
 	case $OPTION in
 		h) usage; exit 1 ;;
 		i) fastq=$OPTARG ;;
-        t) threads=$OPTARG ;;
+	        t) threads=$OPTARG ;;
 		?) usage; exit ;;
 	esac
 done
@@ -112,7 +112,7 @@ logfile=$(dirname "${normalize_dir}")/logs/module3-"${base}"-$(date +"%F-%H%M%S"
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -s "${fastq}" ];then
+if [ ! -d "${sequencing_run}" ];then
     >&2 echo_log "Error Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
@@ -190,11 +190,11 @@ samtools depth -a -d 0 "${align_out%.sam}.bam" > "${align_out%.sam}.depth" 2>> "
 # normalization, txt file output went to working directory
 out_sam="${align_out%.sam}.covfiltered.sam"
 
-"$JAVA_PATH/java" \
+"$JAVA_PATH"/java \
 	-cp "$NormalizeCoveragePath/src" \
 	NormalizeCoverage \
 	input="$align_out" \
-	"$norm_parameters" 2>> "$logfile"
+	$norm_parameters 2>> "$logfile"
 
 # fastq conversion
 samtools fastq "${out_sam}" > "${out_sam%.sam}.fq" 2>> "$logfile"

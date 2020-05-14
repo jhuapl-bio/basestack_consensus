@@ -136,7 +136,7 @@ else
     mkdir -p "${consensus_dir}/logs"
 fi
 
-if [ -s "$consensus_dir"/$(basename "${normalized_fastq%.covfiltered.fq"}).medaka.merged.vcf ];then
+if [ -s "$consensus_dir"/$(basename "${normalized_fastq%.covfiltered.fq}").medaka.merged.vcf ];then
     >&2 echo "Error: Medaka VCF already exsists for this sample: $consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}).medaka.merged.vcf"
     >&2 echo "    Archive all previous medaka processing before rerunning."
     exit 1
