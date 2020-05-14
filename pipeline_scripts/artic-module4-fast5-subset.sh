@@ -132,28 +132,27 @@ fi
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
-echo_log "SAMPLE $(sample_name): ------ Fast5 Subset Paramters:"
-echo_log "SAMPLE $(sample_name): sequencing run folder: ${CYAN}$sequencing_run${NC}"
-echo_log "SAMPLE $(sample_name): recording software version numbers..."
-echo_log "SAMPLE $(sample_name): run configuration file: ${sequencing_run}/run_config.txt"
-echo_log "SAMPLE $(sample_name): run manifest file: ${manifest}"
-echo_log "SAMPLE $(sample_name): sample bam: ${bamfile}"
-echo_log "SAMPLE $(sample_name): output directory: ${outdir}"
-echo_log "SAMPLE $(sample_name): ------ processing fast5 subset output ------"
+echo_log "SAMPLE ${sample_name}: ------ Fast5 Subset Paramters:"
+echo_log "SAMPLE ${sample_name}: sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "SAMPLE ${sample_name}: run configuration file: ${sequencing_run}/run_config.txt"
+echo_log "SAMPLE ${sample_name}: run manifest file: ${manifest}"
+echo_log "SAMPLE ${sample_name}: sample sam: ${samfile}"
+echo_log "SAMPLE ${sample_name}: output directory: ${outdir}"
+echo_log "SAMPLE ${sample_name}: ------ processing fast5 subset output ------"
 
 #---------------------------------------------------------------------------------------------------
 # module 4
 #---------------------------------------------------------------------------------------------------
 
-READIDS="$samfile.ids.txt"
+read_ids="${samfile%.sam}-read_ids.txt"
 
-awk '{if ( $1 ~ "^@" ){}else{print $1}}' "$samfile" > "$outdir/$READIDS"
+awk '{if ( $1 ~ "^@" ){}else{print $1}}' "$samfile" > "${read_ids}"
 
-fast5_subset --input "$sequencing_run/fast5_pass" --save_path "${outdir}" --read_id_list "$READIDS" --batch_size 100 -t $threads --recursive
+fast5_subset --input "${sequencing_run}/fast5_pass" --save_path "${outdir}" --read_id_list "${read_ids}" --batch_size 100 -t $threads --recursive
 
 
 #---------------------------------------------------------------------------------------------------
 
-echo_log "SAMPLE $(sample_name): Module 4 Medaka: processing complete"
+echo_log "SAMPLE ${sample_name}: Module 4 post-normalization fast5 subsetting complete"
 #chgrp -R 5102 $demux_dir
 
