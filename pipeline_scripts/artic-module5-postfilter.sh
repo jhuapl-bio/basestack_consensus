@@ -1,4 +1,6 @@
 #!/bin/bash
+source /home/idies/workspace/covid19/bashrc
+conda activate jhu-ncov
 
 # usage function
 usage() {
@@ -11,13 +13,18 @@ usage() {
         echo -e "   -b      /full/path/to/<control>nanopolish.primertrimmed.rg.sorted.bam"
         echo -e "   -v      /full/path/to/nextstrain_alignments.vcf"
         echo -e "   -c      /full/path/to/variant_case_definitions.csv"
+        echo -e "   -m      /full/path/to/sequencing_run/manifest.txt"
+        echo -e "   -n      name of control sample in manifest (Default = 'NTC')"
         echo -e ""
 }
 
 #---------------------------------------------------------------------------------------------------
+control_name="NTC"
+#---------------------------------------------------------------------------------------------------
+
 
 # parse input arguments
-while getopts "hi:d:b:v:c:" OPTION
+while getopts "hi:d:b:v:c:m:n:" OPTION
 do
        case $OPTION in
                 h) usage; exit 1 ;;
@@ -26,6 +33,8 @@ do
                 b) bamfile=$OPTARG ;;
                 v) vcf_next=$OPTARG ;;
                 c) case_defs=$OPTARG ;;
+		m) manifest=$OPTARG ;;
+		n) control_name=$OPTARG;;
                 ?) usage; exit ;;
        esac
 done
@@ -33,8 +42,8 @@ done
 postfilter_dir="$(dirname ${consensus_dir})/5-post-filter"
 
 # make and save output directory
-if [ ! -d $postfilter_dir ]; then
-        mkdir $postfilter_dir
+if [ ! -d "$postfilter_dir" ]; then
+        mkdir "$postfilter_dir"
 fi
 
 # save path to NTC depthfile and mpileup
@@ -47,38 +56,32 @@ vcf_next="${vcf_next}"
 # save path to case definitions
 case_defs="${case_defs}"
 
-for consfile in "${consensus_dir}/*nanopolish.consensus.fasta"; do
 
-	sample=${consfile##*/}
-	samplename=${sample%%_*}
+while read barcode name; do
 
 	# loop through all NTC samples
-	if [ ! "$samplename" = "NTC" ]; then
+	if [[  "$name" != "$control_name" ]; then
 
-		echo $samplename
-
-		vcffile=$DIR/$samplename*all_callers.combined.vcf
-		mpileup="$DIR/$samplename*mpileup"
-		depth="$DIR/$samplename*nanopolish.primertrimmed.rg.sorted.depth"
-		consensus="$DIR/$samplename*nanopolish.consensus.fasta"
-		prefix=`echo $consensus`
-		prefix=${prefix##*/}
-		prefix=${prefix%%.*}
+		echo "SAMPLE $name: running vcf_postfilter.py"
+		vcffile="${consensus_dir}/${name}_${barcode}.all_callers.combined.vcf"
+		mpileup="${consensus_dir}/${name}_${barcode}.mpileup"
+		depth="${consensus_dir}/${name}_${barcode}.nanopolish.primertrimmed.rg.sorted.depth"
+		consensus="${consensus_dir}/${name}_${barcode}.nanopolish.consensus.fasta"
 
 		# run script
-		python /home/idies/workspace/covid19/code/ncov/pipeline_scripts/vcf_postfilter.py \
-		--vcffile $vcffile \
-		--mpileup $mpileup \
-		--depthfile $depth \
-		--consensus $consensus \
-		--ntc-bamfile $ntc_bamfile \
-		--ntc-depthfile $ntc_depthfile \
-		--vcf-nextstrain $vcf_next \
-		--case-defs $case_defs \
+		vcf_postfilter.py \
+		--vcffile "$vcffile" \
+		--mpileup "$mpileup" \
+		--depthfile "$depth" \
+		--consensus "$consensus" \
+		--ntc-bamfile "$ntc_bamfile" \
+		--ntc-depthfile "$ntc_depthfile" \
+		--vcf-nextstrain "$vcf_next" \
+		--case-defs "$case_defs" \
 		--ns-snp-threshold 2 \
 		--maf-flag 15 \
-		--outdir $postfilter_dir \
-		--prefix $prefix
+		--outdir "$postfilter_dir" \
+		--prefix "${name}_${barcode}"
 	fi
-done
+done < "${manifest}"
 
