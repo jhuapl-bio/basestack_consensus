@@ -370,16 +370,14 @@ while read barcode label; do
 	fi
 
 	mutations_outfile="$stats_path/mutations-$filebase.txt"
-	if ! [[ -s "$mutations_outfile" ]]; then
-		echo_log "  creating mutations file"
-		final_consensus=$(find "$postfilter_path" -name "*$barcode*.complete.fasta")
-		echo_log "    final consensus: $final_consensus"
-		if [[ -s "$final_consensus" ]]; then
-			"$bin_path/mutations.sh" \
-				$("$bin_path/fix_fasta.sh" "$reference" | tail -n1) \
-				$("$bin_path/fix_fasta.sh" "$final_consensus" | tail -n1) \
-				| tail -n+55 | head -n-67 > "$mutations_outfile"
-		fi
+	echo_log "  creating mutations file"
+	final_consensus=$(find "$postfilter_path" -name "*$barcode*.complete.fasta")
+	echo_log "    final consensus: $final_consensus"
+	if [[ -s "$final_consensus" ]]; then
+		"$bin_path/mutations.sh" \
+			$("$bin_path/fix_fasta.sh" "$reference" | tail -n1) \
+			$("$bin_path/fix_fasta.sh" "$final_consensus" | tail -n1) \
+			| tail -n+55 | head -n-67 > "$mutations_outfile"
 	fi
 
 	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.nanopolish.primertrimmed.rg.sorted.bam")
