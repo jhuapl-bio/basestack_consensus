@@ -1064,7 +1064,7 @@ pander(snpeff_report[,-1])
 ## SNPs associated with major clades
 ```{r, snp-table, echo=FALSE, results="asis"}
 cat(paste("SNPs identified from a group of", important_positions$TOTAL_SAMPLES[1],"sequences from GISAID:\n"))
-pander(important_positions[,!(names(important_positions) %in% c("#CHROM", "TOTAL_SAMPLES", "CONF_FLAG"))])
+pander(important_positions[,!(names(important_positions) %in% c("X.CHROM", "TOTAL_SAMPLES", "CONF_FLAG"))])
 ```
 
 ## Alignment screenshots
