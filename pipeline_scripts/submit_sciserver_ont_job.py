@@ -192,7 +192,7 @@ def get_module_script(module):
 		2: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module2-length-filter.sh",
 		3: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module3-normalization.sh", 
 		4: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module4-bundle.sh",
-		5: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module5-bundle.sh"
+		5: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module5-bundle.sh",
 		6: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/report_summary_table.sh"
 	} 
 	return script.get(module, "Invalid module number") 
