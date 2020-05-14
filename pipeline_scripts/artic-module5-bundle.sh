@@ -313,8 +313,8 @@ done < "${manifest}"
 if [[ "${combine_variants_complete_flag}" == "TRUE" ]]; then
 	echo_log "RUN ${sequencing_run_name}: Starting Module 5 Pangolin and snpEff on ${sequencing_run}"
 
-	bash -x "${pangolin}" -i "${postfilter_dir}" -d "${pangolin_data}" 2>> "${logfile}"
-	bash -x "${snpeff}" -i "${postfilter_dir}" -c "${snpEff_config}" 2>> "${logfile}"
+	bash -x "${pangolin}" -i "${postfilter_dir}" -d "${pangolin_data}" -m "$manifest" 2>> "${logfile}"
+	bash -x "${snpeff}" -i "${postfilter_dir}" -c "${snpEff_config}" -m "$manifest" 2>> "${logfile}"
 
 else
 	echo_log "RUN ${sequencing_run_name}: Error: Module 5 Pangolin and snpEff not performed."
@@ -340,6 +340,11 @@ if [[ "${module5_complete}" == "TRUE" ]]; then
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfilter completed for ${sequencing_run}"
 	echo_log "RUN ${sequencing_run_name}: Creating ${postfilter_dir}/module5-${sequencing_run_name}.complete"
 	touch "${postfilter_dir}/module5-${sequencing_run_name}.complete"
+
+	echo_log "RUN ${sequencing_run_name}: Submiting job for Module 6 Report Generation..."
+	
+	conda activate jhu-ncov
+	submit_sciserver_ont_job.py -m 6 -i "$sequencing_run"
 else
 	echo_log "RUN ${sequencing_run_name}: Error: Module 5 did not complete."
 	exit 1
