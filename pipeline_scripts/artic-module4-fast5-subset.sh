@@ -69,7 +69,7 @@ echo_log() {
 #===================================================================================================
 
 # sequencing run directory
-sequencing_run=$(dirname $(dirname $(dirname $(dirname "$normalized_fastq"))))
+sequencing_run=$(dirname $(dirname $(dirname $(dirname "$samfile"))))
 
 #===================================================================================================
 # Default values
@@ -96,7 +96,7 @@ if [ ! -d "${sequencing_run}" ];then
     exit 1
 fi
 
-if [ ! -s "${sequencing_run}/run_config.txt" ];then
+if [ ! -s "${run_configuration}" ];then
     >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
     >&2 echo "${sequencing_run}/run_config.txt does not exist"
     exit 1
