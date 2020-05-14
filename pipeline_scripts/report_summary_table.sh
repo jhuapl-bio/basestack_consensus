@@ -442,7 +442,7 @@ find "$draftconsensus_path" -name "*.nanopolish.primertrimmed.rg.sorted.depth" -
 done > "${depthfile/-all/-trim-all}"
 
 echo_log "Identifying mutations"
-rm "$mutations_all"
+rm -f "$mutations_all"
 find "$stats_path" -name "mutations-*.txt" ! -name "mutations-pos.txt" ! -name "mutations-all.txt" ! -name "mutations-table.txt" | while read fn; do
 	base=$(basename "${fn%.txt}")
 	base="${base#mutations-}"
