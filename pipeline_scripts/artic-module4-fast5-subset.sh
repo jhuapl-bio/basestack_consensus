@@ -27,7 +27,7 @@ usage() {
         echo -e ""
         echo -e "OPTIONS:"
         echo -e "   -h      show this message"
-        echo -e "   -i      /full/path/to/normalizd_sample.fq"
+        echo -e "   -i      /full/path/to/normalizd_alignment.sam"
         echo -e "   -t      number of threads (default: 6)"
         echo -e ""
 }
@@ -35,15 +35,18 @@ usage() {
 #---------------------------------------------------------------------------------------------------
 #default threads
 threads=6
+#default fast5
+batch_size=4000
 #---------------------------------------------------------------------------------------------------
 
 # parse input arguments
-while getopts "hi:t:" OPTION
+while getopts "hi:t:b:" OPTION
 do
        case $OPTION in
                 h) usage; exit 1 ;;
                 i) samfile=$OPTARG ;;
                 t) threads=$OPTARG ;;
+                b) batch_size=$OPTARG ;;
                 ?) usage; exit ;;
        esac
 done
@@ -148,7 +151,7 @@ read_ids="${samfile%.sam}-read_ids.txt"
 
 awk '{if ( $1 ~ "^@" ){}else{print $1}}' "$samfile" > "${read_ids}" 2>> "$logfile"
 
-fast5_subset --input "${sequencing_run}/fast5_pass" --save_path "${outdir}" --read_id_list "${read_ids}" -f "${sample_name}" --batch_size 10000000 -t $threads --recursive 2>> "$logfile"
+fast5_subset --input "${sequencing_run}/fast5_pass" --save_path "${outdir}" --read_id_list "${read_ids}" -f "${sample_name}_" --batch_size "${batch_size}" -t $threads --recursive 2>> "$logfile"
 
 
 #---------------------------------------------------------------------------------------------------
