@@ -106,6 +106,11 @@ norm_parameters="coverage_threshold=150 --qual_sort --even_strand"
 # log file
 logfile=$(dirname "${normalize_dir}")/logs/module3-"${base}"-$(date +"%F-%H%M%S").log
 
+#git hash
+GIT_DIR="$(dirname $(readlink -f $(which $(basename $0))))/../.git"
+export GIT_DIR
+hash=$(git rev-parse --short HEAD)
+
 
 #===================================================================================================
 # QUALITY CHECKING
@@ -137,6 +142,7 @@ if [ ! -f "${gather_dir}/module2-${base}.complete" ];then
 else
     mkdir -p "${normalize_dir}"
     mkdir -p $(dirname "${normalize_dir}")/logs
+    conda env export > "${logfile%.log}-env.yml"
 fi
 
 # check for existence of a module 3 output "complete" files.  will not overwrite previous processing.
@@ -152,8 +158,8 @@ fi
 #===================================================================================================
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
-
-echo_log "SAMPLE ${base}:  sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "SAMPLE ${base}: timplab/ncov git hash: ${hash}"
+echo_log "SAMPLE ${base}: sequencing run folder: ${CYAN}$sequencing_run${NC}"
 echo_log "SAMPLE ${base}: recording software version numbers"
 echo_log "SAMPLE ${base}: Coverage Normalization from: https://github.com/mkirsche/CoverageNormalization"
 echo_log "SAMPLE ${base}: Coverage Normalization parameters: $norm_parameters"
