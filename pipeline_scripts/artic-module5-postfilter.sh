@@ -60,7 +60,7 @@ case_defs="${case_defs}"
 while read barcode name; do
 
 	# loop through all NTC samples
-	if [[  "$name" != "$control_name" ]; then
+	if [[  "$name" != "$control_name" ]]; then
 
 		echo "SAMPLE $name: running vcf_postfilter.py"
 		vcffile="${consensus_dir}/${name}_${barcode}.all_callers.combined.vcf"
@@ -83,5 +83,6 @@ while read barcode name; do
 		--outdir "$postfilter_dir" \
 		--prefix "${name}_${barcode}"
 	fi
+
 done < "${manifest}"
 
