@@ -146,9 +146,9 @@ echo_log "SAMPLE ${sample_name}: ------ processing fast5 subset output ------"
 
 read_ids="${samfile%.sam}-read_ids.txt"
 
-awk '{if ( $1 ~ "^@" ){}else{print $1}}' "$samfile" > "${read_ids}"
+awk '{if ( $1 ~ "^@" ){}else{print $1}}' "$samfile" > "${read_ids}" 2>> "$logfile"
 
-fast5_subset --input "${sequencing_run}/fast5_pass" --save_path "${outdir}" --read_id_list "${read_ids}" --batch_size 100 -t $threads --recursive
+fast5_subset --input "${sequencing_run}/fast5_pass" --save_path "${outdir}" --read_id_list "${read_ids}" -f "${sample_name}" --batch_size 10000000 -t $threads --recursive 2>> "$logfile"
 
 
 #---------------------------------------------------------------------------------------------------
