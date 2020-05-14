@@ -187,8 +187,8 @@ fi
 # check submodule scripts are in path
 paths_found_flag="TRUE"
 
-run_postfiler=$(which artic-module5-postfiler.sh)
-postfilter_summary=$(which postfiler_summary.py)
+run_postfilter=$(which artic-module5-postfilter.sh)
+postfilter_summary=$(which postfilter_summary.py)
 combine=$(which artic-module5-combine.sh)
 pangolin=$(which artic-module5-pangolin.sh)
 snpeff=$(which artic-module5-snpEff.sh)
@@ -208,8 +208,8 @@ if [[ -z "$postfilter_summary" ]]; then
 	paths_found_flag="FALSE"
 fi
 
-if [[ -z "${run_postfiler}" ]]; then
-	echo  "RUN ${sequencing_run_name}: Error: artic-module5-postfiler.sh is not in your path! Please add this script to your path and rerun"
+if [[ -z "${run_postfilter}" ]]; then
+	echo  "RUN ${sequencing_run_name}: Error: artic-module5-postfilter.sh is not in your path! Please add this script to your path and rerun"
 	paths_found_flag="FALSE"
 fi
 
@@ -242,7 +242,7 @@ echo_log "RUN ${sequencing_run_name}: control sample name: ${control_name}"
 echo_log "RUN ${sequencing_run_name}: control sample barcode: ${control_barcode}"
 echo_log "RUN ${sequencing_run_name}: control sample depth file: ${ntc_depthfile}"
 echo_log "RUN ${sequencing_run_name}: control sample bam file: ${ntc_bamfile}"
-echo_log "RUN ${sequencing_run_name}: output postfilter directory: ${postfiler_dir}"
+echo_log "RUN ${sequencing_run_name}: output postfilter directory: ${postfilter_dir}"
 echo_log "RUN ${sequencing_run_name}: Reference fasta: ${reference}"
 echo_log "RUN ${sequencing_run_name}: Reference annotation: ${reference_annotation}"
 echo_log "RUN ${sequencing_run_name}: Case Definitions: ${case_defs}"
@@ -251,15 +251,15 @@ echo_log "RUN ${sequencing_run_name}: snpEff config file: ${snpEff_config}"
 echo_log "RUN ${sequencing_run_name}: ------ processing Postfiltering and Annotation ------"
 
 #---------------------------------------------------------------------------------------------------
-# Module 5 Postfiler
+# Module 5 Postfilter
 #---------------------------------------------------------------------------------------------------
 
 echo_log "RUN ${sequencing_run_name}: Starting Module 5 Postfilter Submodule 1 on ${sequencing_run}"
 
-bash -x "$run_postfiler" -i "${consensus_dir}" -d "${ntc_depthfile}" -b "${ntc_bamfile}" -v "${vcf_next}" -c "${case_defs}" 2>> "${logfile}"
+bash -x "$run_postfilter" -i "${consensus_dir}" -d "${ntc_depthfile}" -b "${ntc_bamfile}" -v "${vcf_next}" -c "${case_defs}" 2>> "${logfile}"
 
 #---------------------------------------------------------------------------------------------------
-# Module 5 Postfiler Summarization
+# Module 5 Postfilter Summarization
 #---------------------------------------------------------------------------------------------------
 
 #check postfilter complete
@@ -326,13 +326,13 @@ fi
 #---------------------------------------------------------------------------------------------------
 
 module5_complete_flag="TRUE"
-if [[ ! -s "${postfiler_dir}/lineage_report.csv" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: Panglolin output file - ${postfiler_dir}/lineage_report.csv not detected."
+if [[ ! -s "${postfilter_dir}/lineage_report.csv" ]]; then
+	echo_log "RUN ${sequencing_run_name}: Error: Pangolin output file - ${postfilter_dir}/lineage_report.csv not detected."
 	module5_complete_flag="FALSE"
 fi
 
-if [[ ! -s "${postfiler_dir}/final_snpEff_report.txt" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: snpEff output file - ${postfiler_dir}/final_snpEff_report.txt not detected."
+if [[ ! -s "${postfilter_dir}/final_snpEff_report.txt" ]]; then
+	echo_log "RUN ${sequencing_run_name}: Error: snpEff output file - ${postfilter_dir}/final_snpEff_report.txt not detected."
 	module5_complete_flag="FALSE"
 fi
 
