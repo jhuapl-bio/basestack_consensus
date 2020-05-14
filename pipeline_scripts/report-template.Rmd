@@ -106,7 +106,7 @@ manifest <- read.table(paste0(run_path,"/manifest.txt"))
 amplicons <- read.table(paste0(run_path,"/../amplicons"), sep="\t", header=TRUE)
 problematic_sites <- read.table(paste0(run_path,"/../problematic_sites_sarsCov2.txt"), sep="\t", header=TRUE)
 genome_ref <- fromJSON(file=paste0(protocol_path, "/genome.json"))
-important_positions <- read.table(paste0(nextstrain_path,"/latest/alpha/clade_related_snps.txt"), sep="\t", header=TRUE)
+important_positions <- read.table(paste0(nextstrain_path,"/latest/alpha/clade_related_snps.txt"), sep="\t", header=TRUE, comment.char="")
 if(length(list.files(run_path, "throughput*", full.names=TRUE)) > 0) {
 	throughput <- read_csv(list.files(run_path, "throughput*", full.names=TRUE))
 } else {
@@ -890,7 +890,7 @@ print_igv_plot <- function(row, flag) {
   if(length(flags) > 0) {
     for(flagString in flags) {
       nt <- strsplit(flagString, "=")[[1]][1]
-      alleles <- postfilt_all$alleles[postfilt_all$pos == nt & postfilt_all$sample == sample]
+      alleles <- postfilt_all$ont_alleles[postfilt_all$pos == nt & postfilt_all$sample == sample]
       cat(paste0("\n### ", colorlevels(flag), "{[", flag, "]: ", sample, " ", flagString, " - ", alleles, "}\n"))
       if(nt != "see full output") {
         pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample_barcode,"/",sample_barcode,"-MN908947.3_",nt,".png")
@@ -1063,8 +1063,8 @@ pander(snpeff_report[,-1])
 
 ## SNPs associated with major clades
 ```{r, snp-table, echo=FALSE, results="asis"}
-cat(paste("SNPs identified from a group of", important_positions[1,4],"sequences from GISAID:\n"))
-pander(important_positions[,-4])
+cat(paste("SNPs identified from a group of", important_positions$TOTAL_SAMPLES[1],"sequences from GISAID:\n"))
+pander(important_positions[,!(names(important_positions) %in% c("#CHROM", "TOTAL_SAMPLES", "CONF_FLAG"))])
 ```
 
 ## Alignment screenshots
