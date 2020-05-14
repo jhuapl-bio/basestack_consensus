@@ -276,27 +276,34 @@ bash -x "$run_postfilter" \
 #---------------------------------------------------------------------------------------------------
 
 #check postfilter complete
-post_filtering_complete_flag="TRUE"
+variant_data_tracker=()
+variant_fail_flag="FALSE"
 while read barcode name; do
 	if  [[ name != "${control_name}" ]]; then
 		if [ ! -s "${postfilter_dir}/${name}_${barcode}.variant_data.txt" ]; then
-			echo_log "RUN ${sequencing_run_name}: Error: Postfiltering must be completed for all samples prior to summarization."
-			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}*variant_data.txt does not exist"
-			post_filtering_complete_flag="FALSE"
+			echo_log "RUN ${sequencing_run_name}: Error: Sample ${name} failed to generate variant data output.  See logs."
+			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}*variant_data.txt does not exist."
+			variant_fail_flag="TRUE"
+		else
+			variant_data_tracker+=('$name')
 		fi
 	fi
 done < "${manifest}"
 
 # Run summary
-if [[ "${post_filtering_complete_flag}" == "TRUE" ]]; then
+if [[ ${variant_data_tracker[@]} -gt 1 ]]; then
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfiltering completed for ${sequencing_run}"
+	if [[ "${variant_fail_flag}" == "TRUE"  ]]; then
+		echo_log "     At least one sample failed to produce any variant data.  See log for details"
+	fi
+	
 	echo_log "RUN ${sequencing_run_name}: Starting Module 5 Postfilter Summarization on ${sequencing_run}"
 
 	python "${postfilter_summary}" "$postfilter_dir" 2>> "${logfile}"
 
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfilter Summarization completed for ${sequencing_run}"
 else
-	echo_log "RUN ${sequencing_run_name}: Error: Module 5 Summarization not performed."
+	echo_log "RUN ${sequencing_run_name}: Error: Module 5 Summarization not performed.  No valid variant data found to summarize."
 	exit 1
 fi
 #---------------------------------------------------------------------------------------------------
@@ -314,10 +321,12 @@ bash -x "${combine}" -i "$postfilter_dir" -r "$reference" -a "$reference_annotat
 combine_variants_complete_flag="TRUE"
 while read barcode name; do
 	if  [[ name != "${control_name}" ]]; then
-		if [ ! -s "${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf" ]; then
-			echo_log "RUN ${sequencing_run_name}:Error: Variants must be combined for all samples prior to running Pangolin and snpEff."
-			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf does not exist"
-			combine_variants_complete_flag="FALSE"
+		if [[ " ${variant_data_tracker[@]} " =~ " ${name} " ]]; then
+			if [ ! -s "${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf" ]; then
+				echo_log "RUN ${sequencing_run_name}: Error: Variants must be combined for all samples prior to running Pangolin and snpEff."
+				echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf does not exist"
+				combine_variants_complete_flag="FALSE"
+			fi
 		fi
 	fi
 done < "${manifest}"
