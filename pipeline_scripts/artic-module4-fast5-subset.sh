@@ -79,13 +79,14 @@ sequencing_run=$(dirname $(dirname $(dirname $(dirname "$samfile"))))
 manifest="${sequencing_run}/manifest.txt"
 run_configuration="${sequencing_run}/run_config.txt"
 
-# Output directories
+# Output directory
 outdir="$sequencing_run"/artic-pipeline/fast5_subset_human-filtered
 
-# log file
-logfile="${outdir}"/logs/module4-fast5-subset-$(basename "${normalized_fastq%.covfiltered.fq}")-$(date +"%F-%H%M%S").log
-
 sample_name=$(basename "${samfile%.covfiltered.sam}")
+
+# log file
+logfile="${outdir}"/logs/module4-fast5-subset-"${sample_name}"-$(date +"%F-%H%M%S").log
+
 
 #===================================================================================================
 # QUALITY CHECKING
@@ -108,16 +109,16 @@ if [ ! -s "${sequencing_run}/manifest.txt" ];then
     exit 1
 fi
 
-if [ ! -f "${sequencing_run}"/artic-pipeline/3-normalization/module3-$(basename "${normalized_fastq%.covfiltered.fq}").complete ];then
+if [ ! -f "${sequencing_run}"/artic-pipeline/3-normalization/module3-"${sample_name}".complete ];then
     >&2 echo "Error: Module 3 Normalization must be completed prior to running Module 4."
-    >&2 echo "${sequencing_run}/artic-pipeline/3-normalization/module3-$(basename ${normalized_fastq%.covfiltered.fq}).complete does not exist"
+    >&2 echo "${sequencing_run}/artic-pipeline/3-normalization/module3-$sample_name.complete does not exist"
     exit 1
 else
     mkdir -p "$outdir/logs"
 fi
 
 if [ -s "$outdir/$name-human-filtered-subset.fast5" ];then
-    >&2 echo "Fast5 subset already exists for this sample: $outdir/$name-human-filtered-subset.fast5"
+    >&2 echo "Fast5 subset already exists for this sample: $outdir/${sample_name}-human-filtered-subset.fast5"
     >&2 echo "    Archive previous fast5 subset processing before rerunning."
     exit 1
 fi
