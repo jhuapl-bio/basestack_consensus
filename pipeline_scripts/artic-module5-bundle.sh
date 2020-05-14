@@ -188,6 +188,7 @@ fi
 paths_found_flag="TRUE"
 
 run_postfilter=$(which artic-module5-postfilter.sh)
+python_postfilter=$(which vcf_postfilter.py)
 postfilter_summary=$(which postfilter_summary.py)
 combine=$(which artic-module5-combine.sh)
 pangolin=$(which artic-module5-pangolin.sh)
@@ -205,6 +206,11 @@ fi
 
 if [[ -z "$postfilter_summary" ]]; then
 	echo  "RUN ${sequencing_run_name}: Error: postfilter_summary.py is not in your path! Please add this script to your path and rerun"
+	paths_found_flag="FALSE"
+fi
+
+if [[ -z "$python_postfilter" ]]; then
+	echo  "RUN ${sequencing_run_name}: Error: vcf_postfilter.py is not in your path! Please add this script to your path and rerun"
 	paths_found_flag="FALSE"
 fi
 
@@ -256,7 +262,14 @@ echo_log "RUN ${sequencing_run_name}: ------ processing Postfiltering and Annota
 
 echo_log "RUN ${sequencing_run_name}: Starting Module 5 Postfilter Submodule 1 on ${sequencing_run}"
 
-bash -x "$run_postfilter" -i "${consensus_dir}" -d "${ntc_depthfile}" -b "${ntc_bamfile}" -v "${vcf_next}" -c "${case_defs}" 2>> "${logfile}"
+bash -x "$run_postfilter" \
+	-i "${consensus_dir}" \
+	-d "${ntc_depthfile}" \
+	-b "${ntc_bamfile}" \
+	-v "${vcf_next}" \
+	-c "${case_defs}" \
+	-m "${manifest}" \
+	-n "${control_name}" 2>> "${logfile}"
 
 #---------------------------------------------------------------------------------------------------
 # Module 5 Postfilter Summarization
@@ -292,7 +305,7 @@ fi
 
 echo_log "RUN ${sequencing_run_name}: Combing variants for each sample..."
 
-bash -x "${combine}" -i "$postfilter_dir" -r "$reference" -a "$reference_annotation" 2>> "${logfile}"
+bash -x "${combine}" -i "$postfilter_dir" -r "$reference" -a "$reference_annotation" -m "$manifest" -n "${control_name}" 2>> "${logfile}"
 
 #---------------------------------------------------------------------------------------------------
 # Module 5 Pangolin and snpEff
