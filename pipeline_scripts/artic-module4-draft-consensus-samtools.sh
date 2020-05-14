@@ -28,17 +28,21 @@ usage() {
         echo -e "OPTIONS:"
         echo -e "   -h      show this message"
         echo -e "   -i      /full/path/to/normalizd_sample.fq"
+        echo -e "   -b      /full/path/to/illumina/sample.bam (Default = 'None')"
         echo -e ""
 }
 
 #---------------------------------------------------------------------------------------------------
+illumina_bam="None"
+#---------------------------------------------------------------------------------------------------
 
 # parse input arguments
-while getopts "hi:" OPTION
+while getopts "hi:b:" OPTION
 do
        case $OPTION in
                 h) usage; exit 1 ;;
                 i) normalized_fastq=$OPTARG ;;
+                b) illumina_bam=$OPTARG ;;
                 ?) usage; exit ;;
        esac
 done
@@ -204,7 +208,7 @@ readlink -f "${allelefreqcalls}" >> "${filelist}" 2>> "${logfile}"
 # Run merging
 "$JAVA_PATH/java" \
 -cp "${VariantValidatorPath}/src" MergeVariants \
-illumina_bam=None \
+illumina_bam="${illumina_bam}" \
 file_list="${filelist}" \
 out_file="${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf" 2>> "${logfile}"
 
