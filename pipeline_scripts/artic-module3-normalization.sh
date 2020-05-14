@@ -184,7 +184,7 @@ minimap2 -a \
 	"$reference" \
 	"$fastq" > "$align_out" 2>> "$logfile"
 
-samtools sort "$align_ou"t > "${align_out%.sam}.bam" 2>> "$logfile"
+samtools sort "$align_out" > "${align_out%.sam}.bam" 2>> "$logfile"
 samtools depth -a -d 0 "${align_out%.sam}.bam" > "${align_out%.sam}.depth" 2>> "$logfile"
 
 # normalization, txt file output went to working directory
