@@ -1,5 +1,6 @@
 #!/bin/bash
-
+source /home/idies/workspace/covid19/bashrc
+conda activate artic-ncov2019-medaka
 # usage function
 usage() {
         echo -e "usage: ${YELLOW}$0${NC} [options]"
