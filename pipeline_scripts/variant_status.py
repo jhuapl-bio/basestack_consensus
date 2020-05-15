@@ -54,17 +54,17 @@ def case_by_flags(data,maf_flag):
             return(8)
         
         ## CASE 9
-        elif data['illumina_support']=='no':
+        if data['illumina_support']=='no':
             return(9)
         
         ## CASE 10
-        elif data['homopolymer'] and data['in_consensus']:
+        if data['homopolymer'] and data['in_consensus']:
             other_allele_freq = float(int(data['ont_alleles'].split(':')[11])/data['ont_depth'])
             if other_allele_freq-0.02 <= (1-data['ont_AF']) <= other_allele_freq+0.02:
                 return(10)
         
         ## CASE 11
-        elif data['in_consensus']==False and not pd.isna(data['sb_flag']):
+        if data['in_consensus']==False and not pd.isna(data['sb_flag']):
             return(11)
         
         ## CASE 12
