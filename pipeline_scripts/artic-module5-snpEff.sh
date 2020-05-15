@@ -37,7 +37,7 @@ if [[ -z "$annotate" ]]; then
 fi
 
 while read barcode name; do
-    vcf="${name}"_"${barcode}".allsnps.combined.vcf
+    vcf="${postfilter_dir}"/"${name}"_"${barcode}".allsnps.combined.vcf
     if [[ -s "$vcf"  ]]; then
 	    bash -x "${annotate}" "${vcf}" "${snpEff_config}" "${DBNAME}" "${postfilter_dir}"
 	    echo "SnpEff completed on run ${postfilter_dir}"
