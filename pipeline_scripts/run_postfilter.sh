@@ -51,7 +51,6 @@ for consfile in $DIR/*nanopolish.consensus.fasta; do
 		--vcf-nextstrain $vcf_next \
 		--case-defs $case_defs \
 		--ns-snp-threshold 2 \
-		--maf-flag 15 \
 		--outdir $outdir \
 		--prefix $prefix
 	fi
