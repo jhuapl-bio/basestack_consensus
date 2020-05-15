@@ -303,7 +303,7 @@ def main():
         # the QUAL field represents the medaka quality score if nanopolish didn't call a variant
         # not an issue with samtools only calls because then there is no quality score
         if (data['vc_flag']=='mismatch(m)') or (data['vc_flag']=='mismatch(m+s)'):
-            data['qual']='.'
+            data['nanopolish_qual']='.'
 
         # modify consensus genome based on ntc flag
         # remember consensus is zero-indexed but we are dealing with 1-indexed positions
