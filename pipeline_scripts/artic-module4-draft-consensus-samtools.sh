@@ -144,7 +144,7 @@ if [ ! -f "${input_nanopolish_vcf}" ];then
 elif [ ! -f "${input_nanopolish_bamfile}" ];then
     >&2 echo "Error: Nanopolish output bam file ${input_nanopolish_bamfile} does not exist"
     exit 1
-elif [[ ! -f "${input_medaka_vcf_zip}" ]] || [[ ! -f "${input_medaka_vcf}" ]];then
+elif [[ ! -f "${input_medaka_vcf_zip}" ]] && [[ ! -f "${input_medaka_vcf}" ]];then
     >&2 echo "Error: Medaka output vcf file ${input_medaka_vcf} or its zip do not exist"
     exit 1
 else
