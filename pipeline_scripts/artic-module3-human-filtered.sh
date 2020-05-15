@@ -27,26 +27,26 @@ usage() {
         echo -e ""
         echo -e "OPTIONS:"
         echo -e "   -h      show this message"
-        echo -e "   -i      /full/path/to/normalizd_alignment.sam"
+        echo -e "   -i      /full/path/to/fastq_of_interest.fq"
         echo -e "   -t      number of threads (default: 6)"
-        echo -e ""
+        echo -e "   -r      reference_genome.fasta"
+        echo -e "OUTPUT:"
+        echo -e "human_subtracted.fastq, human_subtracted.sam, human_subtracted.fast5"
 }
 
 #---------------------------------------------------------------------------------------------------
 #default threads
 threads=6
-#default fast5
-batch_size=4000
 #---------------------------------------------------------------------------------------------------
 
 # parse input arguments
-while getopts "hi:t:b:" OPTION
+while getopts "hi:t:r:" OPTION
 do
        case $OPTION in
                 h) usage; exit 1 ;;
-                i) samfile=$OPTARG ;;
+                i) fastq=$OPTARG ;;
                 t) threads=$OPTARG ;;
-                b) batch_size=$OPTARG ;;
+                r) reference=$OPTARG ;;
                 ?) usage; exit ;;
        esac
 done
@@ -72,28 +72,27 @@ echo_log() {
 #===================================================================================================
 
 # sequencing run directory
-sequencing_run=$(dirname $(dirname $(dirname $(dirname "$samfile"))))
+sequencing_run=$(dirname $(dirname $(dirname "$fastq")))
 
 #===================================================================================================
 # Default values
 #===================================================================================================
 
-# input files, these files should be in the sequencing run directory
-manifest="${sequencing_run}/manifest.txt"
-run_configuration="${sequencing_run}/run_config.txt"
+# input files, these files should be in the sequencing run directory, leaving samfile quoted for future updates 
+base=$(basename $fastq)
+sample_name=${base%.fastq}
+#sample_name=$(basename "${samfile%.covfiltered.sam}")
 
-# Output directory
-outdir="$sequencing_run"/artic-pipeline/fast5_subset_human-filtered
+# Output files and directory
+align_out="${sample_name}.human_aligned.sam"
+read_ids="${sample_name}-read_ids.txt"
+out_sam="${sample_name}.human_removed.sam"
 
-sample_name=$(basename "${samfile%.covfiltered.sam}")
+outdir="${sequencing_run}/artic-pipeline/fast5-subset-human-filtered/{sample_name}"
+mkdir -p outdir
 
 # log file
-logfile="${outdir}"/logs/module4-fast5-subset-"${sample_name}"-$(date +"%F-%H%M%S").log
-
-#git hash
-GIT_DIR="$(dirname $(readlink -f $(which $(basename $0))))/../.git"
-export GIT_DIR
-hash=$(git rev-parse --short HEAD)
+logfile="${outdir}"/logs/fast5-subset-human-filtered"${sample_name}"-$(date +"%F-%H%M%S").log
 
 #===================================================================================================
 # QUALITY CHECKING
@@ -104,63 +103,65 @@ if [ ! -d "${sequencing_run}" ];then
     exit 1
 fi
 
-if [ ! -s "${run_configuration}" ];then
-    >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
-    >&2 echo "${sequencing_run}/run_config.txt does not exist"
-    exit 1
-fi
-
-if [ ! -s "${sequencing_run}/manifest.txt" ];then
-    >&2 echo "Error: Require a manifest.txt file in the sequencing run directory"
-    >&2 echo "${sequencing_run}/manifest.txt does not exist"
-    exit 1
-fi
-
-if [ ! -f "${sequencing_run}"/artic-pipeline/3-normalization/module3-"${sample_name}".complete ];then
-    >&2 echo "Error: Module 3 Normalization must be completed prior to running Module 4."
-    >&2 echo "${sequencing_run}/artic-pipeline/3-normalization/module3-$sample_name.complete does not exist"
-    exit 1
-else
-    mkdir -p "$outdir/logs"
-    conda env export > "${logfile%.log}-env.yml"
-fi
-
-if [ -s "$outdir/${sample_name}-no_human-covfiltered_0.fast5" ];then
-    >&2 echo "Fast5 subset already exists for this sample: $outdir/${sample_name}-no_human-covfiltered_0.fast5"
+if [ -s "$outdir/$name-human-filtered-subset.fast5" ];then
+    >&2 echo "Fast5 subset already exists for this sample: $outdir/${sample_name}-human-filtered-subset.fast5"
     >&2 echo "    Archive previous fast5 subset processing before rerunning."
     exit 1
+else
+    mkdir -p "$(dirname $outdir)/logs"
 fi
-
-
-
 
 #===================================================================================================
 # MAIN BODY
 #===================================================================================================
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
-echo_log "SAMPLE ${sample_name}: ------ Fast5 Subset Paramters:"
-echo_log "SAMPLE ${sample_name}: timplab/ncov git hash: ${hash}"
+
+echo_log "SAMPLE ${sample_name}: ------ Fast5 Subset Human Filter Paramters:"
+echo_log "SAMPLE ${sample_name}: samtools version $(samtools --version)"
+echo_log "SAMPLE ${sample_name}: minimap version $(minimap2 --version)"
 echo_log "SAMPLE ${sample_name}: sequencing run folder: ${CYAN}$sequencing_run${NC}"
-echo_log "SAMPLE ${sample_name}: run configuration file: ${sequencing_run}/run_config.txt"
-echo_log "SAMPLE ${sample_name}: run manifest file: ${manifest}"
-echo_log "SAMPLE ${sample_name}: sample sam: ${samfile}"
+echo_log "SAMPLE ${sample_name}: sample fastq: ${fastq}"
 echo_log "SAMPLE ${sample_name}: output directory: ${outdir}"
 echo_log "SAMPLE ${sample_name}: ------ processing fast5 subset output ------"
 
 #---------------------------------------------------------------------------------------------------
-# module 4
+# module 3 Human Filter
 #---------------------------------------------------------------------------------------------------
 
-read_ids="${samfile%.sam}-read_ids.txt"
+# if input is samfile, convert to fastq
+#samtools fastq "${out_sam}" > "${out_sam%.sam}.fq"
 
-awk '{if ( $1 ~ "^@" ){}else{print $1}}' "$samfile" > "${read_ids}" 2>> "$logfile"
+echo_log "starting minimap2"
 
-fast5_subset --input "${sequencing_run}/fast5_pass" --save_path "${outdir}" --read_id_list "${read_ids}" -f "${sample_name}-no_human-covfiltered_" --batch_size "${batch_size}" -t $threads --recursive 2>> "$logfile"
+minimap2 -a \
+	-x map-ont \
+	-t 32 \
+	"${reference}" \
+	"${fastq}" > "${outdir}"/"${align_out}"
 
+echo_log "extracting unmapped reads"
+# extract unmapped reads
+samtools view -f 4 "${outdir}"/"${align_out}" > "${outdir}"/"${out_sam}"
+
+echo_log "converting to fastq"
+# fastq conversion - if we want to output a fastq
+samtools fastq "${outdir}"/"${out_sam}" > "${outdir}"/"${out_sam%.sam}.fq"
+
+echo_log "retrieving read ids"
+# retrieve read ids that pass
+awk '{if ( $1 ~ "^@" ){}else{print $1}}' "${outdir}"/"${out_sam}" > "${outdir}"/"${read_ids}"
+
+echo_log "performing fast5_subset"
+fast5_subset \
+--input "${sequencing_run}/fast5_pass" \
+--save_path "${outdir}" \
+--read_id_list "${outdir}"/"${read_ids}" \
+--batch_size 100 \
+-t $threads \
+--recursive
 
 #---------------------------------------------------------------------------------------------------
 
-echo_log "SAMPLE ${sample_name}: Module 4 post-normalization fast5 subsetting complete"
-#chgrp -R 5102 $demux_dir
+echo_log "SAMPLE ${sample_name}: Module 3 post-normalization human filter fast5 subsetting complete"
 

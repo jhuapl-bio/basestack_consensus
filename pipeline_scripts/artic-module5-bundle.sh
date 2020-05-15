@@ -286,19 +286,19 @@ bash -x "$run_postfilter" \
 variant_data_tracker=()
 variant_fail_flag="FALSE"
 while read barcode name; do
-	if  [[ name != "${control_name}" ]]; then
+	if  [[ "$name" != "${control_name}" ]]; then
 		if [ ! -s "${postfilter_dir}/${name}_${barcode}.variant_data.txt" ]; then
 			echo_log "RUN ${sequencing_run_name}: Error: Sample ${name} failed to generate variant data output.  See logs."
 			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}*variant_data.txt does not exist."
 			variant_fail_flag="TRUE"
 		else
-			variant_data_tracker+=('$name')
+			variant_data_tracker+=("$name")
 		fi
 	fi
 done < "${manifest}"
 
 # Run summary
-if [[ ${variant_data_tracker[@]} -gt 1 ]]; then
+if [[ ${#variant_data_tracker[@]} -ge 1 ]]; then
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfiltering completed for ${sequencing_run}"
 	if [[ "${variant_fail_flag}" == "TRUE"  ]]; then
 		echo_log "     At least one sample failed to produce any variant data.  See log for details"
@@ -306,7 +306,7 @@ if [[ ${variant_data_tracker[@]} -gt 1 ]]; then
 	
 	echo_log "RUN ${sequencing_run_name}: Starting Module 5 Postfilter Summarization on ${sequencing_run}"
 
-	python "${postfilter_summary}" "$postfilter_dir" 2>> "${logfile}"
+	python "${postfilter_summary}" --rundir "${postfilter_dir}" 2>> "${logfile}"
 
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfilter Summarization completed for ${sequencing_run}"
 else
@@ -319,7 +319,7 @@ fi
 
 echo_log "RUN ${sequencing_run_name}: Combing variants for each sample..."
 
-bash -x "${combine}" -i "$postfilter_dir" -r "$reference" -a "$reference_annotation" -m "$manifest" -n "${control_name}" 2>> "${logfile}"
+bash -x "${combine}" -i "${postfilter_dir}" -r "$reference" -a "${reference_annotation}" -m "$manifest" -n "${control_name}" 2>> "${logfile}"
 
 #---------------------------------------------------------------------------------------------------
 # Module 5 Pangolin and snpEff
@@ -327,7 +327,7 @@ bash -x "${combine}" -i "$postfilter_dir" -r "$reference" -a "$reference_annotat
 
 combine_variants_complete_flag="TRUE"
 while read barcode name; do
-	if  [[ name != "${control_name}" ]]; then
+	if  [[ "$name" != "${control_name}" ]]; then
 		if [[ " ${variant_data_tracker[@]} " =~ " ${name} " ]]; then
 			if [ ! -s "${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf" ]; then
 				echo_log "RUN ${sequencing_run_name}: Error: Variants must be combined for all samples prior to running Pangolin and snpEff."
@@ -356,21 +356,21 @@ fi
 
 module5_complete_flag="TRUE"
 if [[ ! -s "${postfilter_dir}/lineage_report.csv" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: Pangolin output file - ${postfilter_dir}/lineage_report.csv not detected."
+	echo_log "RUN ${sequencing_run_name}: Error: Pangolin output file - ${postfilter_dir}/lineage_report.csv not detected or empty."
 	module5_complete_flag="FALSE"
 fi
 
 if [[ ! -s "${postfilter_dir}/final_snpEff_report.txt" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: snpEff output file - ${postfilter_dir}/final_snpEff_report.txt not detected."
+	echo_log "RUN ${sequencing_run_name}: Error: snpEff output file - ${postfilter_dir}/final_snpEff_report.txt not detected or empty."
 	module5_complete_flag="FALSE"
 fi
 
-if [[ "${module5_complete}" == "TRUE" ]]; then 
+if [[ "${module5_complete_flag}" == "TRUE" ]]; then 
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfilter completed for ${sequencing_run}"
 	echo_log "RUN ${sequencing_run_name}: Creating ${postfilter_dir}/module5-${sequencing_run_name}.complete"
 	touch "${postfilter_dir}/module5-${sequencing_run_name}.complete"
 
-	echo_log "RUN ${sequencing_run_name}: Submiting job for Module 6 Report Generation..."
+	echo_log "RUN ${sequencing_run_name}: Submitting Sciserver job for Module 6 Report Generation..."
 	
 	conda activate jhu-ncov
 	submit_sciserver_ont_job.py -m 6 -i "$sequencing_run"

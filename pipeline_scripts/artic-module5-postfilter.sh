@@ -79,7 +79,6 @@ while read barcode name; do
 		--vcf-nextstrain "$vcf_next" \
 		--case-defs "$case_defs" \
 		--ns-snp-threshold 2 \
-		--maf-flag 15 \
 		--outdir "$postfilter_dir" \
 		--prefix "${name}_${barcode}"
 	fi

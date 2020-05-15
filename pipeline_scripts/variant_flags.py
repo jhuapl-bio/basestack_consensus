@@ -23,7 +23,7 @@ def depth_near_threshold(depth,depth_threshold,coverage_flag):
         return(np.nan)
 
 
-def minor_allele_freq(depth,alt_allele_freq,maf_flag,hold_flag):
+def minor_allele_freq(depth,alt_allele_freq,maf_flag):
     """
     Function that returns a MAF flag string if the cumulative minor allele frequency
     at a position is higher than a pre-specified value and indicates if the position
@@ -32,16 +32,15 @@ def minor_allele_freq(depth,alt_allele_freq,maf_flag,hold_flag):
     
     # convert the flag thresholds to decimals
     maf = maf_flag/100.0
-    hold = hold_flag/100.0
     
     # the case that there are no flags
-    if alt_allele_freq<maf or alt_allele_freq>(1-maf):
+    if alt_allele_freq<0.15 or alt_allele_freq>0.85:
         return(np.nan,np.nan)
     
     # if there are flags, distinguish between the isnv and mixed scenarios
-    if maf<=alt_allele_freq<hold or (1-hold)<alt_allele_freq<=(1-maf):
-        return('%0.2f<maf<%0.2f' % (maf,hold),np.nan)
-    elif hold<=alt_allele_freq<=(1-hold):
+    if 0.15<=alt_allele_freq<maf or (1-maf)<alt_allele_freq<=0.85:
+        return('0.15<maf<%0.2f' % (maf),np.nan)
+    elif maf<=alt_allele_freq<=(1-maf):
         return(np.nan,'mixed position')
 
 
@@ -172,9 +171,9 @@ def ambig_in_key_position(pos,vcf_nextstrain,cons):
     # read in the nextstrain vcf as a dataframe
     # note: the header is hard-coded and will need to be updated if the header is altered
     ns_snps = pd.read_csv(vcf_nextstrain,sep='\t',skiprows=3)
-    ns_snps = ns_snps[['POS','CONF_FLAG']]
+    ns_snps = ns_snps[['POS','CLADE_FLAG']]
     
-    key_snps = ns_snps[ns_snps['CONF_FLAG']=='YES']
+    key_snps = ns_snps[ns_snps['CLADE_FLAG']=='YES']
     key_snps = list(key_snps.POS.values)
     
     # no flag needed if this position is not one of the important ones
@@ -196,7 +195,7 @@ def in_homopolymer_region(pos):
     """
     
     # current homopolymer list
-    hp = [241,3037,11083,12119,29700]
+    hp = [241,3037,11083,12119,18898,26730,29431,29700]
     
     if pos in hp:
         return(True)

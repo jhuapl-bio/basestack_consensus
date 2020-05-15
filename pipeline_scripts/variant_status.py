@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 
 import pandas as pd
+import sys
     
-def case_by_flags(data):
+def case_by_flags(data,maf_flag):
     """
     Assign case numbers to specific variant situations
     """
     
-    # situations that automatically lead to maybe
+    # convert the maf_flag into a fraction
+    maf_flag = maf_flag/100.0
+    
+    # situations that automatically lead to an alarm
     
     ## CASE 1
     if not pd.isna(data['depth_flag']):
@@ -18,121 +22,106 @@ def case_by_flags(data):
         return(2)
     
     ## CASE 3
-    if data['illumina_support']=='mixed':
+    if data['illumina_support']=='maybe':
         return(3)
     
     ## CASE 4
-    if data['illumina_support']=='maybe':
-        return(4)
-    
+    if not pd.isna(data['illumina_support']):
+        if data['ont_AF']<maf_flag and data['illumina_AF']>(1-maf_flag):
+            return(4)
+        elif data['ont_AF']>(1-maf_flag) and data['illumina_AF']<maf_flag:
+            return(4)
+        
     ## CASE 5
-    if pd.isna(data['illumina_support']):
-        if data['ont_AF']<0.2 and data['illumina_AF']>0.8:
-            return(5)
-    
-    
-    # situations that do no depend on mismatches
+    if data['ont_AF']<maf_flag and data['in_consensus']:
+        return(5)
     
     ## CASE 6
-    if data['illumina_support']=='yes' and data['in_consensus']:
-        if (not pd.isna(data['mixed_flag'])) or (not pd.isna(data['maf_flag'])):
-            return(6)
-        
+    if data['ont_AF']>(1-maf_flag) and data['in_consensus']==False:
+        return (6)
     
-    # situations with mismatches
-    if not pd.isna(data['vc_flag']):
     
-        ## CASE 7
-        if data['vc_flag']=='mismatch(s)' and data['in_consensus']==False and data['ont_AF']<0.2:
-            return(7)
+    # situtions with mixed frequency variants
+    
+    ## CASE 7
+    if data['illumina_support']=='mixed':
+        return(7)
+    
+    # at this point, illumina is yes/no/none
+    
+    if not pd.isna(data['mixed_flag']):
         
         ## CASE 8
-        elif (not pd.isna(data['sb_flag'])) and data['in_consensus']==False and data['ont_AF']<0.25:
+        if data['in_consensus']==False and (not pd.isna(data['sb_flag'])) and (not data['illumina_support']=='yes'):
             return(8)
         
         ## CASE 9
-        elif data['vc_flag']=='mismatch(s)' and data['in_consensus']==False and data['ont_AF']<0.3 and data['illumina_support']=='no':
+        elif data['illumina_support']=='yes' and data['homopolymer'] and data['in_consensus']:
             return(9)
         
         ## CASE 10
-        elif data['vc_flag']=='mismatch(s)' and data['in_consensus']==False and data['ont_AF']<0.3 and pd.isna(data['illumina_support']):
+        elif not pd.isna(data['illumina_support']):
             return(10)
         
         ## CASE 11
         else:
-            return(11)
-    
-    
-    # situations with mixed flags (0.3<ont_AF<0.7)
-    if not pd.isna(data['mixed_flag']):
+            other_allele_freq = float(int(data['ont_alleles'].split(':')[11])/data['ont_depth'])
+            if (other_allele_freq-0.02 <= (1-data['ont_AF']) <= other_allele_freq+0.02) and data['homopolymer'] and data['in_consensus']:
+                return(11)
         
-        ## CASE 12
-        if data['homopolymer'] and data['in_consensus'] and pd.isna(data['illumina_support']):
-            return(12)
+            ## CASE 12
+            else:
+                return(12)
+    
+    # at this point we know the frequency is either <maf_flag or >(1-maf_flag)
+    # and that the in consensus status matches the high/low status
+    
+    # specific situations for variants not seen before
+    if not pd.isna(data['new_flag']):
         
         ## CASE 13
-        else:
+        if data['illumina_support']=='yes' and data['in_consensus']:
             return(13)
         
-    
-    # situations with maf flags (0.15<ont_AF<0.3 or 0.7<ont_AF<0.85)
-    if not pd.isna(data['maf_flag']):
-        
-        ## CASE 12 - REPEAT FROM ABOVE
-        if data['homopolymer'] and data['in_consensus'] and pd.isna(data['illumina_support']):
-            return(12)
-        
         ## CASE 14
-        elif data['ont_AF']<0.2 and data['in_consensus']==False:
+        elif data['ont_AF']>0.9 and data['in_consensus']:
             return(14)
         
         ## CASE 15
-        elif data['ont_AF']<0.3 and data['in_consensus']:
+        elif data['in_consensus']:
             return(15)
-        
-        ## CASE 16
-        elif 0.2<data['ont_AF']<0.3 and data['in_consensus']==False:
-            return(16)
-        
-        ## CASE 17
-        else:
-            return(17)
     
+    # if there are no other worrisome flags
+    # ignore low frequency variants and accept high frequency variants
+    # remember we already know the consensus status matches the high/low status
+    # we also know that illumina is not mixed or maybe, and that if there is illumina data, illumina status matches high/low status
     
-    # other specific situations
+    ## CASE 16
+    if data['ont_AF']<maf_flag and data['unambig']:
+        return(16)
+    
+    ## CASE 17
+    if data['ont_AF']>(1-maf_flag) and data['unambig']:
+        return(17)
+    
+    # at the end, ensure we catch all remaining consensus N variants
     
     ## CASE 18
-    if not pd.isna(data['sb_flag']):
+    if data['unambig']==False:
         return(18)
     
-    ## CASE 19
-    if not pd.isna(data['key_flag']):
-        return(19)
-    
-    ## CASE 20
-    if data['illumina_support']=='yes' and not pd.isna(data['new_flag']):
-        return(20)
-    
-    ## CASE 21
-    if pd.isna(data['illumina_support']) and not pd.isna(data['new_flag']):
-        return(21)
-    
-    
-    # if we make it this far, there are no flags
-    
-    ## CASE 22
-    flags = ['depth_flag','ntc_flag','vc_flag','mixed_flag','maf_flag','sb_flag','key_flag','new_flag']
-    assert all([pd.isna(data[flag]) for flag in flags])
-    return(22)
+    # all cases should be covered by this point
+    # we should never get here
+    sys.exit('you found a scenario not covered; please modify case_by_flags')
 
 
-def status_by_case(variant_data,case_definitions):
+def status_by_case(variant_data,case_definitions,maf_flag):
     
     # load a text file with case definitions
     defs = pd.read_csv(case_definitions)
     
     # determine the case for this particular variant
-    case = case_by_flags(variant_data)
+    case = case_by_flags(variant_data,maf_flag)
     
     # get description and status for this case from definitions table
     current_case = defs[defs.case==case]

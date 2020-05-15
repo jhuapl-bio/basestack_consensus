@@ -144,8 +144,8 @@ if [ ! -f "${input_nanopolish_vcf}" ];then
 elif [ ! -f "${input_nanopolish_bamfile}" ];then
     >&2 echo "Error: Nanopolish output bam file ${input_nanopolish_bamfile} does not exist"
     exit 1
-elif [ ! -f "${input_medaka_vcf_zip}" ];then
-    >&2 echo "Error: Medaka output vcf file ${input_medaka_vcf_zip} does not exist"
+elif [[ ! -f "${input_medaka_vcf_zip}" ]] && [[ ! -f "${input_medaka_vcf}" ]];then
+    >&2 echo "Error: Medaka output vcf file ${input_medaka_vcf} or its zip do not exist"
     exit 1
 else
     mkdir -p "${consensus_dir}/logs"
@@ -186,7 +186,7 @@ pileup_file="${mpileup}" \
 out_file="${allelefreqcalls}" 2>> "${logfile}"
 
 echo_log "Starting Module 4 Merging and Allele Frequencies on \
-    ${input_nanopolish_vcf}, ${input_medaka_vcf}, ${mpileup}"
+    ${input_nanopolish_vcf}, ${input_medaka_vcf}, ${allelefreqcalls}"
 
 # Run merging and allele frequency counts
 if [ ! -r "${input_medaka_vcf}" ]; then
@@ -194,22 +194,8 @@ if [ ! -r "${input_medaka_vcf}" ]; then
     gunzip -c "${input_medaka_vcf_zip}" > "${input_medaka_vcf}" 2>> "${logfile}"
 fi
 
-vcfs="${input_nanopolish_vcf},${input_medaka_vcf}"
 
-# Print out vcf filenames with absolute paths to filelist
-vcfarray=$(echo "${vcfs}" | tr "," "\n")
-
-# Output vcf filenames to a list
-if [ -r "${filelist}" ]
-then
-  rm "${filelist}"
-fi
-touch "${filelist}"
-for vcf in "${vcfarray}"
-do
-    readlink -f "${vcf}" >> "${filelist}" 2>> "${logfile}"
-done
-readlink -f "${allelefreqcalls}" >> "${filelist}" 2>> "${logfile}"
+printf "${input_nanopolish_vcf}\n${input_medaka_vcf}\n${allelefreqcalls}" > "${filelist}"
 
 # Run merging
 "$JAVA_PATH/java" \
