@@ -292,13 +292,13 @@ while read barcode name; do
 			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}*variant_data.txt does not exist."
 			variant_fail_flag="TRUE"
 		else
-			variant_data_tracker+=('$name')
+			variant_data_tracker+=($name)
 		fi
 	fi
 done < "${manifest}"
 
 # Run summary
-if [[ ${variant_data_tracker[@]} -gt 1 ]]; then
+if [[ ${#variant_data_tracker[@]} -ge 1 ]]; then
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfiltering completed for ${sequencing_run}"
 	if [[ "${variant_fail_flag}" == "TRUE"  ]]; then
 		echo_log "     At least one sample failed to produce any variant data.  See log for details"
