@@ -171,9 +171,9 @@ def ambig_in_key_position(pos,vcf_nextstrain,cons):
     # read in the nextstrain vcf as a dataframe
     # note: the header is hard-coded and will need to be updated if the header is altered
     ns_snps = pd.read_csv(vcf_nextstrain,sep='\t',skiprows=3)
-    ns_snps = ns_snps[['POS','CONF_FLAG']]
+    ns_snps = ns_snps[['POS','CLADE_FLAG']]
     
-    key_snps = ns_snps[ns_snps['CONF_FLAG']=='YES']
+    key_snps = ns_snps[ns_snps['CLADE_FLAG']=='YES']
     key_snps = list(key_snps.POS.values)
     
     # no flag needed if this position is not one of the important ones
