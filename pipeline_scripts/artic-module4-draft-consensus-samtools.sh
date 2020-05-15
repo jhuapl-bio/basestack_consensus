@@ -195,7 +195,7 @@ if [ ! -r "${input_medaka_vcf}" ]; then
 fi
 
 
-filelist=$(printf "${input_nanopolish_vcf}\n${input_medaka_vcf}\n${allelefreqcalls}")
+printf "${input_nanopolish_vcf}\n${input_medaka_vcf}\n${allelefreqcalls}" > "${filelist}"
 
 # Run merging
 "$JAVA_PATH/java" \
