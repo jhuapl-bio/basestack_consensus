@@ -222,7 +222,7 @@ def get_command(args):
 #argument parsing for job submission
 parser = argparse.ArgumentParser(description="Submit Bash Command as Job on Sciserver\nJob Config\n\tImage: Sciserver Essentials\n\tVolume: 'COVID-19'") 
 parser.add_argument("-s", "--script", help="bash script to be executed as job", default=None)
-parser.add_argument("-m", "--module", type=int, help="module from which to begin processing pipeline", choices=[0,1,2,3,4,5], default=None)
+parser.add_argument("-m", "--module", type=int, help="module from which to begin processing pipeline", choices=[0,1,2,3,4,5,6], default=None)
 parser.add_argument("-i", "--input", help="input file to be processed by job")
 parser.add_argument("-t", "--threads", help="threads", default=None)
 args, unknown = parser.parse_known_args()
