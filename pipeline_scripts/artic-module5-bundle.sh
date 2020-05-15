@@ -327,7 +327,7 @@ bash -x "${combine}" -i "${postfilter_dir}" -r "$reference" -a "${reference_anno
 
 combine_variants_complete_flag="TRUE"
 while read barcode name; do
-	if  [[ name != "${control_name}" ]]; then
+	if  [[ "$name" != "${control_name}" ]]; then
 		if [[ " ${variant_data_tracker[@]} " =~ " ${name} " ]]; then
 			if [ ! -s "${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf" ]; then
 				echo_log "RUN ${sequencing_run_name}: Error: Variants must be combined for all samples prior to running Pangolin and snpEff."
