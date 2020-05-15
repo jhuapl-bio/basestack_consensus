@@ -203,11 +203,15 @@ def get_command(args):
 	else:
 		raise Exception("Must provide script's full path or module number for job execution")
 	
+	# Create logfile withing artic-pipeline directory
+	sep="/artic-pipeline"
+	logfile=args.input.split(sep,1)[0] + "/artic-pipeline_bashx.log"
+
 	# Create command: merge bash script with parameters and input files for analysis...
 	if args.threads is not None:
-		command = "bash -x " + args.script + " -i " + args.input + " -t " + str(args.threads)
+		command = "bash -x " + args.script + " -i " + args.input + " -t " + str(args.threads) + " &>> " + logfile
 	else:
-		command = "bash -x " + args.script + " -i " + args.input
+		command = "bash -x " + args.script + " -i " + args.input + " &>> " + logfile
 
 	jobAlias=args.script.split("/")[-1]
 
