@@ -122,9 +122,9 @@ def generate_postfilter_summary(rundir):
             # get the status for this genome
             if not complete:
                 status.append('No')
-            elif 'Maybe' in stat:
+            elif 'Alarm' in stat:
                 status.append('Maybe')
-            elif 'Yes*' in stat:
+            elif 'Check' in stat:
                 status.append('Yes*')
             else:
                 status.append('Yes')

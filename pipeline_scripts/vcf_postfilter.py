@@ -125,9 +125,9 @@ def add_key_ambiguous_positions(chrom,variants,cons,depth_threshold,vcf_nextstra
     # read in the nextstrain vcf as a dataframe
     # note: the header is hard-coded and will need to be updated if the header is altered
     ns_snps = pd.read_csv(vcf_nextstrain,sep='\t',skiprows=3)
-    ns_snps = ns_snps[['POS','REF','CONF_FLAG']]
+    ns_snps = ns_snps[['POS','REF','CLADE_FLAG']]
     
-    key_snps = ns_snps[ns_snps['CONF_FLAG']=='YES']
+    key_snps = ns_snps[ns_snps['CLADE_FLAG']=='YES']
     key_snps = list(key_snps.POS.values)
     
     # load mpileup file to get depth at this position
@@ -153,7 +153,7 @@ def add_key_ambiguous_positions(chrom,variants,cons,depth_threshold,vcf_nextstra
             data['ont_depth_thresh']=depth_threshold
             data['key_flag']='ambig in key position'
             data['case']=19
-            data['status']='Yes*'
+            data['status']='Check'
             data['description']=data['key_flag']
             
             data = pd.DataFrame([data], columns=data.keys())
@@ -198,8 +198,7 @@ def parse_arguments():
    parser.add_argument('--prefix', type=str, default='sample', help='prefix of all saved output files')
    
    parser.add_argument('--coverage-flag', type=int, default=20, help='flag variants with depth within this percentage of threshold')
-   parser.add_argument('--maf-flag', type=int, default=15, help='flag variants with minor allele frequency with at least this value')
-   parser.add_argument('--hold-flag', type=int, default=30, help='flag variants for additional validation if minor allele frequency is at least this value')
+   parser.add_argument('--maf-flag', type=int, default=25, help='flag variants with minor allele frequency with at least this value')
    parser.add_argument('--call-depth-factor', type=int, default=2, help='factor by which depth must exceed median NTC depth to call a base')
    parser.add_argument('--snp-depth-factor', type=int, default=5, help='factor by which depth must exceed NTC depth to call a variant seen in the NTC at that position')
    parser.add_argument('--unambig-threshold', type=int, default=25000, help='number of unambiguous bases required in final genome')
@@ -297,9 +296,15 @@ def main():
         data['sb_flag'],data['ont_strand_counts'] = fl.strand_bias_detected(info,data['alt'],args.strand_threshold)
         data['ntc_flag'] = fl.allele_in_ntc(pos, data['alt'], depth, args.ntc_bamfile, args.snp_depth_factor)
         data['homopolymer'] = fl.in_homopolymer_region(pos)
-        data['maf_flag'],data['mixed_flag'] = fl.minor_allele_freq(depth, alt_allele_freq, args.maf_flag, args.hold_flag)
+        data['maf_flag'],data['mixed_flag'] = fl.minor_allele_freq(depth, alt_allele_freq, args.maf_flag)
         data['illumina_support'] = [fl.get_illumina_support(illumina_alt_allele_freq,info['SUPP_VEC'],args.maf_flag) if illumina and illumina_depth>=20 else np.nan][0]
         
+        # update quality value if nanopolish did not call a variant
+        # the QUAL field represents the medaka quality score if nanopolish didn't call a variant
+        # not an issue with samtools only calls because then there is no quality score
+        if (data['vc_flag']=='mismatch(m)') or (data['vc_flag']=='mismatch(m+s)'):
+            data['qual']='.'
+
         # modify consensus genome based on ntc flag
         # remember consensus is zero-indexed but we are dealing with 1-indexed positions
         if not pd.isna(data['ntc_flag']):
@@ -332,7 +337,7 @@ def main():
         
         # after adding all the flags
         # get the status of this position
-        data['case'],data['description'],data['status'] = status_by_case(data, args.case_defs)
+        data['case'],data['description'],data['status'] = status_by_case(data, args.case_defs, args.maf_flag)
         # add this record to the final dataframe
         data = pd.DataFrame([data], columns=data.keys())
         df = pd.concat([df,data],ignore_index=True,sort=False)
