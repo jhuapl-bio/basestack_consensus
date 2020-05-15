@@ -292,7 +292,7 @@ while read barcode name; do
 			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}*variant_data.txt does not exist."
 			variant_fail_flag="TRUE"
 		else
-			variant_data_tracker+=($name)
+			variant_data_tracker+=("$name")
 		fi
 	fi
 done < "${manifest}"
@@ -306,7 +306,7 @@ if [[ ${#variant_data_tracker[@]} -ge 1 ]]; then
 	
 	echo_log "RUN ${sequencing_run_name}: Starting Module 5 Postfilter Summarization on ${sequencing_run}"
 
-	python "${postfilter_summary}" "$postfilter_dir" 2>> "${logfile}"
+	python "${postfilter_summary}" --rundir "${postfilter_dir}" 2>> "${logfile}"
 
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfilter Summarization completed for ${sequencing_run}"
 else
@@ -319,7 +319,7 @@ fi
 
 echo_log "RUN ${sequencing_run_name}: Combing variants for each sample..."
 
-bash -x "${combine}" -i "$postfilter_dir" -r "$reference" -a "$reference_annotation" -m "$manifest" -n "${control_name}" 2>> "${logfile}"
+bash -x "${combine}" -i "${postfilter_dir}" -r "$reference" -a "${reference_annotation}" -m "$manifest" -n "${control_name}" 2>> "${logfile}"
 
 #---------------------------------------------------------------------------------------------------
 # Module 5 Pangolin and snpEff

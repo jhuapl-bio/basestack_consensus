@@ -32,11 +32,11 @@ DBNAME="ncov"
 
 while read barcode name; do
     vcf="${name}"_"${barcode}".allsnps.combined.vcf
-    ${SCRIPT_DIR}/annotate_variants.sh ${vcf} ${snpEff_config} ${DBNAME} ${postfilter_dir}
+    "${SCRIPT_DIR}"/annotate_variants.sh "${vcf}" "${snpEff_config}" "${DBNAME}" "${postfilter_dir}"
     echo "SnpEff completed on run ${postfilter_dir}"
     echo "Making final reports on run ${postfilter_dir}"
-    cat ${postfilter_dir}/"${name}"_"${barcode}"_ann_report.txt  | awk '$4 != "N" { print $0}'  | awk '!seen[$0]++' >> ${postfilter_dir}/final_snpEff_report.txt
-    cat ${postfilter_dir}/"${name}"_"${barcode}"_ann_report.txt  | awk '!seen[$0]++' | awk 'NR == 1  || $4 == "N" { print $0}'  >> ${postfilter_dir}/snpEff_report_with_Ns.txt
+    cat "${postfilter_dir}"/"${name}"_"${barcode}"_ann_report.txt  | awk '$4 != "N" { print $0}'  | awk '!seen[$0]++' >> "${postfilter_dir}/final_snpEff_report.txt"
+    cat "${postfilter_dir}"/"${name}"_"${barcode}"_ann_report.txt  | awk '!seen[$0]++' | awk 'NR == 1  || $4 == "N" { print $0}'  >> "${postfilter_dir}/snpEff_report_with_Ns.txt"
 done < "$manifest"
 
 

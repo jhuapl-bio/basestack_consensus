@@ -10,19 +10,25 @@ usage() {
         echo -e "   -i      /full/path/to/sequencing_run/artic-pipeline/5-postfilter"
         echo -e "   -r      /full/path/to/<reference>.fasta"
         echo -e "   -a      /full/path/to/<reference_annotation>.gff"
+        echo -e "   -m      /full/path/to/<sequencing_run>/manifest.txt"
+        echo -e "   -n      name of control sample within run manifest (Default = 'NTC')"
         echo -e ""
 }
 
 #---------------------------------------------------------------------------------------------------
+control_name="NTC"
+#---------------------------------------------------------------------------------------------------
 
 # parse input arguments
-while getopts "hi:d:b:v:c:" OPTION
+while getopts "hi:r:a:m:n:" OPTION
 do
        case $OPTION in
                 h) usage; exit 1 ;;
                 i) postfilter_dir=$OPTARG ;;
                 r) reference=$OPTARG ;;
                 a) reference_annotation=$OPTARG ;;
+                m) manifest=$OPTARG ;;
+                n) control_name=$OPTARG ;;
                 ?) usage; exit ;;
        esac
 done
@@ -34,21 +40,21 @@ else
 fi
 
 # get known directory names
-for i in `ls $postfilter_dir/*variant_data.txt`
+for i in `ls "$postfilter_dir"/*variant_data.txt`
 do
-    sample=${i##*/}
-    samplename=${sample%%.*}
-    echo $i
-    echo $samplename
+    sample="${i##*/}"
+    samplename="${sample%%.*}"
+    echo "$i"
+    echo "$samplename"
 
-    consensusvcf=$postfilter_dir/$samplename.consensus.vcf
-    allvcf=$postfilter_dir/$samplename.allsnps.vcf
-    java -cp $BINDIR/VariantValidator/src TableToVcf table_file=$i consensus_file=$consensusvcf all_file=$allvcf
+    consensusvcf="$postfilter_dir/$samplename.consensus.vcf"
+    allvcf="$postfilter_dir/$samplename.allsnps.vcf"
+    java -cp "$BINDIR/VariantValidator/src" TableToVcf table_file="$i" consensus_file="$consensusvcf" all_file="$allvcf"
 
-    consensuscombinedvcf=$postfilter_dir/$samplename.consensus.combined.vcf
-    allcombinedvcf=$postfilter_dir/$samplename.allsnps.combined.vcf
-    java -cp $BINDIR/VariantValidator/src CombineVariants vcf_file=$consensusvcf out_file=$consensuscombinedvcf genome_file=$reference gene_file=$reference_annotation
-    java -cp $BINDIR/VariantValidator/src CombineVariants vcf_file=$allvcf out_file=$allcombinedvcf genome_file=$reference gene_file=$reference_annotation
+    consensuscombinedvcf="$postfilter_dir/$samplename.consensus.combined.vcf"
+    allcombinedvcf="$postfilter_dir/$samplename.allsnps.combined.vcf"
+    java -cp "$BINDIR/VariantValidator/src" CombineVariants vcf_file="$consensusvcf" out_file="$consensuscombinedvcf" genome_file="$reference" gene_file="$reference_annotation"
+    java -cp "$BINDIR/VariantValidator/src" CombineVariants vcf_file="$allvcf" out_file="$allcombinedvcf" genome_file="$reference" gene_file="$reference_annotation"
 done
 
 
