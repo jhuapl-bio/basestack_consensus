@@ -203,7 +203,7 @@ def parse_arguments():
    parser.add_argument('--snp-depth-factor', type=int, default=5, help='factor by which depth must exceed NTC depth to call a variant seen in the NTC at that position')
    parser.add_argument('--unambig-threshold', type=int, default=25000, help='number of unambiguous bases required in final genome')
    parser.add_argument('--ns-snp-threshold', type=int, default=5, help='number of published samples with a particular snp needed to count it as previously seen')
-   parser.add_argument('--strand-threshold', type=int, default=20, help='minimum minor allele frequency on each strand required for unbiased call')
+   parser.add_argument('--strand-threshold', type=int, default=10, help='minimum minor allele frequency on each strand required for unbiased call')
    
    args = parser.parse_args()
    return(args)
