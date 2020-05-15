@@ -85,6 +85,10 @@ demux_dir="${sequencing_run}/artic-pipeline/1-barcode-demux"
 # log file
 logfile="${demux_dir}"/logs/module1-$(date +"%F-%H%M%S").log
 
+#git hash
+GIT_DIR="$(dirname $(readlink -f $(which $(basename $0))))/../.git"
+export GIT_DIR
+hash=$(git rev-parse --short HEAD)
 
 #===================================================================================================
 # QUALITY CHECKING
@@ -94,9 +98,6 @@ logfile="${demux_dir}"/logs/module1-$(date +"%F-%H%M%S").log
 if [ ! -d "${sequencing_run}" ];then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
-else
-    mkdir -p "$demux_dir/logs"
-
 fi
 
 # check for existence of run_config.txt and for barcoding 
@@ -134,6 +135,9 @@ if [ -f "$demux_dir/1-barcode-demux.complete" ];then
     >&2 echo "Error: Processing for Module 1 was prevously completed: ${demux_dir}1-barcode-demux.complete"
     >&2 echo "     Archive all previously run modules prior to beginning a new processing chain."
     exit 1
+else
+    mkdir -p "$demux_dir/logs"
+    conda env export > "${logfile%.log}-env.yml"
 fi
 
 
@@ -142,7 +146,7 @@ fi
 #===================================================================================================
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
-
+echo_log "RUN $(basename ${sequencing_run}): timplab/ncov git hash: ${hash}"
 echo_log "RUN $(basename ${sequencing_run}): sequencing run folder: ${CYAN}$sequencing_run${NC}"
 echo_log "RUN $(basename ${sequencing_run}): recording software version numbers"
 echo_log "RUN $(basename ${sequencing_run}): $(${guppy_barcoder_path}/guppy_barcoder --version)"

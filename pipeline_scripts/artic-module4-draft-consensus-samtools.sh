@@ -102,6 +102,11 @@ filelist="${consensus_dir}/${samplename}.filelist.txt"
 # log file
 logfile="${consensus_dir}"/logs/module4-samtools-$(basename "${normalized_fastq%.covfiltered.fq}")-$(date +"%F-%H%M%S").log
 
+#git hash
+GIT_DIR="$(dirname $(readlink -f $(which $(basename $0))))/../.git"
+export GIT_DIR
+hash=$(git rev-parse --short HEAD)
+
 #===================================================================================================
 # QUALITY CHECKING
 #===================================================================================================
@@ -144,6 +149,7 @@ elif [ ! -f "${input_medaka_vcf_zip}" ];then
     exit 1
 else
     mkdir -p "${consensus_dir}/logs"
+    conda env export > "${logfile%.log}-env.yml"
 fi
 
  
@@ -154,14 +160,15 @@ fi
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):------ Samtools / Merge Paramters:"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):sequencing run folder: ${CYAN}$sequencing_run${NC}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):recording software version numbers..."
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):Software version: $(samtools --version)"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):Reference fasta: ${reference}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):input fasta file: ${normalized_fastq}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):input vcfs: ${input_nanopolish_vcf}, ${input_medaka_vcf_zip}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):iput bam file: ${input_nanopolish_bamfile}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):output consensus directory: ${consensus_dir}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): timplab/ncov git hash: ${hash}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): recording software version numbers..."
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Software version: $(samtools --version)"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Reference fasta: ${reference}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): input fasta file: ${normalized_fastq}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): input vcfs: ${input_nanopolish_vcf}, ${input_medaka_vcf_zip}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): iput bam file: ${input_nanopolish_bamfile}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): output consensus directory: ${consensus_dir}"
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):------ processing Samtools/Merge ------"
 
 #---------------------------------------------------------------------------------------------------

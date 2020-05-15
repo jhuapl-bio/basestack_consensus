@@ -90,6 +90,10 @@ sample_name=$(basename "${samfile%.covfiltered.sam}")
 # log file
 logfile="${outdir}"/logs/module4-fast5-subset-"${sample_name}"-$(date +"%F-%H%M%S").log
 
+#git hash
+GIT_DIR="$(dirname $(readlink -f $(which $(basename $0))))/../.git"
+export GIT_DIR
+hash=$(git rev-parse --short HEAD)
 
 #===================================================================================================
 # QUALITY CHECKING
@@ -118,6 +122,7 @@ if [ ! -f "${sequencing_run}"/artic-pipeline/3-normalization/module3-"${sample_n
     exit 1
 else
     mkdir -p "$outdir/logs"
+    conda env export > "${logfile%.log}-env.yml"
 fi
 
 if [ -s "$outdir/$name-human-filtered-subset.fast5" ];then
@@ -134,8 +139,8 @@ fi
 #===================================================================================================
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
-
 echo_log "SAMPLE ${sample_name}: ------ Fast5 Subset Paramters:"
+echo_log "SAMPLE ${sample_name}: timplab/ncov git hash: ${hash}"
 echo_log "SAMPLE ${sample_name}: sequencing run folder: ${CYAN}$sequencing_run${NC}"
 echo_log "SAMPLE ${sample_name}: run configuration file: ${sequencing_run}/run_config.txt"
 echo_log "SAMPLE ${sample_name}: run manifest file: ${manifest}"

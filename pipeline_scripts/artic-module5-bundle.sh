@@ -103,6 +103,11 @@ JAVA_PATH="${software_path}/jdk-14.0.1/bin"
 # log file
 logfile="${postfilter_dir}"/logs/module5-postfilter-"${sequencing_run_name}"-$(date +"%F-%H%M%S").log
 
+#git hash
+GIT_DIR="$(dirname $(readlink -f $(which $(basename $0))))/../.git"
+export GIT_DIR
+hash=$(git rev-parse --short HEAD)
+
 #===================================================================================================
 # QUALITY CHECKING
 #===================================================================================================
@@ -228,6 +233,7 @@ fi
 # create logs folder after successful completion of Module 4 for all samples and location of software/ref files for module 5 execution
 if [[ "${module4_complete_flag}" == "TRUE" ]] && [[ "${ref_files_found_flag}" == "TRUE" ]] && [[ "${paths_found_flag}" == "TRUE" ]]; then
 	mkdir -p "${postfilter_dir}/logs"
+	conda env export > "${logfile%.log}-env.yml"
 else
 	exit 1
 fi
@@ -239,6 +245,7 @@ fi
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
 echo_log "RUN ${sequencing_run_name}: ------ Module 5 Postfilter Paramters:"
+echo_log "RUN ${sequencing_run_name}: timplab/ncov git hash: ${hash}"
 echo_log "RUN ${sequencing_run_name}: sequencing run folder: ${CYAN}$sequencing_run${NC}"
 echo_log "RUN ${sequencing_run_name}: recording software version numbers..."
 echo_log "RUN ${sequencing_run_name}: Software version: $(samtools --version)"
