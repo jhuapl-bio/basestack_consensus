@@ -365,12 +365,12 @@ if [[ ! -s "${postfilter_dir}/final_snpEff_report.txt" ]]; then
 	module5_complete_flag="FALSE"
 fi
 
-if [[ "${module5_complete}" == "TRUE" ]]; then 
+if [[ "${module5_complete_flag}" == "TRUE" ]]; then 
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfilter completed for ${sequencing_run}"
 	echo_log "RUN ${sequencing_run_name}: Creating ${postfilter_dir}/module5-${sequencing_run_name}.complete"
 	touch "${postfilter_dir}/module5-${sequencing_run_name}.complete"
 
-	echo_log "RUN ${sequencing_run_name}: Submiting job for Module 6 Report Generation..."
+	echo_log "RUN ${sequencing_run_name}: Submitting Sciserver job for Module 6 Report Generation..."
 	
 	conda activate jhu-ncov
 	submit_sciserver_ont_job.py -m 6 -i "$sequencing_run"
