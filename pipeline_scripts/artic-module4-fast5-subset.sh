@@ -125,8 +125,8 @@ else
     conda env export > "${logfile%.log}-env.yml"
 fi
 
-if [ -s "$outdir/$name-human-filtered-subset.fast5" ];then
-    >&2 echo "Fast5 subset already exists for this sample: $outdir/${sample_name}-human-filtered-subset.fast5"
+if [ -s "$outdir/${sample_name}-no_human-covfiltered_0.fast5" ];then
+    >&2 echo "Fast5 subset already exists for this sample: $outdir/${sample_name}-no_human-covfiltered_0.fast5"
     >&2 echo "    Archive previous fast5 subset processing before rerunning."
     exit 1
 fi
@@ -156,7 +156,7 @@ read_ids="${samfile%.sam}-read_ids.txt"
 
 awk '{if ( $1 ~ "^@" ){}else{print $1}}' "$samfile" > "${read_ids}" 2>> "$logfile"
 
-fast5_subset --input "${sequencing_run}/fast5_pass" --save_path "${outdir}" --read_id_list "${read_ids}" -f "${sample_name}_" --batch_size "${batch_size}" -t $threads --recursive 2>> "$logfile"
+fast5_subset --input "${sequencing_run}/fast5_pass" --save_path "${outdir}" --read_id_list "${read_ids}" -f "${sample_name}-no_human-covfiltered_" --batch_size "${batch_size}" -t $threads --recursive 2>> "$logfile"
 
 
 #---------------------------------------------------------------------------------------------------
