@@ -42,8 +42,8 @@ while read barcode name; do
 	    bash -x "${annotate}" "${vcf}" "${snpEff_config}" "${DBNAME}" "${postfilter_dir}"
 	    echo "SnpEff completed on run ${postfilter_dir}"
 	    echo "Making final reports on run ${postfilter_dir}"
-	    cat "${postfilter_dir}"/"${name}"_"${barcode}"_ann_report.txt  | awk '$4 != "N" { print $0}'  | awk '!seen[$0]++' >> "${postfilter_dir}/final_snpEff_report.txt"
-	    cat "${postfilter_dir}"/"${name}"_"${barcode}"_ann_report.txt  | awk '!seen[$0]++' | awk 'NR == 1  || $4 == "N" { print $0}'  >> "${postfilter_dir}/snpEff_report_with_Ns.txt"
+	    cat "${postfilter_dir}"/"${name}"_"${barcode}"*_ann_report.txt  | awk '$4 != "N" { print $0}'  | awk '!seen[$0]++' >> "${postfilter_dir}/final_snpEff_report.txt"
+	    cat "${postfilter_dir}"/"${name}"_"${barcode}"*_ann_report.txt  | awk '!seen[$0]++' | awk 'NR == 1  || $4 == "N" { print $0}'  >> "${postfilter_dir}/snpEff_report_with_Ns.txt"
     else
 	    echo "File not found (snpEff not run): $vcf"
     fi
