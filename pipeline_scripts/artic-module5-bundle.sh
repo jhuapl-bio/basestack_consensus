@@ -356,12 +356,12 @@ fi
 
 module5_complete_flag="TRUE"
 if [[ ! -s "${postfilter_dir}/lineage_report.csv" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: Pangolin output file - ${postfilter_dir}/lineage_report.csv not detected."
+	echo_log "RUN ${sequencing_run_name}: Error: Pangolin output file - ${postfilter_dir}/lineage_report.csv not detected or empty."
 	module5_complete_flag="FALSE"
 fi
 
 if [[ ! -s "${postfilter_dir}/final_snpEff_report.txt" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: snpEff output file - ${postfilter_dir}/final_snpEff_report.txt not detected."
+	echo_log "RUN ${sequencing_run_name}: Error: snpEff output file - ${postfilter_dir}/final_snpEff_report.txt not detected or empty."
 	module5_complete_flag="FALSE"
 fi
 
