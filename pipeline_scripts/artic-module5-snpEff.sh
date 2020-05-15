@@ -17,7 +17,7 @@ usage() {
 #---------------------------------------------------------------------------------------------------
 
 # parse input arguments
-while getopts "hi:d:b:v:c:" OPTION
+while getopts "hi:c:m:" OPTION
 do
        case $OPTION in
                 h) usage; exit 1 ;;
