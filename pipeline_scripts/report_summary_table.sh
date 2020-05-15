@@ -1,5 +1,8 @@
 #!/bin/bash
 
+source /home/idies/workspace/covid19/bashrc
+conda activate artic-ncov2019-medaka
+
 export JAVA_HOME="/home/idies/workspace/covid19/code/jdk-11.0.2"
 export PATH=$JAVA_HOME/bin:$PATH
 
@@ -314,7 +317,7 @@ while read barcode label; do
 
 	if [[ "$make_new_outfile" == "true" ]]; then
 
-		demux_reads=$(grep "$barcode" "$stats_path/demux_count.txt" | sed 's/^ \+//' | cut -d" " -f1)
+		demux_reads=$(grep "$barcode" "$stats_path/demux_count.txt" | cut -f1)
 		gather=$(find "$lengthfilter_path" -name "*$barcode.fastq")
 
 		if [[ -s "$gather" ]]; then
@@ -420,7 +423,7 @@ while read barcode label; do
 done < "$manifest"
 
 if [[ "$make_new_outfile" == "true" ]]; then
-	printf "\tuncalled\t%'d\tNA\tNA\tNA\tNA\n" $(grep unclassified "$stats_path/demux_count.txt" | sed 's/^ \+//' | cut -d" " -f1) >> "$outfile"
+	printf "\tuncalled\t%'d\tNA\tNA\tNA\tNA\n" $(grep unclassified "$stats_path/demux_count.txt" | cut -f1) >> "$outfile"
 fi
 
 echo_log "Calculating depth"
