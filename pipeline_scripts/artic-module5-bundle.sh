@@ -286,7 +286,7 @@ bash -x "$run_postfilter" \
 variant_data_tracker=()
 variant_fail_flag="FALSE"
 while read barcode name; do
-	if  [[ name != "${control_name}" ]]; then
+	if  [[ "$name" != "${control_name}" ]]; then
 		if [ ! -s "${postfilter_dir}/${name}_${barcode}.variant_data.txt" ]; then
 			echo_log "RUN ${sequencing_run_name}: Error: Sample ${name} failed to generate variant data output.  See logs."
 			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}*variant_data.txt does not exist."
