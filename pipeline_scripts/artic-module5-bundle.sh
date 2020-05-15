@@ -103,6 +103,11 @@ JAVA_PATH="${software_path}/jdk-14.0.1/bin"
 # log file
 logfile="${postfilter_dir}"/logs/module5-postfilter-"${sequencing_run_name}"-$(date +"%F-%H%M%S").log
 
+#git hash
+GIT_DIR="$(dirname $(readlink -f $(which $(basename $0))))/../.git"
+export GIT_DIR
+hash=$(git rev-parse --short HEAD)
+
 #===================================================================================================
 # QUALITY CHECKING
 #===================================================================================================
@@ -164,22 +169,22 @@ if [[ ! -f "${ntc_bamfile}" ]]; then
 fi
 
 if [[ ! -s "${snpEff_config}" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: snpEff Config file not found: ${snpEff_config}"
+	>&2 echo "RUN ${sequencing_run_name}: Error: snpEff Config file not found: ${snpEff_config}"
 	ref_files_found_flag="FALSE"
 fi
 
 if [[ ! -d "${pangolin_data}" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: Pangolin data directory not found: ${pangolin_data}"
+	>&2 echo "RUN ${sequencing_run_name}: Error: Pangolin data directory not found: ${pangolin_data}"
 	ref_files_found_flag="FALSE"
 fi
 
 if [[ ! -s "${reference_annotation}" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: nCoV reference GFF not found: ${reference_annotation}"
+	>&2 echo "RUN ${sequencing_run_name}: Error: nCoV reference GFF not found: ${reference_annotation}"
 	ref_files_found_flag="FALSE"	
 fi
 
 if [[ ! -s "${reference}" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: nCoV reference FASTA not found: ${reference}"
+	>&2 echo "RUN ${sequencing_run_name}: Error: nCoV reference FASTA not found: ${reference}"
 	ref_files_found_flag="FALSE"
 fi
 
@@ -187,32 +192,40 @@ fi
 # check submodule scripts are in path
 paths_found_flag="TRUE"
 
-run_postfiler=$(which artic-module5-postfiler.sh)
-postfilter_summary=$(which postfiler_summary.py)
+run_postfilter=$(which artic-module5-postfilter.sh)
+python_postfilter=$(which vcf_postfilter.py)
+postfilter_summary=$(which postfilter_summary.py)
 combine=$(which artic-module5-combine.sh)
 pangolin=$(which artic-module5-pangolin.sh)
 snpeff=$(which artic-module5-snpEff.sh)
 
 if [[ -z "${pangolin}" ]]; then
-	echo_log  "RUN ${sequencing_run_name}: Error: artic-module5-pangolin.sh is not in your path! Please add this script to your path and rerun"
+	echo  "RUN ${sequencing_run_name}: Error: artic-module5-pangolin.sh is not in your path! Please add this script to your path and rerun"
 	paths_found_flag="FALSE"
 fi
 
 if [[ -z "${snpeff}" ]]; then
-	echo_log  "RUN ${sequencing_run_name}: Error: artic-module5-combine.sh is not in your path! Please add this script to your path and rerun"
-fi
-
-if [[ -z "$postfilter_summary" ]]; then
-	echo_log  "RUN ${sequencing_run_name}: Error: postfilter_summary.py is not in your path! Please add this script to your path and rerun"
+	echo  "RUN ${sequencing_run_name}: Error: artic-module5-combine.sh is not in your path! Please add this script to your path and rerun"
 	paths_found_flag="FALSE"
 fi
 
-if [[ -z "${run_postfiler}" ]]; then
-	echo_log  "RUN ${sequencing_run_name}: Error: artic-module5-postfiler.sh is not in your path! Please add this script to your path and rerun"
+if [[ -z "$postfilter_summary" ]]; then
+	echo  "RUN ${sequencing_run_name}: Error: postfilter_summary.py is not in your path! Please add this script to your path and rerun"
+	paths_found_flag="FALSE"
+fi
+
+if [[ -z "$python_postfilter" ]]; then
+	echo  "RUN ${sequencing_run_name}: Error: vcf_postfilter.py is not in your path! Please add this script to your path and rerun"
+	paths_found_flag="FALSE"
+fi
+
+if [[ -z "${run_postfilter}" ]]; then
+	echo  "RUN ${sequencing_run_name}: Error: artic-module5-postfilter.sh is not in your path! Please add this script to your path and rerun"
+	paths_found_flag="FALSE"
 fi
 
 if [[ -z "${combine}" ]]; then
-	echo_log  "RUN ${sequencing_run_name}: Error: artic-module5-combine.sh is not in your path! Please add this script to your path and rerun"
+	echo  "RUN ${sequencing_run_name}: Error: artic-module5-combine.sh is not in your path! Please add this script to your path and rerun"
 	paths_found_flag="FALSE"
 fi
 
@@ -220,6 +233,7 @@ fi
 # create logs folder after successful completion of Module 4 for all samples and location of software/ref files for module 5 execution
 if [[ "${module4_complete_flag}" == "TRUE" ]] && [[ "${ref_files_found_flag}" == "TRUE" ]] && [[ "${paths_found_flag}" == "TRUE" ]]; then
 	mkdir -p "${postfilter_dir}/logs"
+	conda env export > "${logfile%.log}-env.yml"
 else
 	exit 1
 fi
@@ -231,6 +245,7 @@ fi
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
 echo_log "RUN ${sequencing_run_name}: ------ Module 5 Postfilter Paramters:"
+echo_log "RUN ${sequencing_run_name}: timplab/ncov git hash: ${hash}"
 echo_log "RUN ${sequencing_run_name}: sequencing run folder: ${CYAN}$sequencing_run${NC}"
 echo_log "RUN ${sequencing_run_name}: recording software version numbers..."
 echo_log "RUN ${sequencing_run_name}: Software version: $(samtools --version)"
@@ -240,7 +255,7 @@ echo_log "RUN ${sequencing_run_name}: control sample name: ${control_name}"
 echo_log "RUN ${sequencing_run_name}: control sample barcode: ${control_barcode}"
 echo_log "RUN ${sequencing_run_name}: control sample depth file: ${ntc_depthfile}"
 echo_log "RUN ${sequencing_run_name}: control sample bam file: ${ntc_bamfile}"
-echo_log "RUN ${sequencing_run_name}: output postfilter directory: ${postfiler_dir}"
+echo_log "RUN ${sequencing_run_name}: output postfilter directory: ${postfilter_dir}"
 echo_log "RUN ${sequencing_run_name}: Reference fasta: ${reference}"
 echo_log "RUN ${sequencing_run_name}: Reference annotation: ${reference_annotation}"
 echo_log "RUN ${sequencing_run_name}: Case Definitions: ${case_defs}"
@@ -249,39 +264,53 @@ echo_log "RUN ${sequencing_run_name}: snpEff config file: ${snpEff_config}"
 echo_log "RUN ${sequencing_run_name}: ------ processing Postfiltering and Annotation ------"
 
 #---------------------------------------------------------------------------------------------------
-# Module 5 Postfiler
+# Module 5 Postfilter
 #---------------------------------------------------------------------------------------------------
 
 echo_log "RUN ${sequencing_run_name}: Starting Module 5 Postfilter Submodule 1 on ${sequencing_run}"
 
-bash -x "$run_postfiler" -i "${consensus_dir}" -d "${ntc_depthfile}" -b "${ntc_bamfile}" -v "${vcf_next}" -c "${case_defs}" 2>> "${logfile}"
+bash -x "$run_postfilter" \
+	-i "${consensus_dir}" \
+	-d "${ntc_depthfile}" \
+	-b "${ntc_bamfile}" \
+	-v "${vcf_next}" \
+	-c "${case_defs}" \
+	-m "${manifest}" \
+	-n "${control_name}" 2>> "${logfile}"
 
 #---------------------------------------------------------------------------------------------------
-# Module 5 Postfiler Summarization
+# Module 5 Postfilter Summarization
 #---------------------------------------------------------------------------------------------------
 
 #check postfilter complete
-post_filtering_complete_flag="TRUE"
+variant_data_tracker=()
+variant_fail_flag="FALSE"
 while read barcode name; do
 	if  [[ name != "${control_name}" ]]; then
 		if [ ! -s "${postfilter_dir}/${name}_${barcode}.variant_data.txt" ]; then
-			echo_log "RUN ${sequencing_run_name}: Error: Postfiltering must be completed for all samples prior to summarization."
-			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}*variant_data.txt does not exist"
-			post_filtering_complete_flag="FALSE"
+			echo_log "RUN ${sequencing_run_name}: Error: Sample ${name} failed to generate variant data output.  See logs."
+			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}*variant_data.txt does not exist."
+			variant_fail_flag="TRUE"
+		else
+			variant_data_tracker+=('$name')
 		fi
 	fi
 done < "${manifest}"
 
 # Run summary
-if [[ "${post_filtering_complete_flag}" == "TRUE" ]]; then
+if [[ ${variant_data_tracker[@]} -gt 1 ]]; then
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfiltering completed for ${sequencing_run}"
+	if [[ "${variant_fail_flag}" == "TRUE"  ]]; then
+		echo_log "     At least one sample failed to produce any variant data.  See log for details"
+	fi
+	
 	echo_log "RUN ${sequencing_run_name}: Starting Module 5 Postfilter Summarization on ${sequencing_run}"
 
 	python "${postfilter_summary}" "$postfilter_dir" 2>> "${logfile}"
 
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfilter Summarization completed for ${sequencing_run}"
 else
-	echo_log "RUN ${sequencing_run_name}: Error: Module 5 Summarization not performed."
+	echo_log "RUN ${sequencing_run_name}: Error: Module 5 Summarization not performed.  No valid variant data found to summarize."
 	exit 1
 fi
 #---------------------------------------------------------------------------------------------------
@@ -290,7 +319,7 @@ fi
 
 echo_log "RUN ${sequencing_run_name}: Combing variants for each sample..."
 
-bash -x "${combine}" -i "$postfilter_dir" -r "$reference" -a "$reference_annotation" 2>> "${logfile}"
+bash -x "${combine}" -i "$postfilter_dir" -r "$reference" -a "$reference_annotation" -m "$manifest" -n "${control_name}" 2>> "${logfile}"
 
 #---------------------------------------------------------------------------------------------------
 # Module 5 Pangolin and snpEff
@@ -299,10 +328,12 @@ bash -x "${combine}" -i "$postfilter_dir" -r "$reference" -a "$reference_annotat
 combine_variants_complete_flag="TRUE"
 while read barcode name; do
 	if  [[ name != "${control_name}" ]]; then
-		if [ ! -s "${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf" ]; then
-			echo_log "RUN ${sequencing_run_name}:Error: Variants must be combined for all samples prior to running Pangolin and snpEff."
-			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf does not exist"
-			combine_variants_complete_flag="FALSE"
+		if [[ " ${variant_data_tracker[@]} " =~ " ${name} " ]]; then
+			if [ ! -s "${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf" ]; then
+				echo_log "RUN ${sequencing_run_name}: Error: Variants must be combined for all samples prior to running Pangolin and snpEff."
+				echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf does not exist"
+				combine_variants_complete_flag="FALSE"
+			fi
 		fi
 	fi
 done < "${manifest}"
@@ -311,8 +342,8 @@ done < "${manifest}"
 if [[ "${combine_variants_complete_flag}" == "TRUE" ]]; then
 	echo_log "RUN ${sequencing_run_name}: Starting Module 5 Pangolin and snpEff on ${sequencing_run}"
 
-	bash -x "${pangolin}" -i "${postfilter_dir}" -d "${pangolin_data}" 2>> "${logfile}"
-	bash -x "${snpeff}" -i "${postfilter_dir}" -c "${snpEff_config}" 2>> "${logfile}"
+	bash -x "${pangolin}" -i "${postfilter_dir}" -d "${pangolin_data}" -m "$manifest" 2>> "${logfile}"
+	bash -x "${snpeff}" -i "${postfilter_dir}" -c "${snpEff_config}" -m "$manifest" 2>> "${logfile}"
 
 else
 	echo_log "RUN ${sequencing_run_name}: Error: Module 5 Pangolin and snpEff not performed."
@@ -324,13 +355,13 @@ fi
 #---------------------------------------------------------------------------------------------------
 
 module5_complete_flag="TRUE"
-if [[ ! -s "${postfiler_dir}/postfilt_consensus_all.fasta" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: Panglolin output file - ${postfiler_dir}/postfilt_consensus_all.fasta not detected."
+if [[ ! -s "${postfilter_dir}/lineage_report.csv" ]]; then
+	echo_log "RUN ${sequencing_run_name}: Error: Pangolin output file - ${postfilter_dir}/lineage_report.csv not detected."
 	module5_complete_flag="FALSE"
 fi
 
-if [[ ! -s "${postfiler_dir}/final_snpEff_report.txt" ]]; then
-	echo_log "RUN ${sequencing_run_name}: Error: snpEff output file - ${postfiler_dir}/final_snpEff_report.txt not detected."
+if [[ ! -s "${postfilter_dir}/final_snpEff_report.txt" ]]; then
+	echo_log "RUN ${sequencing_run_name}: Error: snpEff output file - ${postfilter_dir}/final_snpEff_report.txt not detected."
 	module5_complete_flag="FALSE"
 fi
 
@@ -338,6 +369,11 @@ if [[ "${module5_complete}" == "TRUE" ]]; then
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfilter completed for ${sequencing_run}"
 	echo_log "RUN ${sequencing_run_name}: Creating ${postfilter_dir}/module5-${sequencing_run_name}.complete"
 	touch "${postfilter_dir}/module5-${sequencing_run_name}.complete"
+
+	echo_log "RUN ${sequencing_run_name}: Submiting job for Module 6 Report Generation..."
+	
+	conda activate jhu-ncov
+	submit_sciserver_ont_job.py -m 6 -i "$sequencing_run"
 else
 	echo_log "RUN ${sequencing_run_name}: Error: Module 5 did not complete."
 	exit 1

@@ -147,11 +147,6 @@ if ! [[ -d "$demux_path" ]]; then
 	usage
 	exit
 fi
-if ! [[ -s "$demux_path/barcoding_summary.txt" ]]; then
-	echo -e "${RED}Error: demux summary ${CYAN}$demux_path/barcoding_summary.txt${RED} does not exist.${NC}"
-	usage
-	exit
-fi
 if [[ -z "$lengthfilter_path" ]]; then
 	lengthfilter_path="$run_path/$lengthfilter_base"
 fi
@@ -299,9 +294,13 @@ if [[ "$make_new_outfile" == "true" ]]; then
 		"Consensus" > "$outfile"
 fi
 
-if ! [[ -s "$stats_path/demux_count.txt" ]]; then
+if ! [[ -s "$demuxfile" ]]; then
 	echo_log "Pulling barcode demux stats"
-	tail -n+2 "$demux_path/barcoding_summary.txt" | cut -f2 | sort | uniq -c | sed 's/barcode/NB/' > "$demuxfile"
+	find "$demux_path" -mindepth 1 -maxdepth 1 -type d | sort | while read barcode; do
+		find "$barcode" -maxdepth 1 -name "*.fastq" | while read f; do
+			wc -l < "$f"
+		done | awk -v BARCODE=$(basename "$barcode") '{sum+=$0}END{printf("%s\t%s\n", sum/4, BARCODE)}' >> "$demuxfile"
+	done
 else
 	echo_log "Demux count already present - will not overwrite it"
 fi
@@ -371,16 +370,14 @@ while read barcode label; do
 	fi
 
 	mutations_outfile="$stats_path/mutations-$filebase.txt"
-	if ! [[ -s "$mutations_outfile" ]]; then
-		echo_log "  creating mutations file"
-		final_consensus=$(find "$postfilter_path" -name "*$barcode*.complete.fasta")
-		echo_log "    final consensus: $final_consensus"
-		if [[ -s "$final_consensus" ]]; then
-			"$bin_path/mutations.sh" \
-				$("$bin_path/fix_fasta.sh" "$reference" | tail -n1) \
-				$("$bin_path/fix_fasta.sh" "$final_consensus" | tail -n1) \
-				| tail -n+55 | head -n-67 > "$mutations_outfile"
-		fi
+	echo_log "  creating mutations file"
+	final_consensus=$(find "$postfilter_path" -name "*$barcode*.complete.fasta")
+	echo_log "    final consensus: $final_consensus"
+	if [[ -s "$final_consensus" ]]; then
+		"$bin_path/mutations.sh" \
+			$("$bin_path/fix_fasta.sh" "$reference" | tail -n1) \
+			$("$bin_path/fix_fasta.sh" "$final_consensus" | tail -n1) \
+			| tail -n+55 | head -n-67 > "$mutations_outfile"
 	fi
 
 	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.nanopolish.primertrimmed.rg.sorted.bam")
@@ -445,7 +442,7 @@ find "$draftconsensus_path" -name "*.nanopolish.primertrimmed.rg.sorted.depth" -
 done > "${depthfile/-all/-trim-all}"
 
 echo_log "Identifying mutations"
-rm "$mutations_all"
+rm -f "$mutations_all"
 find "$stats_path" -name "mutations-*.txt" ! -name "mutations-pos.txt" ! -name "mutations-all.txt" ! -name "mutations-table.txt" | while read fn; do
 	base=$(basename "${fn%.txt}")
 	base="${base#mutations-}"
@@ -485,8 +482,7 @@ awk '{
 #===================================================================================================
 
 report_pdf.sh \
-	-i "$run_path" \
-	-o "$stats_path/$(basename $run_path)-report.pdf"
+	-i "$run_path"
 
 #---------------------------------------------------------------------------------------------------
 

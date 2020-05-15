@@ -114,6 +114,7 @@ if ! [[ -d "$bin_path" ]]; then
 	usage
 	exit
 fi
+
 vcfigv_repo_path="$bin_path/../../vcfigv"
 if ! [[ -d "$vcfigv_repo_path" ]]; then
 	echo -e "${RED}Error: vcfigv repository ${CYAN}$vcfigv_repo_path${RED} does not exist.${NC}"
@@ -132,11 +133,6 @@ if [[ -z "$demux_path" ]]; then
 fi
 if ! [[ -d "$demux_path" ]]; then
 	echo -e "${RED}Error: demux path ${CYAN}$demux_path${RED} does not exist.${NC}"
-	usage
-	exit
-fi
-if ! [[ -s "$demux_path/barcoding_summary.txt" ]]; then
-	echo -e "${RED}Error: demux summary ${CYAN}$demux_path/barcoding_summary.txt${RED} does not exist.${NC}"
 	usage
 	exit
 fi

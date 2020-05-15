@@ -1,7 +1,6 @@
 #!/bin/bash
 source /home/idies/workspace/covid19/bashrc
 conda activate artic-ncov2019-medaka
-
 #---------------------------------------------------------------------------------------------------
 
 # set default values here
@@ -40,7 +39,7 @@ do
 	case $OPTION in
 		h) usage; exit 1 ;;
 		i) fastq=$OPTARG ;;
-        t) threads=$OPTARG ;;
+	        t) threads=$OPTARG ;;
 		?) usage; exit ;;
 	esac
 done
@@ -107,12 +106,17 @@ norm_parameters="coverage_threshold=150 --qual_sort --even_strand"
 # log file
 logfile=$(dirname "${normalize_dir}")/logs/module3-"${base}"-$(date +"%F-%H%M%S").log
 
+#git hash
+GIT_DIR="$(dirname $(readlink -f $(which $(basename $0))))/../.git"
+export GIT_DIR
+hash=$(git rev-parse --short HEAD)
+
 
 #===================================================================================================
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -s "${fastq}" ];then
+if [ ! -d "${sequencing_run}" ];then
     >&2 echo_log "Error Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
@@ -138,6 +142,7 @@ if [ ! -f "${gather_dir}/module2-${base}.complete" ];then
 else
     mkdir -p "${normalize_dir}"
     mkdir -p $(dirname "${normalize_dir}")/logs
+    conda env export > "${logfile%.log}-env.yml"
 fi
 
 # check for existence of a module 3 output "complete" files.  will not overwrite previous processing.
@@ -153,8 +158,8 @@ fi
 #===================================================================================================
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
-
-echo_log "SAMPLE ${base}:  sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "SAMPLE ${base}: timplab/ncov git hash: ${hash}"
+echo_log "SAMPLE ${base}: sequencing run folder: ${CYAN}$sequencing_run${NC}"
 echo_log "SAMPLE ${base}: recording software version numbers"
 echo_log "SAMPLE ${base}: Coverage Normalization from: https://github.com/mkirsche/CoverageNormalization"
 echo_log "SAMPLE ${base}: Coverage Normalization parameters: $norm_parameters"
@@ -184,17 +189,17 @@ minimap2 -a \
 	"$reference" \
 	"$fastq" > "$align_out" 2>> "$logfile"
 
-samtools sort "$align_ou"t > "${align_out%.sam}.bam" 2>> "$logfile"
+samtools sort "$align_out" > "${align_out%.sam}.bam" 2>> "$logfile"
 samtools depth -a -d 0 "${align_out%.sam}.bam" > "${align_out%.sam}.depth" 2>> "$logfile"
 
 # normalization, txt file output went to working directory
 out_sam="${align_out%.sam}.covfiltered.sam"
 
-"$JAVA_PATH/java" \
+"$JAVA_PATH"/java \
 	-cp "$NormalizeCoveragePath/src" \
 	NormalizeCoverage \
 	input="$align_out" \
-	"$norm_parameters" 2>> "$logfile"
+	$norm_parameters 2>> "$logfile"
 
 # fastq conversion
 samtools fastq "${out_sam}" > "${out_sam%.sam}.fq" 2>> "$logfile"

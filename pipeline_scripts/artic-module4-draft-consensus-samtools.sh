@@ -1,7 +1,6 @@
 #!/bin/bash
 source /home/idies/workspace/covid19/bashrc
 conda activate artic-ncov2019-medaka
-
 #---------------------------------------------------------------------------------------------------
 
 # set default values here
@@ -28,17 +27,21 @@ usage() {
         echo -e "OPTIONS:"
         echo -e "   -h      show this message"
         echo -e "   -i      /full/path/to/normalizd_sample.fq"
+        echo -e "   -b      /full/path/to/illumina/sample.bam (Default = 'None')"
         echo -e ""
 }
 
 #---------------------------------------------------------------------------------------------------
+illumina_bam="None"
+#---------------------------------------------------------------------------------------------------
 
 # parse input arguments
-while getopts "hi:" OPTION
+while getopts "hi:b:" OPTION
 do
        case $OPTION in
                 h) usage; exit 1 ;;
                 i) normalized_fastq=$OPTARG ;;
+                b) illumina_bam=$OPTARG ;;
                 ?) usage; exit ;;
        esac
 done
@@ -99,6 +102,11 @@ filelist="${consensus_dir}/${samplename}.filelist.txt"
 # log file
 logfile="${consensus_dir}"/logs/module4-samtools-$(basename "${normalized_fastq%.covfiltered.fq}")-$(date +"%F-%H%M%S").log
 
+#git hash
+GIT_DIR="$(dirname $(readlink -f $(which $(basename $0))))/../.git"
+export GIT_DIR
+hash=$(git rev-parse --short HEAD)
+
 #===================================================================================================
 # QUALITY CHECKING
 #===================================================================================================
@@ -136,11 +144,12 @@ if [ ! -f "${input_nanopolish_vcf}" ];then
 elif [ ! -f "${input_nanopolish_bamfile}" ];then
     >&2 echo "Error: Nanopolish output bam file ${input_nanopolish_bamfile} does not exist"
     exit 1
-elif [ ! -f "${input_medaka_vcf_zip}" ];then
-    >&2 echo "Error: Medaka output vcf file ${input_medaka_vcf_zip} does not exist"
+elif [[ ! -f "${input_medaka_vcf_zip}" ]] && [[ ! -f "${input_medaka_vcf}" ]];then
+    >&2 echo "Error: Medaka output vcf file ${input_medaka_vcf} or its zip do not exist"
     exit 1
 else
     mkdir -p "${consensus_dir}/logs"
+    conda env export > "${logfile%.log}-env.yml"
 fi
 
  
@@ -151,14 +160,15 @@ fi
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):------ Samtools / Merge Paramters:"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):sequencing run folder: ${CYAN}$sequencing_run${NC}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):recording software version numbers..."
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):Software version: $(samtools --version)"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):Reference fasta: ${reference}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):input fasta file: ${normalized_fastq}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):input vcfs: ${input_nanopolish_vcf}, ${input_medaka_vcf_zip}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):iput bam file: ${input_nanopolish_bamfile}"
-echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):output consensus directory: ${consensus_dir}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): timplab/ncov git hash: ${hash}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): recording software version numbers..."
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Software version: $(samtools --version)"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Reference fasta: ${reference}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): input fasta file: ${normalized_fastq}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): input vcfs: ${input_nanopolish_vcf}, ${input_medaka_vcf_zip}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): iput bam file: ${input_nanopolish_bamfile}"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): output consensus directory: ${consensus_dir}"
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):------ processing Samtools/Merge ------"
 
 #---------------------------------------------------------------------------------------------------
@@ -176,7 +186,7 @@ pileup_file="${mpileup}" \
 out_file="${allelefreqcalls}" 2>> "${logfile}"
 
 echo_log "Starting Module 4 Merging and Allele Frequencies on \
-    ${input_nanopolish_vcf}, ${input_medaka_vcf}, ${mpileup}"
+    ${input_nanopolish_vcf}, ${input_medaka_vcf}, ${allelefreqcalls}"
 
 # Run merging and allele frequency counts
 if [ ! -r "${input_medaka_vcf}" ]; then
@@ -184,27 +194,13 @@ if [ ! -r "${input_medaka_vcf}" ]; then
     gunzip -c "${input_medaka_vcf_zip}" > "${input_medaka_vcf}" 2>> "${logfile}"
 fi
 
-vcfs="${input_nanopolish_vcf},${input_medaka_vcf}"
 
-# Print out vcf filenames with absolute paths to filelist
-vcfarray=$(echo "${vcfs}" | tr "," "\n")
-
-# Output vcf filenames to a list
-if [ -r "${filelist}" ]
-then
-  rm "${filelist}"
-fi
-touch "${filelist}"
-for vcf in "${vcfarray}"
-do
-    readlink -f "${vcf}" >> "${filelist}" 2>> "${logfile}"
-done
-readlink -f "${allelefreqcalls}" >> "${filelist}" 2>> "${logfile}"
+filelist=$(printf "${input_nanopolish_vcf}\n${input_medaka_vcf}\n${allelefreqcalls}")
 
 # Run merging
 "$JAVA_PATH/java" \
 -cp "${VariantValidatorPath}/src" MergeVariants \
-illumina_bam=None \
+illumina_bam="${illumina_bam}" \
 file_list="${filelist}" \
 out_file="${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf" 2>> "${logfile}"
 
@@ -239,5 +235,6 @@ done < "${manifest}"
 
 if [[ "${module4_complete_flag}" == "TRUE" ]]; then
 	echo_log "Submitting Module 5 job for ${sequencing_run}."
+	conda activate jhu-ncov
 	submit_sciserver_ont_job.py -m 5 -i "$sequencing_run"
 fi

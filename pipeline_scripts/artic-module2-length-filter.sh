@@ -84,6 +84,10 @@ gather_dir="${sequencing_run}/artic-pipeline/2-length-filter"
 # log file
 logfile="${gather_dir}"/logs/module2-"${name}"-$(date +"%F-%H%M%S").log
 
+#git hash
+GIT_DIR="$(dirname $(readlink -f $(which $(basename $0))))/../.git"
+export GIT_DIR
+hash=$(git rev-parse --short HEAD)
 
 #===================================================================================================
 # QUALITY CHECKING
@@ -119,6 +123,7 @@ if [ ! -f "${sequencing_run}/artic-pipeline/1-barcode-demux/1-barcode-demux.comp
     exit 1
 else
     mkdir -p "$gather_dir/logs"
+    conda env export > "${logfile%.log}-env.yml"
 fi
 
 # check for existence of a module 2 ouput directory.  will not overwrite previously processing
@@ -134,7 +139,7 @@ fi
 #===================================================================================================
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
-
+echo_log "SAMPLE: ${name}: timplab/ncov git hash: ${hash}"
 echo_log "SAMPLE: ${name}: sequencing run folder: ${CYAN}$sequencing_run${NC}"
 echo_log "SAMPLE: ${name}: Software version and inputs:"
 echo_log "SAMPLE: ${name}: Artic guppyplex from: $(artic --version)"

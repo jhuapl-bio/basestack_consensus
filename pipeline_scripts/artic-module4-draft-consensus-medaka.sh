@@ -97,6 +97,11 @@ logfile="${consensus_dir}"/logs/module4-medaka-$(basename "${normalized_fastq%.c
 # Optional program parameters
 out_prefix="$consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}.medaka)"
 
+#git hash
+GIT_DIR="$(dirname $(readlink -f $(which $(basename $0))))/../.git"
+export GIT_DIR
+hash=$(git rev-parse --short HEAD)
+
 #===================================================================================================
 # QUALITY CHECKING
 #===================================================================================================
@@ -134,9 +139,10 @@ if [ ! -f "${sequencing_run}"/artic-pipeline/3-normalization/module3-$(basename 
     exit 1
 else
     mkdir -p "${consensus_dir}/logs"
+    conda env export > "${logfile%.log}-env.yml"
 fi
 
-if [ -s "$consensus_dir"/$(basename "${normalized_fastq%.covfiltered.fq"}).medaka.merged.vcf ];then
+if [ -s "$consensus_dir"/$(basename "${normalized_fastq%.covfiltered.fq}").medaka.merged.vcf ];then
     >&2 echo "Error: Medaka VCF already exsists for this sample: $consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}).medaka.merged.vcf"
     >&2 echo "    Archive all previous medaka processing before rerunning."
     exit 1
@@ -154,6 +160,7 @@ fi
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): ------ Medaka Paramters:"
+echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): timplab/ncov git hash: ${hash}"
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): sequencing run folder: ${CYAN}$sequencing_run${NC}"
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): recording software version numbers..."
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Software version: $(medaka --version)"
