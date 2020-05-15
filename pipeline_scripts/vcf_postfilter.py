@@ -125,9 +125,9 @@ def add_key_ambiguous_positions(chrom,variants,cons,depth_threshold,vcf_nextstra
     # read in the nextstrain vcf as a dataframe
     # note: the header is hard-coded and will need to be updated if the header is altered
     ns_snps = pd.read_csv(vcf_nextstrain,sep='\t',skiprows=3)
-    ns_snps = ns_snps[['POS','REF','CONF_FLAG']]
+    ns_snps = ns_snps[['POS','REF','CLADE_FLAG']]
     
-    key_snps = ns_snps[ns_snps['CONF_FLAG']=='YES']
+    key_snps = ns_snps[ns_snps['CLADE_FLAG']=='YES']
     key_snps = list(key_snps.POS.values)
     
     # load mpileup file to get depth at this position
