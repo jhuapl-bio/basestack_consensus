@@ -14,7 +14,9 @@ RUN=$1
 DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus"
 
 REF="/home/idies/workspace/covid19/ncov_reference/sequence.fasta"
-OUTDIR="/home/idies/workspace/covid19/curation/*$RUN/bams/illumina"
+OUTDIR="/home/idies/workspace/covid19/curation/*$RUN/bams"
+OUTDIR=`echo $OUTDIR`
+OUTDIR=$OUTDIR/illumina
 if [ ! -d $OUTDIR ]
 then
     mkdir $OUTDIR
