@@ -1,5 +1,8 @@
 #!/bin/bash
 
+source /home/idies/workspace/covid19/bashrc
+conda activate jhu-ncov
+
 #---------------------------------------------------------------------------------------------------
 
 # define colors for error messages
