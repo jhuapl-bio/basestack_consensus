@@ -106,7 +106,8 @@ manifest <- read.table(paste0(run_path,"/manifest.txt"))
 amplicons <- read.table(paste0(run_path,"/../amplicons"), sep="\t", header=TRUE)
 problematic_sites <- read.table(paste0(run_path,"/../problematic_sites_sarsCov2.txt"), sep="\t", header=TRUE)
 genome_ref <- fromJSON(file=paste0(protocol_path, "/genome.json"))
-important_positions <- read.table(paste0(nextstrain_path,"/latest/alpha/clade_related_snps.txt"), sep="\t", header=TRUE, comment.char="")
+important_positions <- read.table(paste0(nextstrain_path,"/latest/alpha/clade_related_snps.txt"), sep="\t", header=TRUE)
+common_positions <- read.table(paste0(nextstrain_path,"/latest/alpha/alignments.vcf"), sep="\t")
 if(length(list.files(run_path, "throughput*", full.names=TRUE)) > 0) {
 	throughput <- read_csv(list.files(run_path, "throughput*", full.names=TRUE))
 } else {
@@ -581,7 +582,7 @@ genome_cartoon_overview <- function(mutation_subset) {
   rename_sel <- snpeff_subset$ANN %in% c("synonymous_variant")
   labels[SNP %in% snpeff_subset$POS][rename_sel] <- paste0(snpeff_subset$GENE, ": ", snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)[rename_sel]
   colors <- rep("white", length(SNP))
-  colors[SNP %in% snpeff_subset$POS] <- annotation_colors$SnpEff[as.character(snpeff_subset$ANN)]
+  colors <- replace(colors, (SNP %in% snpeff_subset$POS), annotation_colors$SnpEff[as.character(snpeff_subset$ANN)])
 
   sample.gr <- GRanges("MN908947.3", IRanges(SNP, width=1, names=labels))
   sample.gr$shape <- rep("triangle_point_down", length(sample.gr), replace=TRUE)
@@ -661,13 +662,22 @@ genome_cartoons <- function(mutation_subset) {
     snpeff_subset <- subset(snpeff_report, snpeff_report$POS %in% SNP)
     
     labels <- mutation_subset[which(nchar(mutation_subset[,i])>0),i]
-    labels[SNP %in% snpeff_subset$POS] <- paste(as.character(snpeff_subset$GENE), as.character(snpeff_subset$AA_MUT), sep=": ")
-    rename_sel <- snpeff_subset$ANN %in% c("upstream_gene_variant","downstream_gene_variant")
-    labels[SNP %in% snpeff_subset$POS][rename_sel] <- paste0(snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)[rename_sel]
-    rename_sel <- snpeff_subset$ANN %in% c("synonymous_variant")
-    labels[SNP %in% snpeff_subset$POS][rename_sel] <- paste0(snpeff_subset$GENE, ": ", snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)[rename_sel]
+    REF <- sapply(labels, substr, 1, 1)
+    ALT <- sapply(labels, function(s){return(substr(s, nchar(s), nchar(s)))})
+    snpeff_labels <- paste0(snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)
+    
+    labels_sel <- labels %in% snpeff_labels
+    snpeff_labels_sel <- snpeff_labels %in% labels
+
+    labels[labels_sel] <- paste(as.character(snpeff_subset$GENE), as.character(snpeff_subset$AA_MUT), sep=": ")[snpeff_labels_sel]
+
+    rename_sel <- snpeff_subset$ANN[snpeff_labels_sel] %in% c("upstream_gene_variant","downstream_gene_variant")
+    labels[labels_sel] <- replace(labels[labels_sel], rename_sel, snpeff_labels[snpeff_labels_sel][rename_sel])
+    rename_sel <- snpeff_subset$ANN[snpeff_labels_sel] %in% c("synonymous_variant")
+    labels[labels_sel] <- replace(labels[labels_sel], rename_sel, paste0(snpeff_subset$GENE, ": ", snpeff_labels)[snpeff_labels_sel][rename_sel])
+
     colors <- rep("white", length(SNP))
-    colors[SNP %in% snpeff_subset$POS] <- annotation_colors$SnpEff[as.character(snpeff_subset$ANN)]
+    colors <- replace(colors, labels_sel, annotation_colors$SnpEff[as.character(snpeff_subset$ANN)][snpeff_labels_sel])
 
     sample.gr <- GRanges("MN908947.3", IRanges(SNP, width=1, names=labels))
     sample.gr$shape <- rep("triangle_point_down", length(sample.gr), replace=TRUE)
