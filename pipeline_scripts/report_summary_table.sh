@@ -280,22 +280,14 @@ echo_log "  depth file: ${CYAN}${depthfile#$run_path}${NC}"
 echo_log "  mutation file: ${CYAN}${mutations_table#$run_path}${NC}"
 echo_log "------ processing pipeline output ------"
 
-if ! [[ -s "$outfile" ]]; then
-	make_new_outfile="true"
-else
-	echo_log "Summary file already present - will not overwrite it"
-	make_new_outfile="false"
-fi
-if [[ "$make_new_outfile" == "true" ]]; then
-	printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
-		"Sample" \
-		"Barcode" \
-		"Raw Reads" \
-		"Length filter" \
-		"SARS-CoV-2 Aligned" \
-		"Coverage" \
-		"Consensus" > "$outfile"
-fi
+printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+	"Sample" \
+	"Barcode" \
+	"Raw Reads" \
+	"Length filter" \
+	"SARS-CoV-2 Aligned" \
+	"Coverage" \
+	"Consensus" > "$outfile"
 
 if ! [[ -s "$demuxfile" ]]; then
 	echo_log "Pulling barcode demux stats"
@@ -315,50 +307,47 @@ while read barcode label; do
 
 	filebase="${label}_${barcode}"
 
-	if [[ "$make_new_outfile" == "true" ]]; then
+	demux_reads=$(grep "$barcode" "$stats_path/demux_count.txt" | cut -f1)
+	gather=$(find "$lengthfilter_path" -name "*$barcode.fastq")
 
-		demux_reads=$(grep "$barcode" "$stats_path/demux_count.txt" | cut -f1)
-		gather=$(find "$lengthfilter_path" -name "*$barcode.fastq")
-
-		if [[ -s "$gather" ]]; then
-			length_filter=$(($(wc -l < "$gather") / 4))
-		else
-			length_filter=0
-		fi
-		alignment=$(find "$normalize_path" -name "*$barcode.bam")
-		if [[ -s "$gather" ]]; then
-			aligned_reads=$(samtools view "$alignment" | wc -l)
-		else
-			aligned_reads=0
-		fi
-		normalized_alignment=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.sorted.bam" ! -name "*trimmed*")
-		normalized_reads=$(samtools idxstats "$normalized_alignment" | grep "$ref_header" | cut -f3)
-		draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.consensus.fasta")
-		consensus_length=$(($ref_length - $(tail -n+2 "$draft_consensus" | grep -o N | wc -l)))
-		post_filter=$(find "$postfilter_path" -name "*$barcode*.variant_data.txt")
-
-		echo_log "    FASTQ file: $gather"
-		echo_log "      number of reads: $length_filter"
-		echo_log "    full alignment: $alignment"
-		echo_log "      aligned reads: $aligned_reads"
-		echo_log "    normalized alignment: $normalized_alignment"
-		echo_log "      normalized reads: $normalized_reads"
-		echo_log "    draft consensus: $draft_consensus"
-		echo_log "      unambiguous consensus: $consensus_length"
-		echo_log "    variant file: $post_filter"
-
-		echo_log "  adding line to summary file"
-		flag=$(grep "^$label" "$postfilt_summary" | cut -d$'\t' -f7)
-		printf "%s\t%s\t%'d\t%'d\t%'d\t%'d (%s %%)\t%s\n" \
-			"$label" \
-			"$barcode" \
-			"$demux_reads" \
-			"$length_filter" \
-			"$aligned_reads" \
-			"$consensus_length" \
-			$(echo "$consensus_length" | awk -v L="$ref_length" '{printf("%0.1f", (100*$1/L))}') \
-			"$flag" >> "$outfile"
+	if [[ -s "$gather" ]]; then
+		length_filter=$(($(wc -l < "$gather") / 4))
+	else
+		length_filter=0
 	fi
+	alignment=$(find "$normalize_path" -name "*$barcode.bam")
+	if [[ -s "$gather" ]]; then
+		aligned_reads=$(samtools view "$alignment" | wc -l)
+	else
+		aligned_reads=0
+	fi
+	normalized_alignment=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.sorted.bam" ! -name "*trimmed*")
+	normalized_reads=$(samtools idxstats "$normalized_alignment" | grep "$ref_header" | cut -f3)
+	draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.consensus.fasta")
+	consensus_length=$(($ref_length - $(tail -n+2 "$draft_consensus" | grep -o N | wc -l)))
+	post_filter=$(find "$postfilter_path" -name "*$barcode*.variant_data.txt")
+
+	echo_log "    FASTQ file: $gather"
+	echo_log "      number of reads: $length_filter"
+	echo_log "    full alignment: $alignment"
+	echo_log "      aligned reads: $aligned_reads"
+	echo_log "    normalized alignment: $normalized_alignment"
+	echo_log "      normalized reads: $normalized_reads"
+	echo_log "    draft consensus: $draft_consensus"
+	echo_log "      unambiguous consensus: $consensus_length"
+	echo_log "    variant file: $post_filter"
+
+	echo_log "  adding line to summary file"
+	flag=$(grep "^$label" "$postfilt_summary" | cut -d$'\t' -f7)
+	printf "%s\t%s\t%'d\t%'d\t%'d\t%'d (%s %%)\t%s\n" \
+		"$label" \
+		"$barcode" \
+		"$demux_reads" \
+		"$length_filter" \
+		"$aligned_reads" \
+		"$consensus_length" \
+		$(echo "$consensus_length" | awk -v L="$ref_length" '{printf("%0.1f", (100*$1/L))}') \
+		"$flag" >> "$outfile"
 
 	depth_outfile="$normalize_path/$filebase/$filebase.depth"
 	if ! [[ -s "$depth_outfile" ]]; then
@@ -422,9 +411,7 @@ while read barcode label; do
 
 done < "$manifest"
 
-if [[ "$make_new_outfile" == "true" ]]; then
-	printf "\tuncalled\t%'d\tNA\tNA\tNA\tNA\n" $(grep unclassified "$stats_path/demux_count.txt" | cut -f1) >> "$outfile"
-fi
+printf "\tuncalled\t%'d\tNA\tNA\tNA\tNA\n" $(grep unclassified "$stats_path/demux_count.txt" | cut -f1) >> "$outfile"
 
 echo_log "Calculating depth"
 find "$normalize_path" -name "*.depth" ! -name "*covfiltered.depth" -print0 | while read -d $'\0' f; do
@@ -484,7 +471,7 @@ awk '{
 # BUILD MARKDOWN FILE
 #===================================================================================================
 
-report_pdf.sh \
+/home/idies/workspace/covid19/code/ncov/pipeline_scripts/report_pdf.sh \
 	-i "$run_path"
 
 #---------------------------------------------------------------------------------------------------
