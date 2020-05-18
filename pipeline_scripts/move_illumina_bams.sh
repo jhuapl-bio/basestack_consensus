@@ -5,8 +5,6 @@ else
     BINDIR=$(dirname "$(readlink "$0" || echo "$(echo "$0" | sed -e 's,\\,/,g')")")
 fi
 
-javac $BINDIR/VariantValidator/src/*.java
-
 # specify a sequencing run directory
 RUN=$1
 
