@@ -250,6 +250,8 @@ def get_illumina_support(illumina_AF,supp_vec,maf_flag):
     if pd.isna(mismatch):
         if illumina_AF>thresh:
             return('yes')
+        elif illumina_AF<(1-thresh):
+            return('no')
         else:
             return('mixed')
     
