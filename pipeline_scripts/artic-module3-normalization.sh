@@ -215,7 +215,7 @@ samtools depth -a -d 0 "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth" 2>> "$log
 # QUALITY CHECKING AND MODULE 4 JOB SUBMISSION
 #===================================================================================================
 
-if [ ! -s "${out_sam%.sam}.fq" ]; then
+if [ ! -f "${out_sam%.sam}.fq" ]; then
     >&2 echo_log "SAMPLE ${base}: Error: Module 3 output ${out_sam%.sam}.fq not found"
     exit 1
 else
