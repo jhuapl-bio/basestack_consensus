@@ -52,8 +52,8 @@ for bamfile in `ls $DIR/*.nanopolish.primertrimmed.rg.sorted.bam`; do
         OUTPATH=$OUTDIR/$samplewithbarcode.illumina.bam
 	if [ ! -r $OUTPATH ]
         then
-	    ln -s $illuminabam $OUTPATH
-	    ln -s $illuminabam'.bai' $OUTPATH'.bai'
+	    cp $illuminabam $OUTPATH
+	    cp $illuminabam'.bai' $OUTPATH'.bai'
         fi
     fi
 done

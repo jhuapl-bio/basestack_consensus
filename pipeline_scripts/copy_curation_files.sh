@@ -36,6 +36,6 @@ cp $postfilt $DIR/$prefix-$RUN-variants.txt
 for bamfile in `ls $bamdir/*nanopolish.primertrimmed.rg.sorted.ba*`; do
 	bamname=${bamfile##*/}
 	if [ ! -f $DIR/bams/ont/$bamname ]; then
-		ln -s $bamfile $DIR/bams/ont/$bamname
+		cp $bamfile $DIR/bams/ont/$bamname
 	fi
 done
