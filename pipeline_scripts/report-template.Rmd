@@ -68,6 +68,7 @@ library(Gviz, quietly=TRUE)
 library(rtracklayer, quietly=TRUE)
 library(trackViewer, quietly=TRUE)
 library(rjson, quietly=TRUE)
+library(vcfR, quietly=TRUE)
 ```
 
 ```{r, load-files, echo=FALSE, message=FALSE, warning=FALSE}
@@ -104,10 +105,10 @@ shapes <- list( # from: https://en.wikipedia.org/wiki/Geometric_Shapes
 run_config <- read.table(paste0(run_path,"/run_config.txt"))
 manifest <- read.table(paste0(run_path,"/manifest.txt"))
 amplicons <- read.table(paste0(run_path,"/../amplicons"), sep="\t", header=TRUE)
-problematic_sites <- read.table(paste0(run_path,"/../problematic_sites_sarsCov2.txt"), sep="\t", header=TRUE)
+problematic_sites <- read.vcfR(paste0(run_path,"/../problematic_sites_sarsCov2.vcf"), verbose = FALSE, skip=24)
 genome_ref <- fromJSON(file=paste0(protocol_path, "/genome.json"))
-important_positions <- read.table(paste0(nextstrain_path,"/latest/alpha/clade_related_snps.txt"), sep="\t", header=TRUE)
-common_positions <- read.table(paste0(nextstrain_path,"/latest/alpha/alignments.vcf"), sep="\t")
+important_positions <- read.table(paste0(nextstrain_path,"/latest/alpha/clade_related_snps.txt"), sep="\t", header=TRUE, comment.char="")
+common_positions <- read.vcfR(paste0(nextstrain_path,"/latest/alpha/alignments.vcf"), verbose = FALSE, skip=3)
 if(length(list.files(run_path, "throughput*", full.names=TRUE)) > 0) {
 	throughput <- read_csv(list.files(run_path, "throughput*", full.names=TRUE))
 } else {
@@ -315,16 +316,16 @@ annotation_sample$Flag <- factor(annotation_sample$Flag, levels = c("Yes", "Yes*
 snpeff_annotations <- rep("none", length(combined_rows))
 snpeff_options <- snpeff_report[snpeff_report$POS %in% combined_rows, c(2,6)]
 snpeff_annotations[combined_rows %in% snpeff_report$POS] <- as.character(unique(snpeff_options)[,2])
-annotation_snp <- data.frame(common.SNP = combined_rows %in% important_positions$POS, SnpEff = snpeff_annotations)
+annotation_snp <- data.frame(SnpEff = snpeff_annotations, clade.defining = factor(combined_rows %in% common_positions@fix[,2][common_positions@gt[,5]=="YES"]), common.snp = factor(combined_rows %in% common_positions@fix[,2][common_positions@gt[,6]=="YES"]))
 rownames(annotation_snp) <- combined_rows
-annotation_snp$common.SNP <- factor(annotation_snp$common.SNP)
-levels(annotation_snp$common.SNP) = c("other", "common")
+levels(annotation_snp$clade.defining) = c("no", "yes")
+levels(annotation_snp$common.snp) = c("no", "yes")
 annotation_snp$SnpEff <- factor(snpeff_annotations, levels = c(levels(snpeff_report$ANN), "none"))
 
 # create color object for annotations
 cols <- brewer.pal(n=6, name="Dark2")
 snpeff_colors <- c("downstream_gene_variant" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "upstream_gene_variant" = cols[5], "stop_gained" = cols[4], "start_lost" = cols[6], "none" = "white")
-annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]], common.SNP = c("common"="#000000", "other"="#FFFFFF"), Variants = c("#FFFFFF", "gray30", "gray70"), SnpEff = snpeff_colors)
+annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]], clade.defining = c("yes"="#000000", "no"="#FFFFFF"), common.snp = c("yes"="#000000", "no"="#FFFFFF"), Variants = c("#FFFFFF", "gray30", "gray70"), SnpEff = snpeff_colors)
 
 #-------------------------------------------------
 ```
