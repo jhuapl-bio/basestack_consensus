@@ -1,0 +1,25 @@
+#!/bin/bash
+
+scheme="$1"
+
+awk -F $'\t' 'BEGIN{
+	printf "amplicon\tprimer_start_f\tprimer_stop_funique_start\tunique_stop\tprimer_start_r\tprimer_stop_r\n"
+} {
+	n = split($4, a, "_");
+	amplicon = a[2];
+	pool = $5;
+	q_start = primer_start[amplicon][a[3]];
+	q_stop = primer_stop[amplicon][a[3]];
+	primer_start[amplicon][a[3]] = (q_start ? (q_start < $2 ? q_start : $2) : $2);
+	primer_stop[amplicon][a[3]] = (q_stop ? (q_stop > $3 ? q_stop : $3) : $3);
+} END {
+	for(amplicon in primer_start) {
+		start_f = primer_start[amplicon]["LEFT"];
+		stop_f = primer_stop[amplicon]["LEFT"];
+		unique_start = (primer_start[amplicon-1]["RIGHT"] ? primer_start[amplicon-1]["RIGHT"]+1 : primer_stop[amplicon]["LEFT"]+1);
+		unique_stop = (primer_start[amplicon+1]["LEFT"] ? primer_start[amplicon+1]["LEFT"]-1 : primer_start[amplicon]["RIGHT"]-1);
+		start_r = primer_start[amplicon]["RIGHT"];
+		stop_r = primer_stop[amplicon]["RIGHT"];
+		printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\n", amplicon, start_f, stop_f, unique_start, unique_stop, start_r, stop_r);
+	}
+}' "$1"
