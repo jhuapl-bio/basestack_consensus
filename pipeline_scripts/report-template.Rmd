@@ -69,6 +69,7 @@ library(rtracklayer, quietly=TRUE)
 library(trackViewer, quietly=TRUE)
 library(rjson, quietly=TRUE)
 library(vcfR, quietly=TRUE)
+library(reshape2, quietly=TRUE)
 ```
 
 ```{r, load-files, echo=FALSE, message=FALSE, warning=FALSE}
@@ -92,13 +93,6 @@ flagColorsTeX <- c("Yes" = "\\textcolor{myDarkGreen}", "Yes*" = "\\textcolor{myL
   }
   return(l)
 }
-
-shapes <- list( # from: https://en.wikipedia.org/wiki/Geometric_Shapes
-  squares = c("⬛","⬜","⬒","⬓","◧","◨","◩","◪","▣","▤","▥"),
-  triangles = c("▲","△","◀","◁","▶","▷","▼","▽"),
-  circles = c("⬤","○","◌","◍","◎","◐","◑","◒","◓","◔","◕"),
-  diamonds = c("◆","◇","◈","◊")
-  )
 
 #-------------------------------------------------
 # run information
@@ -176,6 +170,8 @@ o2 <- order(postfilt$Sample)
 postfilt <- postfilt[o2,]
 o3 <- order(dimnames(mutation_full)[[1]])
 mutation_full <- mutation_full[o3,]
+snpeff_report <- unique(snpeff_report)
+snpeff_report <- snpeff_report[snpeff_report$POS != "POS",]
 o4 <- order(as.numeric(snpeff_report$POS))
 snpeff_report <- snpeff_report[o4,]
 rownames(snpeff_report) <- NULL
@@ -308,6 +304,7 @@ combined_cols <- postfilt_cols
 
 annotation_sample <- data.frame(Flag = flagList[!uncalled_row])
 rownames(annotation_sample) <- sample_barcodes
+annotation_sample$lineage[!grepl("NTC", sample_barcodes, fixed=T)] <- as.matrix(clade_report$lineage)
 
 # re-order levels for legend display
 annotation_sample$Flag <- factor(annotation_sample$Flag, levels = c("Yes", "Yes*", "Maybe", "No"))
@@ -316,7 +313,13 @@ annotation_sample$Flag <- factor(annotation_sample$Flag, levels = c("Yes", "Yes*
 snpeff_annotations <- rep("none", length(combined_rows))
 snpeff_options <- snpeff_report[snpeff_report$POS %in% combined_rows, c(2,6)]
 snpeff_annotations[combined_rows %in% snpeff_report$POS] <- as.character(unique(snpeff_options)[,2])
-annotation_snp <- data.frame(SnpEff = snpeff_annotations, clade.defining = factor(combined_rows %in% common_positions@fix[,2][common_positions@gt[,5]=="YES"]), common.snp = factor(combined_rows %in% common_positions@fix[,2][common_positions@gt[,6]=="YES"]))
+annotation_snp <- data.frame(SnpEff = snpeff_annotations,
+                             clade.defining = factor(combined_rows %in% common_positions@fix[,2][common_positions@gt[,5]=="YES"]),
+                             common.snp = factor(combined_rows %in% common_positions@fix[,2][common_positions@gt[,6]=="YES"]))
+annotation_snp$problematic <- rep("", length(combined_rows))
+annotation_snp$problematic[combined_rows %in% problematic_sites@fix[,2]] <- problematic_sites@fix[problematic_sites@fix[,2] %in% combined_rows,7]
+annotation_snp$problematic <- factor(annotation_snp$problematic)
+
 rownames(annotation_snp) <- combined_rows
 levels(annotation_snp$clade.defining) = c("no", "yes")
 levels(annotation_snp$common.snp) = c("no", "yes")
@@ -325,7 +328,11 @@ annotation_snp$SnpEff <- factor(snpeff_annotations, levels = c(levels(snpeff_rep
 # create color object for annotations
 cols <- brewer.pal(n=6, name="Dark2")
 snpeff_colors <- c("downstream_gene_variant" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "upstream_gene_variant" = cols[5], "stop_gained" = cols[4], "start_lost" = cols[6], "none" = "white")
-annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]], clade.defining = c("yes"="#000000", "no"="#FFFFFF"), common.snp = c("yes"="#000000", "no"="#FFFFFF"), Variants = c("#FFFFFF", "gray30", "gray70"), SnpEff = snpeff_colors)
+annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]],
+                          clade.defining = c("yes"="#000000", "no"="#FFFFFF"),
+                          common.snp = c("yes"="#000000", "no"="#FFFFFF"),
+                          Variants = c("#FFFFFF", "gray30", "gray70"),
+                          SnpEff = snpeff_colors)
 
 #-------------------------------------------------
 ```
@@ -556,7 +563,7 @@ plot_homoplasy_heatmap <- function() {
             annotation_row=subset(annotation_snp, snp_sel),
             annotation_colors=annotation_colors
             )
-    grid.text("Variant position (nucleotide)", x=0.83, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
+    grid.text("Variant position (nucleotide)", x=unit(ncol(plot_matrix), "npc"), y=unit(0, "npc"), just="right", rot=-90, gp=gpar(col="black", fontsize=12))
   }
 }
 #-------------------------------------------------
@@ -802,60 +809,35 @@ plot_flag_matrix <- function() {
           annotation_colors=annotation_colors
           )
   
-  maf_matrix <- postfilt_all %>% pivot_wider(id_cols=pos,
-                                             names_from=sample,
-                                             values_from=maf_flag,
-                                             values_fill=list(maf_flag="")
-                                            )
-  
-  new_matrix <- postfilt_all %>% pivot_wider(id_cols=pos,
-                                             names_from=sample,
-                                             values_from=new_flag,
-                                             values_fill=list(new_flag="")
-                                            )
-  
-  vc_matrix <- postfilt_all %>% pivot_wider(id_cols=pos,
-                                             names_from=sample,
-                                             values_from=vc_flag,
-                                             values_fill=list(vc_flag="")
-                                            )
-  
-  #ntc_matrix <- postfilt_all %>% pivot_wider(id_cols=pos,
-  #                                           names_from=sample,
-  #                                           values_from=ntc_flag,
-  #                                           values_fill=list(ntc_flag="")
-  #                                          )
-
-  maf_sel <- nchar(as.matrix(maf_matrix))[,-1]>0
-#  ntc_sel <- nchar(as.matrix(ntc_matrix))[,-1]>0
-  new_sel <- nchar(as.matrix(new_matrix))[,-1]>0
-  vc_sel_m <- as.matrix(vc_matrix)[,-1] == 'mismatch(m)'
-  vc_sel_s <- as.matrix(vc_matrix)[,-1] == 'mismatch(s)'
-  vc_sel_n <- as.matrix(vc_matrix)[,-1] == 'mismatch(n)'
-  vc_sel_ms <- as.matrix(vc_matrix)[,-1] == 'mismatch(m+s)'
-  vc_sel_mn <- as.matrix(vc_matrix)[,-1] == 'mismatch(m+n)'
-  vc_sel_ns <- as.matrix(vc_matrix)[,-1] == 'mismatch(n+s)'
+  flag_columns <- which(grepl("_flag", names(postfilt_all), fixed=TRUE))
+  flags <- list()
+  for(i in flag_columns) {
+    flag <- names(postfilt_all)[i]
+    name <- gsub("_flag", "", flag)
+    flags[[name]] <- dcast(postfilt_all, pos ~ sample, value.var = c(flag), fill=".")
+  }
 
   flag_matrix <- matrix(data="",
                         nrow=length(postfilt_rows),
                         ncol=length(postfilt_cols)
                       )
-  dimnames(flag_matrix)[[1]] <- maf_matrix$pos
-  dimnames(flag_matrix)[[2]] <- names(maf_matrix)[-1]
+  dimnames(flag_matrix)[[1]] <- flags[names(flags)[1]][[1]]$pos
+  dimnames(flag_matrix)[[2]] <- names(flags[names(flags)[1]][[1]])[-1]
 
-  # add minor allele frequency flag
-  flag_matrix[maf_sel] <- paste0(flag_matrix[maf_sel], shapes$squares[1])
-
-  # add new SNP flag
-  flag_matrix[new_sel] <- paste0(flag_matrix[new_sel], shapes$circles[2])
-
-  # add variant call flags
-  flag_matrix[vc_sel_s] <- paste0(flag_matrix[vc_sel_s], "s")
-  flag_matrix[vc_sel_m] <- paste0(flag_matrix[vc_sel_m], "m")
-  flag_matrix[vc_sel_n] <- paste0(flag_matrix[vc_sel_n], "n")
-  flag_matrix[vc_sel_ms] <- paste0(flag_matrix[vc_sel_ms], "ms")
-  flag_matrix[vc_sel_ns] <- paste0(flag_matrix[vc_sel_ns], "ns")
-  flag_matrix[vc_sel_mn] <- paste0(flag_matrix[vc_sel_n], "mn")
+  shapes <- list( # from: https://en.wikipedia.org/wiki/Geometric_Shapes
+  squares = c("⬛","⬜","⬒","⬓","◧","◨","◩","◪","▣","▤","▥"),
+  triangles = c("▲","△","◀","◁","▶","▷","▼","▽"),
+  circles = c("⬤","○","◌","◍","◎","◐","◑","◒","◓","◔","◕"),
+  diamonds = c("◆","◇","◈","◊"),
+  print = c("D", "◆", "m", "~", "▲", "⬜", "!", "○")
+  )
+  # add symbols for flags
+  for(i in 1:length(names(flags))) {
+    flag <- names(flags)[i]
+    symbol <- shapes$print[i]
+    sel <- as.matrix(flags[flag][[1]])[,-1] != "."
+    flag_matrix[sel] <- paste0(flag_matrix[sel], symbol)
+  }
 
   # create matrix for text displayed ordered by pheatmap clusters
   if("order" %in% names(h$tree_row)) {
@@ -880,13 +862,17 @@ plot_flag_matrix <- function() {
 #  text_matrix[row_sel, col_sel] <- flag_matrix[flag_row_order[row_order[row_sel]], flag_col_order[col_order[col_sel]]]
   text_matrix[row_sel, col_sel] <- flag_matrix[flag_row_order, flag_col_order]
 
-  x <- rep(seq(0.095, 0.6, length.out=dim(text_matrix)[2]), each=dim(text_matrix)[1])
-  y <- rep(seq(0.961, 0.129, length.out=dim(text_matrix)[1]), dim(text_matrix)[2])
+  g <- grid.get(grid.ls(grid.force())$name[3])
+  
+  x <- g$x
+  y <- g$y
   grid.text(text_matrix, x=x, y=y, gp=gpar(col="black", fontsize=5))
-
+  grid.text("Variant position (nucleotide)", x=0.85, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
 #  grid.text(paste(shapes$triangles[1:5], collapse=""), x=0.095, y=0.961, gp=gpar(col="black", fontsize=7))
 #  grid.text(paste(shapes$circles[3:7], collapse=""), x=0.58, y=0.131, gp=gpar(col="black", fontsize=7))
-  grid.text("Variant position (nucleotide)", x=0.85, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
+#  x <- rep(seq(0.095, 0.6, length.out=dim(text_matrix)[2]), each=dim(text_matrix)[1])
+#  y <- rep(seq(0.961, 0.129, length.out=dim(text_matrix)[1]), dim(text_matrix)[2])
+#  grid.text("Variant position (nucleotide)", x=0.85, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
 }
 #-------------------------------------------------
 print_igv_plot <- function(row, flag) {
@@ -941,7 +927,9 @@ pandoc.table(summary, split.cells = c(3,2,7,4,6,1,1), split.table = Inf,
              emphasize.rownames = FALSE, style="rmarkdown")
 ```
 
-**Consensus flags**: \textcolor{myDarkGreen}{Yes = Dark Green} = Passed genome threshold and no flags ; \textcolor{myLightGreen}{Yes* = Light Green} = light green = complete genome and MAF flags and/or mismatch with N-call only ; \textcolor{myYellow}{Maybe = Yellow} = Passed genome threshold with any other flag ; \textcolor{myRed}{No = Red} = Incomplete genome
+\textcolor{myRed}{No = Red} = Incomplete genome (<25k nucleotides)
+
+**Consensus flags**: \textcolor{myDarkGreen}{Yes = Dark Green} = Genome is okay for submission ; \textcolor{myLightGreen}{Yes* = Light Green} = light green = Easy modification is possibly needed ; \textcolor{myYellow}{Maybe = Yellow} = Something unexpected may be happening ; \textcolor{myRed}{No = Red} = Incomplete genome (<25k nt)
 
 (See section \ref{sec:flags} on page \pageref{sec:flags} for reasons for these flag calls. See section \ref{sec:pipeline_postfilter} on page \pageref{sec:pipeline_postfilter} for full flag definitions.)
 
@@ -1043,15 +1031,13 @@ if(sum(select_many) > 0) {
 \label{sec:flags}
 **Genome color key**:
 
-\textcolor{myDarkGreen}{Yes = Dark Green} = Passed genome threshold and no flags
+\textcolor{myDarkGreen}{Yes = Dark Green} = Genome is okay for submission
 
-\textcolor{myLightGreen}{Yes* = Light Green} = light green = complete genome and MAF flags and/or mismatch with N-call only
+\textcolor{myLightGreen}{Yes* = Light Green} = light green = Easy modification is possibly needed
 
-\textcolor{myYellow}{Maybe = Yellow} = Passed genome threshold with any other flag
+\textcolor{myYellow}{Maybe = Yellow} = Something unexpected may be happening
 
-\textcolor{myRed}{No = Red} = Incomplete genome
-
-**Flags**: MAF (Minor allele frequency > 0.15), new (present in < 2 GISAID sequences), mismatch (mismatches between variant callers where variant is present in nanopolish (n), medaka (m), and/or samtools(s))
+\textcolor{myRed}{No = Red} = Incomplete genome (<25k nt)
 
 ## Flags identified
 ```{r, flag-table, echo=FALSE}
@@ -1208,13 +1194,13 @@ python vcf_postfilter.py \
 
 ### Genome flag colors
 
-\textcolor{myDarkGreen}{Yes = Dark Green} = Passed genome threshold and no flags
+\textcolor{myDarkGreen}{Yes = Dark Green} = Genome is okay for submission
 
-\textcolor{myLightGreen}{Yes* = Light Green} = light green = complete genome and MAF flags and/or mismatch with N-call only
+\textcolor{myLightGreen}{Yes* = Light Green} = light green = Easy modification is possibly needed
 
-\textcolor{myYellow}{Maybe = Yellow} = Passed genome threshold with any other flag
+\textcolor{myYellow}{Maybe = Yellow} = Something unexpected may be happening
 
-\textcolor{myRed}{No = Red} = Incomplete genome
+\textcolor{myRed}{No = Red} = Incomplete genome (<25k nt)
 
 # Authors
 \label{sec:authors}
