@@ -38,6 +38,7 @@ dependencies:
   - r-magick
   - r-rjson
   - r-ggextra
+  - r-vcfr
   - bioconductor-gviz
   - bioconductor-rtracklayer
   - bioconductor-trackViewer
