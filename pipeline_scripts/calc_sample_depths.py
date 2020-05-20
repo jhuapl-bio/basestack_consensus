@@ -16,4 +16,4 @@ chrom = 'MN908947.3'
 df = pd.DataFrame({'chrom':chrom,'pos':pos,'depth':depths})
 
 # save data frame to tab separated file
-df.to_csv(outfile,sep='\t',index=False)
+df.to_csv(outfile,sep='\t',index=False,header=False)
