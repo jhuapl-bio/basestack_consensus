@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import pandas as pd
 from samtools_funcs import collect_depths
 
 # get path to bamfile on which to calculate depth
