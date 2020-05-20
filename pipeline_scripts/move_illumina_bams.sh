@@ -15,10 +15,6 @@ REF="/home/idies/workspace/covid19/ncov_reference/sequence.fasta"
 OUTDIR="/home/idies/workspace/covid19/curation/*$RUN/bams"
 OUTDIR=`echo $OUTDIR`
 OUTDIR=$OUTDIR/illumina
-if [ ! -d $OUTDIR ]
-then
-    mkdir $OUTDIR
-fi
 for bamfile in `ls $DIR/*.nanopolish.primertrimmed.rg.sorted.bam`; do
 
     sample=${bamfile##*/}
@@ -47,6 +43,12 @@ for bamfile in `ls $DIR/*.nanopolish.primertrimmed.rg.sorted.bam`; do
         then
             continue
         fi
+        
+	if [ ! -d $OUTDIR ]
+        then
+            mkdir $OUTDIR
+        fi
+
         echo 'Illumina bam: '$illuminabam
 	samplewithbarcode=${sample%%.*}
         OUTPATH=$OUTDIR/$samplewithbarcode.illumina.bam
