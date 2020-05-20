@@ -18,6 +18,8 @@ for consfile in $DIR/*nanopolish.consensus.fasta; do
 	outfile="$DIR/$samplename.nanopolish.primertrimmed.rg.sorted.del.depth"
 	
 	# run script
-	python /home/idies/workspace/covid19/code/ncov/pipeline_scripts/calc_sample_depths.py $bamfile $outfile
+	if [ ! -f $outfile ]; then
+		python /home/idies/workspace/covid19/code/ncov/pipeline_scripts/calc_sample_depths.py $bamfile $outfile
+	fi
 
 done
