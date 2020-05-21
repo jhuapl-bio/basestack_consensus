@@ -13,7 +13,7 @@ if [ ! -d $outdir ]; then
 fi
 
 # save path to NTC depthfile and mpileup
-ntc_depthfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*nanopolish.primertrimmed.rg.sorted.depth"
+ntc_depthfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*nanopolish.primertrimmed.rg.sorted.del.depth"
 ntc_bamfile="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/4-draft-consensus/NTC*nanopolish.primertrimmed.rg.sorted.bam"
 
 # save path to nextstrain vcf
@@ -21,6 +21,12 @@ vcf_next="/home/idies/workspace/covid19/nextstrain/latest/alpha/alignments.vcf"
 
 # save path to case definitions
 case_defs="/home/idies/workspace/covid19/code/ncov/pipeline_scripts/variant_case_definitions.csv"
+
+# save path to reference genome
+reference="/home/idies/workspace/covid19/ncov_reference/sequence.fasta"
+
+# save path to amplicon sites data
+amplicons="/home/idies/workspace/covid19/sequencing_runs/amplicons"
 
 for consfile in $DIR/*nanopolish.consensus.fasta; do
 
@@ -34,7 +40,7 @@ for consfile in $DIR/*nanopolish.consensus.fasta; do
 
 		vcffile=$DIR/$samplename*all_callers.combined.vcf
 		mpileup="$DIR/$samplename*mpileup"
-		depth="$DIR/$samplename*nanopolish.primertrimmed.rg.sorted.depth"
+		depth="$DIR/$samplename*nanopolish.primertrimmed.rg.sorted.del.depth"
 		consensus="$DIR/$samplename*nanopolish.consensus.fasta"
 		prefix=`echo $consensus`
 		prefix=${prefix##*/}
@@ -50,6 +56,8 @@ for consfile in $DIR/*nanopolish.consensus.fasta; do
 		--ntc-depthfile $ntc_depthfile \
 		--vcf-nextstrain $vcf_next \
 		--case-defs $case_defs \
+		--ref-genome $reference \
+		--amplicons $amplicons \
 		--ns-snp-threshold 2 \
 		--outdir $outdir \
 		--prefix $prefix
