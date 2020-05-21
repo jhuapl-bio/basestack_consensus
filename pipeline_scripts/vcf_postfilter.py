@@ -195,7 +195,7 @@ def check_ambiguous_positions(cons,variants,depthfile,depth_threshold,masked_sit
         if (cov[pos+1]>depth_threshold and (pos+1) not in masked_sites.amp_mask.values) or ((pos+1) in key_snps):
 
             # determine case number and description
-            if cov[pos+1]<depth_threshold or (pos+1) in masked_sites.amp_mask:
+            if cov[pos+1]<depth_threshold or (pos+1) in masked_sites.amp_mask.values:
                 # this must be a key snp
                 assert (pos+1) in key_snps
                 case=19
