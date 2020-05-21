@@ -13,7 +13,7 @@ usage() {
         echo -e "   -b      /full/path/to/<control>nanopolish.primertrimmed.rg.sorted.bam"
         echo -e "   -v      /full/path/to/nextstrain_alignments.vcf"
         echo -e "   -c      /full/path/to/variant_case_definitions.csv"
-        echo -e "   -r      /full/path/to/sequence.fasta"
+        echo -e "   -r      /full/path/to/<reference>.fasta"
         echo -e "   -a      /full/path/to/amplicons"
         echo -e "   -m      /full/path/to/sequencing_run/manifest.txt"
         echo -e "   -n      name of control sample in manifest (Default = 'NTC')"
@@ -35,7 +35,7 @@ do
                 b) bamfile=$OPTARG ;;
                 v) vcf_next=$OPTARG ;;
                 c) case_defs=$OPTARG ;;
-                r) ref_genome=$OPTARG ;;
+                r) reference=$OPTARG ;;
                 a) amplicons=$OPTARG ;;
 		m) manifest=$OPTARG ;;
 		n) control_name=$OPTARG;;
@@ -61,7 +61,7 @@ vcf_next="${vcf_next}"
 case_defs="${case_defs}"
 
 # save path to reference genome
-case_defs="${ref_genome}"
+case_defs="${reference}"
 
 # save path to amplicon sites file
 case_defs="${amplicons}"
@@ -88,7 +88,7 @@ while read barcode name; do
 		--ntc-depthfile "$ntc_depthfile" \
 		--vcf-nextstrain "$vcf_next" \
 		--case-defs "$case_defs" \
-		--ref-genome "$ref_genome" \
+		--ref-genome "$reference" \
 		--amplicons "$amplicons" \
 		--ns-snp-threshold 2 \
 		--outdir "$postfilter_dir" \
