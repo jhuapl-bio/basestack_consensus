@@ -149,7 +149,7 @@ else
     conda env export > "${logfile%.log}-env.yml"
 fi
 
-if [ -s "$consensus_dir"/$(basename "${normalized_fastq%.covfiltered.fq}").nanopolish.merged.vcf ];then
+if [ -f "$consensus_dir"/$(basename "${normalized_fastq%.covfiltered.fq}").nanopolish.merged.vcf ];then
     >&2 echo "Error: Nanopolish VCF already exsists for this sample: $consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}).nanopolish.merged.vcf"
     >&2 echo "    Archive all previous nanopolish processing before rerunning."
     exit 1

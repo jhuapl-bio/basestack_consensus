@@ -213,10 +213,10 @@ out_file="${consensus_dir}/${samplename}.all_callers.combined.vcf" 2>> "${logfil
 #---------------------------------------------------------------------------------------------------
 
 
-if [[ -s "${consensus_dir}/${samplename}.all_callers.combined.vcf" ]] && \
-   [[ -s "${mpileup}" ]] && \
-   [[ -s "${consensus_dir}/${samplename}.nanopolish.primertrimmed.rg.sorted.depth" ]] && \
-   [[ -s "${consensus_dir}/${samplename}.nanopolish.consensus.fasta" ]]; then
+if [[ -f "${consensus_dir}/${samplename}.all_callers.combined.vcf" ]] && \
+   [[ -f "${mpileup}" ]] && \
+   [[ -f "${consensus_dir}/${samplename}.nanopolish.primertrimmed.rg.sorted.depth" ]] && \
+   [[ -f "${consensus_dir}/${samplename}.nanopolish.consensus.fasta" ]]; then
 	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Module 4 Samtools and Merging: processing complete"
 	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Creating ${consensus_dir}/module4-${samplename}.all_callers.complete"
 	touch "${consensus_dir}/module4-${samplename}.all_callers.complete"
