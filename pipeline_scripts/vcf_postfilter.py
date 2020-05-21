@@ -104,7 +104,7 @@ def mask_consensus_sites(consensus,depthfile,depth_threshold,amplicons,outdir,pr
     
     # output newly-masked bases to file
     d = dict(artic_mask=ambig,depth_mask=depthmask,amp_mask=ampmask,failed_amps=failed_amplicons)
-    masked_sites = pd.DataFrame(dict([ (k,pd.Series(v)) for k,v in d.items() ]))
+    masked_sites = pd.DataFrame(dict([ (k,pd.Series(v)) if v!=[] else (k,np.nan) for k,v in d.items() ]))
     masked_sites['depth_thresh']=depth_threshold
     
     filename=os.path.join(outdir,prefix+'.new_masked_sites.txt')
@@ -192,8 +192,8 @@ def check_ambiguous_positions(cons,variants,depthfile,depth_threshold,masked_sit
         
         # check depth at this position
         # only include positions below depth threshold if they are in a key position
-        if (cov[pos+1]>depth_threshold and (pos+1) not in masked_sites.amp_mask) or ((pos+1) in key_snps):
-                                    
+        if (cov[pos+1]>depth_threshold and (pos+1) not in masked_sites.amp_mask.values) or ((pos+1) in key_snps):
+
             # determine case number and description
             if cov[pos+1]<depth_threshold or (pos+1) in masked_sites.amp_mask:
                 # this must be a key snp
