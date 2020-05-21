@@ -45,9 +45,9 @@ while read barcode name; do
 done < "$manifest"
 echo "SnpEff completed on run ${postfilter_dir}"
 echo "Making final reports on run ${postfilter_dir}"
-find "${postfilter_dir}" -name "*_ann_report.txt" | head -n1 | while read f; do head -n1 "$f" > "${postfilter_dir}/final_snpEff_report.txt"; done
-find "${postfilter_dir}" -name "*_ann_report.txt" | head -n1 | while read f; do head -n1 "$f" > "${postfilter_dir}/snpEff_report_with_Ns.txt"; done
-tail -n+2 "${postfilter_dir}"/*_ann_report.txt | awk '$4 != "N" { print $0}' | sort | uniq >> "${postfilter_dir}/final_snpEff_report.txt"
-tail -n+2 "${postfilter_dir}"/*_ann_report.txt | awk '$4 == "N" { print $0}' | sort | uniq >> "${postfilter_dir}/snpEff_report_with_Ns.txt"
+find "${postfilter_dir}" -name "*_ann_report.txt" | head -n1 | while read f; do head -n1 "$f"; done > "${postfilter_dir}/final_snpEff_report.txt"
+find "${postfilter_dir}" -name "*_ann_report.txt" | head -n1 | while read f; do head -n1 "$f"; done > "${postfilter_dir}/snpEff_report_with_Ns.txt"
+find "${postfilter_dir}" -name "*_ann_report.txt" | while read f; do tail -n+2 "$f"; done | awk '$4 != "N" { print $0}' | sort -k2n,2 | uniq >> "${postfilter_dir}/final_snpEff_report.txt"
+find "${postfilter_dir}" -name "*_ann_report.txt" | while read f; do tail -n+2 "$f"; done | awk '$4 == "N" { print $0}' | sort -k2n,2 | uniq >> "${postfilter_dir}/snpEff_report_with_Ns.txt"
 
 
