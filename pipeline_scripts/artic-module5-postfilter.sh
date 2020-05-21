@@ -61,10 +61,10 @@ vcf_next="${vcf_next}"
 case_defs="${case_defs}"
 
 # save path to reference genome
-case_defs="${reference}"
+reference="${reference}"
 
 # save path to amplicon sites file
-case_defs="${amplicons}"
+amplicons="${amplicons}"
 
 
 while read barcode name; do
