@@ -18,3 +18,4 @@
 17,accept high frequency variant,Pass
 18,ambiguous base in consensus,Check
 19,ambiguous base at key position,Check
+20,ambiguous base due to nanopolish deletion,Check

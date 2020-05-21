@@ -26,13 +26,45 @@ def calculate_depth_threshold(ntc_depthfile,call_depth_factor):
     return(call_depth_factor*median_depth)
 
 
-def mask_consensus_sites(consensus,depthfile,depth_threshold,outdir,prefix):
+def mask_failed_amplicons(cons,cov,amplicons,depth_threshold):
+    """ 
+    Function to mask sites in the consensus genome that are in failed amplicons
+    """
+    
+    # save list of failed amplicons and masked sites
+    failed_amplicons = []
+    ampmask = []
+    
+    # read in amplicons table
+    amp = pd.read_csv(amplicons,sep='\t')
+    
+    # loop through amplicons
+    for i in amp.amplicon:
+        
+        tmp = amp[amp.amplicon==i]
+        
+        # get list of depths at positions within this amplicon
+        amp_sites = range(int(tmp['unique_start']),int(tmp['unique_stop'])+1)
+        depths = [cov[pos] for pos in amp_sites]
+        
+        # calculate metric to be used to assess amplicon failure
+        if sum(d < depth_threshold for d in depths) > 1:
+            cons = ['N' if (pos+1) in amp_sites else cons[pos] for pos,base in enumerate(cons)]
+            
+            # add amplicon to list of masked amplicons
+            failed_amplicons.append(i)
+            ampmask=ampmask+list(amp_sites)
+    
+    return(cons,failed_amplicons,ampmask)
+
+
+def mask_consensus_sites(consensus,depthfile,depth_threshold,amplicons,outdir,prefix):
     """
     Mask sites in the consensus genome based on the depth threshold
     calculated from the negative control on the same run
     
     This function could be replaced by adding the --depth parameter when calling artic_make_depth_mask
-
+    Though artic_make_depth_threshold runs on non-primertrimmed bam files
     """
     
     # get depth across genome
@@ -45,37 +77,38 @@ def mask_consensus_sites(consensus,depthfile,depth_threshold,outdir,prefix):
     
     assert len(cons)==29903
     
-    # mask sites at the beginning and end where amplicons do not cover
-    # change basecalls to N if coverage is below threshold
-    # save list of newly-masked bases
-    ambig=[]
-    newmask=[]
+    ambig=[] # store ambig positions coming out of artic pipeline
+    depthmask=[] # store newly masked positions due to depth mask
+    
     for pos,base in enumerate(cons):
         
-        # mask beginning and end
+        # mask sites at the beginning and end where amplicons do not cover
         # remember zero indexing
-        if (0<=pos<=53) | (29836<=pos<=29902):
+        if (1<=(pos+1)<=54) | (29837<=(pos+1)<=29903):
             cons[pos] = 'N'
             continue
         
         # save bases that were already 'N'
-        # mask based on coverage
         if base=='N':
             ambig.append(pos+1)
             continue
-        else:
-            rd = [cov[pos+1] if (pos+1) in cov.keys() else 0][0]
-            if rd < depth_threshold:
-                cons[pos] = 'N'
-                newmask.append(pos+1)
+        
+        # for non ambiguous bases
+        # change basecalls to N if coverage is below threshold
+        elif cov[pos+1] < depth_threshold:
+            cons[pos] = 'N'
+            depthmask.append(pos+1)
+            
+    # mask bases based on failed amplicons
+    cons,failed_amplicons,ampmask = mask_failed_amplicons(cons,cov,amplicons,depth_threshold)
     
     # output newly-masked bases to file
+    d = dict(artic_mask=ambig,depth_mask=depthmask,amp_mask=ampmask,failed_amps=failed_amplicons)
+    masked_sites = pd.DataFrame(dict([ (k,pd.Series(v)) for k,v in d.items() ]))
+    masked_sites['depth_thresh']=depth_threshold
+    
     filename=os.path.join(outdir,prefix+'.new_masked_sites.txt')
-    with open(filename, 'w') as file:
-        file.write('ambiguous bases in %s.consensus.fasta\n' % prefix)
-        file.write(",".join([str(x) for x in ambig]))
-        file.write('\n\nadditional masked positions with depth requirement of %d:\n' % depth_threshold)
-        file.write(",".join([str(x) for x in newmask]))
+    masked_sites.to_csv(filename,sep='\t',index=False)
     
     # save new consensus sequence and output to file
     seq = ''.join(cons)
@@ -83,8 +116,8 @@ def mask_consensus_sites(consensus,depthfile,depth_threshold,outdir,prefix):
     filepath = os.path.join(outdir,prefix+'.mask.fasta')
     SeqIO.write(new_record,filepath,"fasta")
     
-    # return path to new consensus genome
-    return(filepath)
+    # return new consensus genome and masked sites
+    return(cons,masked_sites)
 
 
 def parse_allele_counts(info,alt,method):
@@ -116,49 +149,83 @@ def parse_allele_counts(info,alt,method):
     return(depth,alt_allele_freq,allele_string)
 
 
-def add_key_ambiguous_positions(chrom,variants,cons,depth_threshold,vcf_nextstrain,mpileup):
+def check_ambiguous_positions(cons,variants,depthfile,depth_threshold,masked_sites,vcf_nextstrain,chrom,ref_genome):
     """ 
-    Function that returns a dataframe of positions not called as variants in a sample
-    but that are ambiguous at key positions
+    Function that returns a dataframe of positions that need to be curated
+    These include:
+        - positions > depth threshold
+        - positions < depth threshold if they are in the list of key positions
     """
+    
+    # load in the depth file
+    cov = pd.read_csv(depthfile,sep='\t',header=None,names=['chrom','pos','depth'])
+    cov = pd.Series(cov.depth.values,index=cov.pos).to_dict()
     
     # read in the nextstrain vcf as a dataframe
     # note: the header is hard-coded and will need to be updated if the header is altered
     ns_snps = pd.read_csv(vcf_nextstrain,sep='\t',skiprows=3)
     ns_snps = ns_snps[['POS','REF','CLADE_FLAG']]
-    
     key_snps = ns_snps[ns_snps['CLADE_FLAG']=='YES']
     key_snps = list(key_snps.POS.values)
     
-    # load mpileup file to get depth at this position
-    names=['chrom', 'pos', 'ref', 'depth', 'pileup','qual']
-    cov = pd.read_csv(mpileup,sep='\t',names=names)
-    cov = pd.Series(cov.depth.values,index=cov.pos).to_dict()
+    # load the reference genome
+    ref = list(SeqIO.parse(open(ref_genome),"fasta"))[0]
+    ref = list(ref.seq.upper())
     
-    # create a dataframe in which to store any new values
+    # sites with deletion issues in nanopolish
+    dels = [227,1001,3144,3145,9026,9027,16255,16256,17304,24981,24982]
+    
+    # initialize data frame of all positions to be added
     df = pd.DataFrame()
     
-    # loop through important snps
-    for pos in key_snps:
-        if (pos not in variants) and (cons[pos-1]=='N'):
+    # loop through bases looking for Ns
+    # remember this is zero-indexed
+    for pos,base in enumerate(cons):
+        
+        # skip positions that are not ambiguous
+        if not base=='N':
+            continue
+        
+        # skip positions that are already in variant list
+        if (pos+1) in variants:
+            continue
+        
+        # check depth at this position
+        # only include positions below depth threshold if they are in a key position
+        if (cov[pos+1]>depth_threshold and (pos+1) not in masked_sites.amp_mask) or ((pos+1) in key_snps):
+                                    
+            # determine case number and description
+            if cov[pos+1]<depth_threshold or (pos+1) in masked_sites.amp_mask:
+                # this must be a key snp
+                assert (pos+1) in key_snps
+                case=19
+                description='ambiguous base at key position'
+            elif (pos+1) in dels:
+                case=20
+                description='ambiguous base due to nanopolish deletion'
+            else:
+                case=18
+                description='ambiguous base in consensus'
+            
+            # set up the row 
             data={}
             data['chrom']=chrom
-            data['pos']=pos
-            data['ref']=ns_snps[ns_snps.POS==pos].REF.values[0]
+            data['pos']= pos+1
+            data['ref']= ref[pos+1]
             data['alt']='N'
             data['consensus_base']='N'
             data['in_consensus']=False
             data['unambig']=False
-            data['ont_depth']=[cov[pos] if pos in cov.keys() else 0][0]
+            data['ont_depth']=cov[pos+1]
             data['ont_depth_thresh']=depth_threshold
-            data['key_flag']='ambig in key position'
-            data['case']=19
             data['status']='Check'
-            data['description']=data['key_flag']
+            data['case']=case
+            data['description']=description
+            data['key_flag']=['ambig in key position' if case==19 else np.nan][0]
             
             data = pd.DataFrame([data], columns=data.keys())
             df = pd.concat([df,data],ignore_index=True)
-    
+            
     return(df)
 
 
@@ -192,6 +259,8 @@ def parse_arguments():
    parser.add_argument('--ntc-bamfile', type=str, help='path to bam file of negative control')
    parser.add_argument('--ntc-depthfile', type=str, help='path to depth file of negative control')
    parser.add_argument('--vcf-nextstrain', type=str, help='path to vcf containing all nextstrain snps')
+   parser.add_argument('--ref-genome', type=str, help='path to reference genome fasta')
+   parser.add_argument('--amplicons', type=str, help='path to file containing amplicon ranges')
    parser.add_argument('--case-defs', type=str, help='path to csv containing case numbers and definitions')
    
    parser.add_argument('--outdir', '-o', type=str, help='directory name to write output files to')
@@ -214,7 +283,7 @@ def main():
     args = parse_arguments()
     
     depth_threshold = max(20,calculate_depth_threshold(args.ntc_depthfile, args.call_depth_factor))
-    mask_cons = mask_consensus_sites(args.consensus, args.depthfile, depth_threshold, args.outdir, args.prefix)
+    mask_cons,masked_sites = mask_consensus_sites(args.consensus,args.depthfile,depth_threshold,args.amplicons,args.outdir,args.prefix)
     
     # read vcf as text file
     vcf_sample = pd.read_csv(args.vcffile,sep='\t',skiprows=2)
@@ -222,8 +291,7 @@ def main():
     vcf_sample.columns = ['chrom','pos','ref','alt','nanopolish_qual','info']
     
     # load current consensus sequence
-    cons = list(SeqIO.parse(open(mask_cons),"fasta"))[0]
-    cons = list(cons.seq.upper())
+    cons = mask_cons
     
     # get the depth used for masking
     cov = pd.read_csv(args.depthfile,sep='\t',header=None,names=['chrom','pos','depth'])
@@ -344,8 +412,13 @@ def main():
     
     # after looping through all positions
     # add positions at key snps if not in variant list
-    df = pd.concat([df,add_key_ambiguous_positions(vcf_sample.chrom.values[0],list(df.pos.values), cons, depth_threshold, args.vcf_nextstrain, args.mpileup)],ignore_index=True,sort=False)
+    df = pd.concat([df,check_ambiguous_positions(cons,list(df.pos.values),args.depthfile,depth_threshold,masked_sites,args.vcf_nextstrain,vcf_sample.chrom.values[0],args.ref_genome)],
+                   ignore_index=True,sort=False)
+    
+    # replace nan values for ease of text parsing
     df = df.replace(np.nan,'.')
+    
+    # save output file
     filepath = os.path.join(args.outdir,args.prefix+'.variant_data.txt')
     df.to_csv(filepath,sep='\t',index=False)
     

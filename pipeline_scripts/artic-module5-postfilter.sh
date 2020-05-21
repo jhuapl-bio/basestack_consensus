@@ -9,10 +9,12 @@ usage() {
         echo -e "OPTIONS:"
         echo -e "   -h      show this message"
         echo -e "   -i      /full/path/to/sequencing_run/artic-pipeline/4-draft-consensus"
-        echo -e "   -d      /full/path/to/<control>nanopolish.primertrimmed.rg.sorted.depth"
+        echo -e "   -d      /full/path/to/<control>nanopolish.primertrimmed.rg.sorted.del.depth"
         echo -e "   -b      /full/path/to/<control>nanopolish.primertrimmed.rg.sorted.bam"
         echo -e "   -v      /full/path/to/nextstrain_alignments.vcf"
         echo -e "   -c      /full/path/to/variant_case_definitions.csv"
+        echo -e "   -r      /full/path/to/sequence.fasta"
+        echo -e "   -a      /full/path/to/amplicons"
         echo -e "   -m      /full/path/to/sequencing_run/manifest.txt"
         echo -e "   -n      name of control sample in manifest (Default = 'NTC')"
         echo -e ""
@@ -33,6 +35,8 @@ do
                 b) bamfile=$OPTARG ;;
                 v) vcf_next=$OPTARG ;;
                 c) case_defs=$OPTARG ;;
+                r) ref_genome=$OPTARG ;;
+                a) amplicons=$OPTARG ;;
 		m) manifest=$OPTARG ;;
 		n) control_name=$OPTARG;;
                 ?) usage; exit ;;
@@ -56,6 +60,12 @@ vcf_next="${vcf_next}"
 # save path to case definitions
 case_defs="${case_defs}"
 
+# save path to reference genome
+case_defs="${ref_genome}"
+
+# save path to amplicon sites file
+case_defs="${amplicons}"
+
 
 while read barcode name; do
 
@@ -65,7 +75,7 @@ while read barcode name; do
 		echo "SAMPLE $name: running vcf_postfilter.py"
 		vcffile="${consensus_dir}/${name}_${barcode}.all_callers.combined.vcf"
 		mpileup="${consensus_dir}/${name}_${barcode}.mpileup"
-		depth="${consensus_dir}/${name}_${barcode}.nanopolish.primertrimmed.rg.sorted.depth"
+		depth="${consensus_dir}/${name}_${barcode}.nanopolish.primertrimmed.rg.sorted.del.depth"
 		consensus="${consensus_dir}/${name}_${barcode}.nanopolish.consensus.fasta"
 
 		# run script
@@ -78,6 +88,8 @@ while read barcode name; do
 		--ntc-depthfile "$ntc_depthfile" \
 		--vcf-nextstrain "$vcf_next" \
 		--case-defs "$case_defs" \
+		--ref-genome "$ref_genome" \
+		--amplicons "$amplicons" \
 		--ns-snp-threshold 2 \
 		--outdir "$postfilter_dir" \
 		--prefix "${name}_${barcode}"
