@@ -137,13 +137,13 @@ fi
 
 # verify module 4 completed for all non-control samples
 module4_complete_flag="TRUE"
-while IFS=$'\t' read barcode name; do
-	if [ ! -f "${consensus_dir}/module4-${name}_${barcode}.all_callers.complete" ];then
-	    >&2 echo "Error: Module 4 has not completed for sample ${name}. Module 4 must be completed for all samples before running Module 5"
-	    >&2 echo "    Details: Module 4 .complete file not found: ${consensus_dir}/module4-${name}_${barcode}.all_callers.complete"
-            module4_complete_flag="FALSE"
-	fi
-done < "${manifest}"
+#while IFS=$'\t' read barcode name; do
+#	if [ ! -f "${consensus_dir}/module4-${name}_${barcode}.all_callers.complete" ];then
+#	    >&2 echo "Error: Module 4 has not completed for sample ${name}. Module 4 must be completed for all samples before running Module 5"
+#	    >&2 echo "    Details: Module 4 .complete file not found: ${consensus_dir}/module4-${name}_${barcode}.all_callers.complete"
+#            module4_complete_flag="FALSE"
+#	fi
+#done < "${manifest}"
 
 
 # verify existence of all reference files needed for full Module 5 execution
