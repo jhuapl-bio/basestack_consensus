@@ -304,7 +304,7 @@ combined_cols <- postfilt_cols
 
 annotation_sample <- data.frame(Flag = flagList[!uncalled_row])
 rownames(annotation_sample) <- sample_barcodes
-annotation_sample$lineage[!grepl("NTC", sample_barcodes, fixed=T)] <- as.matrix(clade_report$lineage)
+annotation_sample$lineage <- summary$Lineage[!uncalled_row]
 
 # re-order levels for legend display
 annotation_sample$Flag <- factor(annotation_sample$Flag, levels = c("Yes", "Yes*", "Maybe", "No"))
@@ -914,9 +914,9 @@ print_igv_plot <- function(row, flag) {
 
 **Demultiplexing**:	`guppy_barcoder v3.5.2+5b7a51b`
 
-**Normalization**: `NormalizeCoverage coverage_threshold=150 --qual_sort`
+**Normalization**: `NormalizeCoverage coverage_threshold=150 --qual_sort --even_strand`
 
-**Analysis pipeline**: `artic v1.0.0`, `nanopolish v0.13.0`, `medaka v0.11.5` & `samtools 1.9`
+**Analysis pipeline**: `artic v1.0.0`, `nanopolish v0.13.2`, `medaka v0.11.5` & `samtools 1.9`
 
 (See section \ref{sec:pipeline} on page \pageref{sec:pipeline} for the full pipeline used to generate this report.)
 
