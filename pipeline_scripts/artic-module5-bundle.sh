@@ -77,13 +77,14 @@ manifest="${sequencing_run}"/manifest.txt
 postfilter_dir="${sequencing_run}/artic-pipeline/5-post-filter"
 
 # Postfiltering reference files
+# also include reference file, see CombineVariants section
 vcf_next="/home/idies/workspace/covid19/nextstrain/latest/alpha/alignments.vcf"
 case_defs="/home/idies/workspace/covid19/code/ncov/pipeline_scripts/variant_case_definitions.csv"
-
+amplicons="/home/idies/workspace/covid19/sequencing_runs/amplicons"
 
 # Posterfiltering NTC files for baselining
 control_barcode=$(awk -F $'\t' -v control_name="${control_name}" '$2 == control_name { print $1 }' "${manifest}")
-ntc_depthfile="${consensus_dir}/${control_name}_${control_barcode}.nanopolish.primertrimmed.rg.sorted.depth"
+ntc_depthfile="${consensus_dir}/${control_name}_${control_barcode}.nanopolish.primertrimmed.rg.sorted.del.depth"
 ntc_bamfile="${consensus_dir}/${control_name}_${control_barcode}.nanopolish.primertrimmed.rg.sorted.bam"
 
 # CombineVariants reference files
@@ -155,6 +156,11 @@ fi
 
 if [[ ! -s "${case_defs}" ]]; then 
 	>&2 echo "Error: Module 5 reference file not found: ${case_defs}"
+	ref_files_found_flag="FALSE"
+fi
+
+if [[ ! -s "${amplicons}" ]]; then 
+	>&2 echo "Error: Module 5 reference file not found: ${amplicons}"
 	ref_files_found_flag="FALSE"
 fi
 
@@ -259,6 +265,7 @@ echo_log "RUN ${sequencing_run_name}: output postfilter directory: ${postfilter_
 echo_log "RUN ${sequencing_run_name}: Reference fasta: ${reference}"
 echo_log "RUN ${sequencing_run_name}: Reference annotation: ${reference_annotation}"
 echo_log "RUN ${sequencing_run_name}: Case Definitions: ${case_defs}"
+echo_log "RUN ${sequencing_run_name}: Amplicon sites: ${amplicons}"
 echo_log "RUN ${sequencing_run_name}: pangolin data directory: ${pangolin_data}"
 echo_log "RUN ${sequencing_run_name}: snpEff config file: ${snpEff_config}"
 echo_log "RUN ${sequencing_run_name}: ------ processing Postfiltering and Annotation ------"
@@ -275,6 +282,8 @@ bash -x "$run_postfilter" \
 	-b "${ntc_bamfile}" \
 	-v "${vcf_next}" \
 	-c "${case_defs}" \
+	-r "${reference}" \
+	-a "${amplicons}" \
 	-m "${manifest}" \
 	-n "${control_name}" 2>> "${logfile}"
 
