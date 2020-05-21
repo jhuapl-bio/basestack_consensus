@@ -48,7 +48,7 @@ def mask_failed_amplicons(cons,cov,amplicons,depth_threshold):
         depths = [cov[pos] for pos in amp_sites]
         
         # calculate metric to be used to assess amplicon failure
-        if sum(d < depth_threshold for d in depths) > 1:
+        if sum(d < depth_threshold for d in depths) > 0:
             cons = ['N' if (pos+1) in amp_sites else cons[pos] for pos,base in enumerate(cons)]
             
             # add amplicon to list of masked amplicons
