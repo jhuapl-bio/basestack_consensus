@@ -39,7 +39,9 @@ def generate_postfilter_summary(rundir):
     alldata = pd.DataFrame()
     
     # intialize lists
+    runs = []
     samplenames = []
+    barcodes = []
     alpha = []
     flags = []
     coverage = []
@@ -52,14 +54,17 @@ def generate_postfilter_summary(rundir):
         if entry.path.endswith('variant_data.txt'):
             vardata = entry.path
             prefix = entry.path.split('.')[0].split('/')[-1]
-            samplename = prefix.split('_')[0]           
-            samplenames.append(samplename)
             
             # get the flags for this sample
             var = pd.read_csv(vardata,sep='\t')
             printflag = []
             snp = []
             stat = []
+            
+            # get the basic data for this sample
+            runs.append(var['run_id'].values[0])
+            samplenames.append(var['sample'].values[0])
+            barcodes.append(var['barcode'].values[0])
             
             # replace '.' empty values with np.nan
             #var = var.replace('.',np.nan)
@@ -165,11 +170,10 @@ def generate_postfilter_summary(rundir):
                     snps.append(', '.join(snp))
             
             # join this dataframe to all the others
-            var['sample']=samplename
             alldata = pd.concat([alldata,var],ignore_index=True)
     
     # make the dataframe
-    df = pd.DataFrame({'Sample':samplenames,'Coverage':coverage,'Variants':snps,'Flags':flags,'Flagged Positions':num_flagged,'Alpha':alpha,'Status':status})
+    df = pd.DataFrame({'Run':runs,'Sample':samplenames,'Barcode':barcodes,'Coverage':coverage,'Variants':snps,'Flags':flags,'Flagged Positions':num_flagged,'Alpha':alpha,'Status':status})
     df.to_csv(os.path.join(rundir,'postfilt_summary.txt'),sep='\t',index=False)
     
     # output the large table
