@@ -17,5 +17,5 @@
 16,ignore low frequency variant,Pass
 17,accept high frequency variant,Pass
 18,ambiguous base in consensus,Check
-19,ambiguous base at key position,Check
-20,ambiguous base due to nanopolish deletion,Check
+19,ambiguous base at key position,Pass
+20,ambiguous base due to indel,Pass

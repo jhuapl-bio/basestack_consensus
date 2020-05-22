@@ -172,9 +172,6 @@ def check_ambiguous_positions(cons,variants,depthfile,depth_threshold,masked_sit
     ref = list(SeqIO.parse(open(ref_genome),"fasta"))[0]
     ref = list(ref.seq.upper())
     
-    # sites with deletion issues in nanopolish
-    dels = [227,1001,3144,3145,9026,9027,16255,16256,17304,24981,24982]
-    
     # initialize data frame of all positions to be added
     df = pd.DataFrame()
     
@@ -200,17 +197,19 @@ def check_ambiguous_positions(cons,variants,depthfile,depth_threshold,masked_sit
                 assert (pos+1) in key_snps
                 case=19
                 description='ambiguous base at key position'
-            elif (pos+1) in dels:
-                case=20
-                description='ambiguous base due to nanopolish deletion'
             else:
-                case=18
-                description='ambiguous base in consensus'
+                # we are only here if there is no variant at this site
+                # so we can safely assume it's likely an indel issue
+                case=20
+                description='ambiguous base due to indel'
             
             # set up the row 
             data={}
+            data['run_id'] = (depthfile).split('/')[-4]
+            data['sample'] = (depthfile).split('/')[-1].split('.')[0].split('_')[0]
+            data['barcode'] = (depthfile).split('/')[-1].split('.')[0].split('_')[1]
             data['chrom']=chrom
-            data['pos']= pos+1
+            data['pos']= pos
             data['ref']= ref[pos+1]
             data['alt']='N'
             data['consensus_base']='N'
@@ -218,10 +217,9 @@ def check_ambiguous_positions(cons,variants,depthfile,depth_threshold,masked_sit
             data['unambig']=False
             data['ont_depth']=cov[pos+1]
             data['ont_depth_thresh']=depth_threshold
-            data['status']='Check'
+            data['status']='Pass'
             data['case']=case
             data['description']=description
-            data['key_flag']=['ambig in key position' if case==19 else np.nan][0]
             
             data = pd.DataFrame([data], columns=data.keys())
             df = pd.concat([df,data],ignore_index=True)
@@ -299,7 +297,8 @@ def main():
     
     # set up the dataframe to store results
     df = pd.DataFrame(
-        columns=['chrom','pos','ref','alt','consensus_base','case','description','status','homopolymer','in_consensus','unambig',
+        columns=['run_id','sample','barcode',
+                 'chrom','pos','ref','alt','consensus_base','case','description','status','homopolymer','in_consensus','unambig',
                  'ont_depth','illumina_depth','ont_depth_thresh','illumina_depth_thresh','ont_AF','illumina_AF','ont_alleles','illumina_alleles',
                  'ont_strand_counts','medaka_qual','nanopolish_qual','illumina_support',
                  'depth_flag','ntc_flag','vc_flag','mixed_flag','maf_flag','sb_flag','key_flag','new_flag'])
@@ -347,6 +346,10 @@ def main():
             illumina_depth,illumina_alt_allele_freq,illumina_allele_string = parse_allele_counts(info, data['alt'], 'illumina')
         
         # add basic data to this record
+        data['run_id'] = (args.depthfile).split('/')[-4]
+        data['sample'] = (args.depthfile).split('/')[-1].split('.')[0].split('_')[0]
+        data['barcode'] = (args.depthfile).split('/')[-1].split('.')[0].split('_')[1]
+        
         data['ont_depth'] = depth
         data['illumina_depth'] = [illumina_depth if illumina else np.nan][0]
         data['ont_depth_thresh'] = depth_threshold
