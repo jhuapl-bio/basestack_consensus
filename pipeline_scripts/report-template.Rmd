@@ -221,7 +221,7 @@ summary$Raw.Reads <- paste0(summary$Raw.Reads, " (", sprintf("%0.1f", 100*as.num
 summary$Depth <- rep("NA", dim(summary)[1])
 summary$Depth[!uncalled_row] <- c(paste0(format(round(tapply(depth_all[,4],factor(depth_all[,1], levels=sample_barcodes), sum)/29903, 0), big.mark=",", trim=T), "x"))
 summary$Coverage <- sapply(as.matrix(summary$Coverage), function(s) { return(strsplit(s, " ")[[1]][1] )})
-summary$Lineage <- rep("", dim(summary)[1])
+summary$Lineage <- rep(NA, dim(summary)[1])
 if(dim(clade_report)[1]>0) {
   summary$Lineage[paste(summary$Sample, summary$Barcode, sep="_") %in% clade_report$taxon] <- as.matrix(clade_report$lineage)
 }
@@ -304,7 +304,7 @@ combined_cols <- postfilt_cols
 
 annotation_sample <- data.frame(Flag = flagList[!uncalled_row])
 rownames(annotation_sample) <- sample_barcodes
-annotation_sample$lineage <- summary$Lineage[!uncalled_row]
+annotation_sample$lineage <- factor(summary$Lineage[!uncalled_row])
 
 # re-order levels for legend display
 annotation_sample$Flag <- factor(annotation_sample$Flag, levels = c("Yes", "Yes*", "Maybe", "No"))
@@ -316,9 +316,9 @@ snpeff_annotations[combined_rows %in% snpeff_report$POS] <- as.character(unique(
 annotation_snp <- data.frame(SnpEff = snpeff_annotations,
                              clade.defining = factor(combined_rows %in% common_positions@fix[,2][common_positions@gt[,5]=="YES"]),
                              common.snp = factor(combined_rows %in% common_positions@fix[,2][common_positions@gt[,6]=="YES"]))
-annotation_snp$problematic <- rep("", length(combined_rows))
-annotation_snp$problematic[combined_rows %in% problematic_sites@fix[,2]] <- problematic_sites@fix[problematic_sites@fix[,2] %in% combined_rows,7]
-annotation_snp$problematic <- factor(annotation_snp$problematic)
+annotation_snp$problematic.snp <- rep(NA, length(combined_rows))
+annotation_snp$problematic.snp[combined_rows %in% problematic_sites@fix[,2]] <- problematic_sites@fix[problematic_sites@fix[,2] %in% combined_rows,7]
+annotation_snp$problematic.snp <- factor(annotation_snp$problematic.snp)
 
 rownames(annotation_snp) <- combined_rows
 levels(annotation_snp$clade.defining) = c("no", "yes")
@@ -328,7 +328,12 @@ annotation_snp$SnpEff <- factor(snpeff_annotations, levels = c(levels(snpeff_rep
 # create color object for annotations
 cols <- brewer.pal(n=6, name="Dark2")
 snpeff_colors <- c("downstream_gene_variant" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "upstream_gene_variant" = cols[5], "stop_gained" = cols[4], "start_lost" = cols[6], "none" = "white")
+lineage_levels <- levels(factor(annotation_sample$lineage))
+lineage_colors <- brewer.pal(n=length(lineage_levels), name="Set3")
+names(lineage_colors) <- lineage_levels
 annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]],
+                          problematic.snp = c("caution"="khaki3", "mask"="firebrick3"),
+                          lineage = lineage_colors,
                           clade.defining = c("yes"="#000000", "no"="#FFFFFF"),
                           common.snp = c("yes"="#000000", "no"="#FFFFFF"),
                           Variants = c("#FFFFFF", "gray30", "gray70"),
@@ -452,9 +457,9 @@ depth_heatmap <- function(plot_sel, title_additional, norm=F) {
            border_color=NA,
            labels_row=rownames(plot_dat),
            labels_col=labels_col,
-           angle_col=0,
+           angle_col=270,
            annotation_row=annotation_sample,
-           annotation_colors=list(Flag = flagColors)
+           annotation_colors=annotation_colors
         )
 }
 #-------------------------------------------------
@@ -559,6 +564,7 @@ plot_homoplasy_heatmap <- function() {
             legend=FALSE,
    #         legend_breaks=c(0,1,2),
    #         legend_labels=c("Wuhan-Hu-1","Variant","Ambiguous"),
+            angle_col=270,
             annotation_col=subset(annotation_sample, sample_sel),
             annotation_row=subset(annotation_snp, snp_sel),
             annotation_colors=annotation_colors
