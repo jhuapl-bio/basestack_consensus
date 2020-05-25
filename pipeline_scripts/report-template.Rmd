@@ -768,8 +768,7 @@ plot_flag_matrix <- function() {
   o <- order(as.numeric(dimnames(plot_matrix)[[1]]))
   o.col <- order(dimnames(plot_matrix)[[2]])
   plot_matrix[o, o.col][combined_rows %in% mut_rows, combined_cols %in% mut_cols] <- mutation_bool[mut_rows %in% combined_rows, mut_cols %in% combined_cols]
-  plot_matrix[o, o.col][combined_rows %in% mut_rows, combined_cols %in% mut_cols] <- mutation_bool_many[mut_rows %in% combined_rows, mut_cols %in% combined_cols]
-  
+
   # add overall genome flag annotation
   sample_sel <- summary$Sample %in% dimnames(plot_matrix)[[2]]
   snp_sel <- dimnames(annotation_snp)[[1]] %in% dimnames(plot_matrix)[[1]]
@@ -819,6 +818,7 @@ plot_flag_matrix <- function() {
       vc_flag_table <- flags[flag][[1]][,-1]
       vc_calls <- vc_flag_table[vc_flag_table != "."]
       symbol <- gsub("mismatch\\((.*)\\)", "\\1", vc_calls)
+      symbol <- gsub("+", "", symbol)
     } else {
       symbol <- shapes$print[i]
     }
@@ -846,22 +846,13 @@ plot_flag_matrix <- function() {
                       )
   row_sel <- combined_rows %in% postfilt_rows
   col_sel <- combined_cols %in% postfilt_cols
-#  text_matrix[row_sel, col_sel] <- flag_matrix[flag_row_order[row_order[row_sel]], flag_col_order[col_order[col_sel]]]
   text_matrix[row_sel, col_sel] <- flag_matrix[flag_row_order, flag_col_order]
   
   grid.force()
   vp <- grid.ls()$name[2]
   g <- grid.get(grid.ls()$name[3])
-  x <- g$x
-  y <- g$y
   downViewport(vp)
-  grid.text(text_matrix, x=x, y=y, gp=gpar(col="black", fontsize=5))
-#  grid.text("Variant position (nucleotide)", x=0.85, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
-#  grid.text(paste(shapes$triangles[1:5], collapse=""), x=0.095, y=0.961, gp=gpar(col="black", fontsize=7))
-#  grid.text(paste(shapes$circles[3:7], collapse=""), x=0.58, y=0.131, gp=gpar(col="black", fontsize=7))
-#  x <- rep(seq(0.095, 0.6, length.out=dim(text_matrix)[2]), each=dim(text_matrix)[1])
-#  y <- rep(seq(0.961, 0.129, length.out=dim(text_matrix)[1]), dim(text_matrix)[2])
-#  grid.text("Variant position (nucleotide)", x=0.85, y=0.35, just="center", rot=-90, gp=gpar(col="black", fontsize=12))
+  grid.text(text_matrix, x=g$x, y=g$y, gp=gpar(col="black", fontsize=5))
 }
 #-------------------------------------------------
 print_igv_plot <- function(row, flag) {
@@ -1040,7 +1031,7 @@ draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status
 plot_flag_matrix()
 ```
 
-**Variants**: \textcolor{variantBlue}{$\blacksquare$} = Variant in consensus, \textcolor{variantRed}{$\blacksquare$} =  Ambiguity in consensus (above depth threshold outlined in section \ref{low_depth} on page \pageref{low_depth}) ; **Flags**: D = depth, $\blacksquare$ = NTC, (m|n|s) = variant present only in (m)edaka, (n)anopolish, (s)amtools, ~ = mixed, % = MAF, B = strand bias, ! = variant in key position, $\circ$ = present in <2 GISAID sequences
+**Variants**: \textcolor{variantBlue}{$\blacksquare$} = Variant in consensus, \textcolor{variantRed}{$\blacksquare$} =  Ambiguity in consensus (above depth threshold outlined in section \ref{low_depth} on page \pageref{low_depth}) ; **Flags**: D = depth, $\blacksquare$ = NTC, (m|n|s) = present only in (m)edaka, (n)anopolish, (s)amtools, ~ = mixed, % = MAF, B = strand bias, ! = key position, $\circ$ = present in <2 GISAID sequences
 
 ## SnpEff annotation table
 ```{r, snpeff-table, echo=FALSE, results="asis"}
