@@ -363,7 +363,7 @@ while read barcode label; do
 
 	mutations_outfile="$stats_path/mutations-$filebase.txt"
 	echo_log "  creating mutations file"
-	final_consensus=$(find "$postfilter_path" -name "*$barcode*.complete.fasta")
+	final_consensus=$(find "$postfilter_path" -regextype posix-extended -regex ".*/.*$barcode.*(complete|partial).fasta")
 	echo_log "    final consensus: $final_consensus"
 	if [[ -s "$final_consensus" ]]; then
 		"$bin_path/mutations.sh" \
