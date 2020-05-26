@@ -669,17 +669,19 @@ genome_cartoons <- function(mutation_subset) {
     colors <- rep("white", length(SNP))
     colors <- replace(colors, labels_sel, annotation_colors$SnpEff[as.character(snpeff_subset$ANN)][snpeff_labels_sel])
 
-    sample.gr <- GRanges("MN908947.3", IRanges(SNP, width=1, names=labels))
-    sample.gr$shape <- rep("triangle_point_down", length(sample.gr), replace=TRUE)
-    sample.gr$color <- colors
-    sample.gr$border <- "black"
-    sample.gr$label.parameter.rot <- 45
-    sample.gr$label.parameter.gp <- gpar(fontsize = 7)
-    
     cat(paste0("\n\n### ", flagFillTeXDict[barcode], "{[", flagDict[barcode], "]: ", sample, "}\n\n"))
+    if(length(SNP) > 0) {
+      sample.gr <- GRanges("MN908947.3", IRanges(SNP, width=1, names=labels))
+      sample.gr$shape <- rep("triangle_point_down", length(sample.gr), replace=TRUE)
+      sample.gr$color <- colors
+      sample.gr$border <- "black"
+      sample.gr$label.parameter.rot <- 45
+      sample.gr$label.parameter.gp <- gpar(fontsize = 7)
+    } else {
+      sample.gr <- GRanges(c(seqnames=NULL,ranges=NULL,strand=NULL))
+    }
     lolliplot(sample.gr, features, type="circle", xlab="genome position (nucleotide)", ylab="", xaxis=c(1,seq(5,25,5)*1000,29903), xaxis.gp = gpar(fontsize = 7))
   }
-  
 
   if(1==2) {
     # change opacity of labels based on e.g. QUAL?
