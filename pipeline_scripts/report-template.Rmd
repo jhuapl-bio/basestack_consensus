@@ -857,10 +857,11 @@ plot_flag_matrix <- function() {
   grid.text(text_matrix, x=g$x, y=g$y, gp=gpar(col="black", fontsize=5))
 }
 #-------------------------------------------------
-print_igv_plot <- function(row, flag) {
+print_igv_plot <- function(row) {
   sample <- as.character(row$Sample)
   barcode <- as.character(summary$Barcode[summary$Sample == sample])
   sample_barcode <- paste(sample, barcode, sep="_")
+  flag <- flagDict[barcode]
   if(nchar(as.character(row$Flags) > 0)) {
     flags <- strsplit(as.character(row$Flags),"; ")[[1]]
   } else {
@@ -1047,29 +1048,10 @@ pander(important_positions[,!(names(important_positions) %in% c("X.CHROM", "TOTA
 ```
 
 ## Alignment screenshots
-```{r, igv-lightgreen-flag, echo=FALSE, results="asis", fig.width=3}
-dt <- postfilt[postfilt$Sample %in% summary$Sample[flagList == "Yes*"],]
-if(dim(dt)[1] > 0){
-  for(row in 1:dim(dt)[1]){
-    print_igv_plot(dt[row,], "Yes*")
-  }
-}
-```
-
-```{r, igv-yellow-flag, echo=FALSE, results="asis", fig.width=4}
-dt <- postfilt[postfilt$Sample %in% summary$Sample[flagList == "Maybe"],]
-if(dim(dt)[1] > 0){
-  for(row in 1:dim(dt)[1]){
-    print_igv_plot(dt[row,], "Maybe")
-  }
-}
-```
-
-```{r, igv-red-flag, echo=FALSE, results="asis", fig.width=5}
-dt <- postfilt[postfilt$Sample %in% summary$Sample[flagList == "No"],]
-if(dim(dt)[1] > 0){
-  for(row in 1:dim(dt)[1]){
-    print_igv_plot(dt[row,], "No")
+```{r, igv-plots, echo=FALSE, results="asis", fig.width=3}
+if(dim(postfilt)[1] > 0){
+  for(row in 1:dim(postfilt)[1]){
+    print_igv_plot(postfilt[row,])
   }
 }
 ```
