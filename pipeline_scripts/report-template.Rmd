@@ -112,7 +112,7 @@ if(length(list.files(run_path, "throughput*", full.names=TRUE)) > 0) {
 #read_lengths <- read.table(paste0(run_path,"/artic-pipeline/run_stats/read_lengths.txt"), sep="\t")
 summaryFn <- paste0(run_path,"/artic-pipeline/run_stats/summary.txt")
 depth_allFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-all.txt")
-depth_trimFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-trim-all.txt")
+depth_trimFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-del-all.txt")
 mutation_fullFn <- paste0(run_path, "/artic-pipeline/run_stats/mutations-table.txt")
 postfiltFn <- paste0(run_path, "/artic-pipeline/5-post-filter/postfilt_summary.txt")
 postfilt_allFn <- paste0(run_path, "/artic-pipeline/5-post-filter/postfilt_all.txt")
@@ -229,12 +229,53 @@ summary <- summary[,c("Sample", "Barcode", "Raw.Reads", "Coverage", "Depth", "Co
 levels(summary$Consensus) <- paste0(colorlevels(levels(summary$Consensus), FALSE), "{", levels(summary$Consensus), "}")
 names(summary) <- gsub("\\.", " ", names(summary))
 
+depth_plot_all <- NULL
+for(i in sample_barcodes) {
+	d <- as.matrix(depth_all[depth_all[,1]==i,2:4])
+	b <- rep(-1,dim(amplicons)[[1]])
+	for(a in 1:dim(amplicons)[[1]]) {
+		sel <- as.numeric(d[,2]) >= amplicons$unique_start[a] & as.numeric(d[,2]) <= amplicons$unique_stop[a]
+		if(sum(sel) > 0) {
+		  b[a] <- mean(as.numeric(d[sel,3]))
+		} else {
+		  b[a] <- 0
+		}
+	}
+  depth_plot_all <- rbind(depth_plot_all, b)
+}
+rownames(depth_plot_all) <- sample_barcodes
+
+depth_plot_min <- NULL
+for(i in sample_barcodes) {
+	d <- as.matrix(depth_norm[depth_norm[,1]==i,2:4])
+	b <- rep(-1,dim(amplicons)[[1]])
+	for(a in 1:dim(amplicons)[[1]]) {
+		sel <- as.numeric(d[,2]) >= amplicons$unique_start[a] & as.numeric(d[,2]) <= amplicons$unique_stop[a]
+		if(sum(sel) > 0) {
+		  b[a] <- min(as.numeric(d[sel,3]))
+		} else {
+		  b[a] <- 0
+		}
+	}
+  depth_plot_min <- rbind(depth_plot_min, b)
+}
+rownames(depth_plot_min) <- sample_barcodes
+
 # identify low coverage regions
 threshold <- postfilt_all$ont_depth_thresh[1]
 below_threshold <- function(v) { return(v<threshold) }
 low_coverage_regions <- tapply(depth_norm[,4], depth_norm[,1], below_threshold)
 low_coverage_totals <- unlist(lapply(low_coverage_regions, sum))
 names(low_coverage_totals) <- gsub("depth-norm-", "", names(low_coverage_totals))
+
+# remove entire amplicons with a minimum below the threshold
+for(sample_barcode in dimnames(depth_plot_min)[[1]]) {
+  for(a in which(depth_plot_min[1,] < threshold)) {
+    low_coverage_regions[sample_barcode][[1]][seq(amplicons$unique_start[a], amplicons$unique_stop[a], 1)] <- TRUE
+  }
+  low_coverage_regions[sample_barcode][[1]][seq(1, amplicons$primer_f_stop[1], 1)] <- TRUE
+  low_coverage_regions[sample_barcode][[1]][seq(amplicons$unique_start[98], 29903, 1)] <- TRUE
+}
 
 # add SNP info to postfilt table
 mutation_no_low_coverage <- mutation_full
@@ -277,22 +318,6 @@ if(sum(select_many)>0) {
     mutation_bool <- cbind(mutation_bool, new_cols)
   }
 }
-
-depth_plot_all <- NULL
-for(i in sample_barcodes) {
-	d <- as.matrix(depth_all[depth_all[,1]==i,2:4])
-	b <- rep(-1,dim(amplicons)[[1]])
-	for(a in 1:dim(amplicons)[[1]]) {
-		sel <- as.numeric(d[,2]) >= amplicons$unique_start[a] & as.numeric(d[,2]) <= amplicons$unique_stop[a]
-		if(sum(sel) > 0) {
-  		b[a] <- mean(as.numeric(d[sel,3]))
-		} else {
-		  b[a] <- 0
-		}
-	}
-  depth_plot_all <- rbind(depth_plot_all, b)
-}
-rownames(depth_plot_all) <- sample_barcodes
 
 postfilt_rows <- levels(factor(postfilt_all$pos))
 postfilt_cols <- levels(factor(postfilt_all$sample))
@@ -411,7 +436,7 @@ print_low_depth_regions <- function() {
   get_regions <- function(i){
     d <- depth_norm
     l <- levels(factor(d[,1]))
-    r <- d[d[,1]==l[i] & low_coverage_regions[[i]] & d[,3] >= 55 & d[,3]<=29836, 3]
+    r <- d[d[,1]==l[i] & low_coverage_regions[[i]] & d[,3] >= 55 & d[,3]<=amplicons$primer_r_stop[97], 3]
     if(length(r) > 0) {
       return(region_collapse(r))
     } else {
