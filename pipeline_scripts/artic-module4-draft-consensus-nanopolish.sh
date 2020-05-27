@@ -186,7 +186,7 @@ echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Starting Modul
 # run ARTIC pipeline - nanopolish
 artic minion \
     --normalise 1000000 \
-    --threads 32 \
+    --threads "$threads" \
     --scheme-directory "$scheme_dir" \
     --read-file "$normalized_fastq" \
     --fast5-directory "$sequencing_run/fast5_pass" \
@@ -195,6 +195,7 @@ artic minion \
 
 
 samtools depth -a -d 0 "$out_prefix".primertrimmed.rg.sorted.bam > "$out_prefix".primertrimmed.rg.sorted.depth
+"$software_path/ncov/pipeline_scripts/run_calc_depths.sh" $(basename "$sequencing_run")
   #---------------------------------------------------------------------------------------------------
   
   echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Module 4 Nanopolish: processing complete"
