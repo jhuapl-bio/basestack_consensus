@@ -83,7 +83,7 @@ case_defs="/home/idies/workspace/covid19/code/ncov/pipeline_scripts/variant_case
 amplicons="/home/idies/workspace/covid19/sequencing_runs/amplicons"
 
 # Posterfiltering NTC files for baselining
-control_barcode=$(awk -F $'\t' -v control_name="${control_name}" '$2 == control_name { print $1 }' "${manifest}")
+control_barcode=$(awk -F $'\t' -v control_name="${control_name}" '$2 == control_name { print $1 }' "${manifest}" | head -n1)
 ntc_depthfile="${consensus_dir}/${control_name}_${control_barcode}.nanopolish.primertrimmed.rg.sorted.del.depth"
 ntc_bamfile="${consensus_dir}/${control_name}_${control_barcode}.nanopolish.primertrimmed.rg.sorted.bam"
 
