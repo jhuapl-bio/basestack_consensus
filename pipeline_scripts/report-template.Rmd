@@ -443,7 +443,6 @@ print_low_depth_regions <- function() {
       return(NULL)
     }
   }
-  cat(paste0("**Depth threshold**: ", threshold, "\n"))
   masked_regions <- lapply(seq_along(low_coverage_regions), get_regions)
   if(max(sapply(masked_regions, length)) > 0) {
     for(i in seq_along(masked_regions)){
@@ -513,6 +512,36 @@ depth_plot <- function(plot_sel, title_additional) {
 #-------------------------------------------------
 plot_readlen <- function() {
   print("under construction")
+}
+#-------------------------------------------------
+plot_amplicon_hist <- function() {
+  h <- hist(depth_plot_min, breaks=500, plot=F)
+  h$counts[h$counts==0] <- 0.5
+  par(lwd = 1)
+  b <- barplot(h$counts, log='y', axes=F, xlab="", main="", ylab="", plot=F)
+  slope <- lm(range(b) ~ range(h$mids))$coefficients[2]
+  fill <- "black"
+  barplot(h$counts, col=fill, border=fill, log='y', axes=F, xlab="average amplicon depth (number of reads)", main="", ylab="", cex.lab=1, ylim=c(0.5,1e3), xlim=c(0,300*slope))
+  sel_ntc <- grepl("NTC", rownames(depth_plot_min))
+  if(sum(sel_ntc)>0) {
+    depth_ntc <- depth_plot_min[sel_ntc]
+    h_ntc <- NULL
+    h_ntc <- hist(depth_ntc, plot=F, breaks=h$breaks)
+    new_thresh <- max(50, 2*quantile(depth_ntc, 0.95))
+    h_ntc$counts[h_ntc$counts==0] <- 0.5
+    b_ntc <- barplot(h_ntc$counts, log='y', plot=F)
+    slope_ntc <- lm(range(b_ntc) ~ range(h_ntc$mids))$coefficients[2]
+    barplot(h_ntc$counts, col="dodgerblue2", border="dodgerblue2", log='y', axes=F, xlab="", main="", ylab="", add=T, ylim=c(0.5,1e3), xlim=c(0,300*slope_ntc))
+  }
+  title(ylab="number of amplicons", line=3, cex.lab=1)
+  par(lwd = 1)
+  abline(h=10^seq(0,6), col="white")
+  par(lwd = 1)
+  abline(h=apply(expand.grid(10^seq(0,6),seq(1,10,1)),1,prod), col="white", lwd=1)
+  abline(v=b[which.min(abs(h$breaks - threshold))], col="firebrick2", lwd=1)
+#  abline(v=b[which.min(abs(h$breaks - new_thresh))], col="springgreen3", lwd=1)
+  axis(1, at=b[h$breaks %in% seq(0,600,50)], labels=h$breaks[h$breaks %in% seq(0,600,50)], cex.axis=1)
+  axis(2, las=2, at=10^seq(0,6), labels=c(1,10,100,"1k","10k","100k","1M"), cex.axis=1)
 }
 #-------------------------------------------------
 plot_readlen2 <- function() {
@@ -836,7 +865,7 @@ plot_flag_matrix <- function() {
   triangles = c("▲","△","◀","◁","▶","▷","▼","▽"),
   circles = c("⬤","○","◌","◍","◎","◐","◑","◒","◓","◔","◕"),
   diamonds = c("◆","◇","◈","◊"),
-  print = c("D", "⬛", "m", "~", "%", "B", "!", "○")
+  print = c("D", "N", "m", "~", "%", "B", "!", "○")
   )
   # add symbols for flags
   for(i in 1:length(names(flags))) {
@@ -977,8 +1006,19 @@ depth_heatmap((1:98 %% 2 >= 0), "", norm=FALSE)
 depth_heatmap((1:98 %% 2 >= 0), "", norm=TRUE)
 ```
 
-### Samples containing positions with depth less than 2x NTC median depth
+### Amplicon depth threshold
 \label{low_depth}
+
+```{r, echo=FALSE, fig.height=4}
+plot_amplicon_hist()
+```
+
+**Amplicons**: Experimental samples plotted in black. No-template controls (NTCs) plotted in blue. Depth threshold indicated with red line.
+
+**Depth threshold**: `` `r threshold` ``
+
+**Samples with positions less than depth threshold**:
+
 ```{r, echo=FALSE, results="asis"}
 print_low_depth_regions()
 ```
@@ -1059,7 +1099,7 @@ draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status
 plot_flag_matrix()
 ```
 
-**Variants**: \textcolor{variantBlue}{$\blacksquare$} = Variant in consensus, \textcolor{variantRed}{$\blacksquare$} =  Ambiguity in consensus (above depth threshold outlined in section \ref{low_depth} on page \pageref{low_depth}) ; **Flags**: D = depth, $\blacksquare$ = NTC, (m|n|s) = present only in (m)edaka, (n)anopolish, (s)amtools, ~ = mixed, % = MAF, B = strand bias, ! = key position, $\circ$ = present in <2 GISAID sequences
+**Variants**: \textcolor{variantBlue}{$\blacksquare$} = Variant in consensus, \textcolor{variantRed}{$\blacksquare$} =  Ambiguity in consensus (above depth threshold outlined in section \ref{low_depth} on page \pageref{low_depth}) ; **Flags**: D = depth, N = NTC, (m|n|s) = present only in (m)edaka, (n)anopolish, (s)amtools, ~ = mixed, % = MAF, B = strand bias, ! = key position, $\circ$ = present in <2 GISAID sequences
 
 ## SnpEff annotation table
 ```{r, snpeff-table, echo=FALSE, results="asis"}
