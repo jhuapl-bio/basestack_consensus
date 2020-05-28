@@ -14,7 +14,7 @@ from variant_status import status_by_case
 import variant_flags as fl
 
 
-def calculate_depth_threshold(ntc_depthfile,call_depth_factor):
+def calculate_depth_threshold(ntc_depthfile,amplicons,call_depth_factor):
     """
     Determine the read depth threshold to use for calling non-ambiguous bases
     based on a negative control (NTC) included on the same sequencing run
@@ -22,8 +22,26 @@ def calculate_depth_threshold(ntc_depthfile,call_depth_factor):
     
     # get negative control depth
     cov = pd.read_csv(ntc_depthfile,sep='\t',header=None,names=['chrom','pos','depth'])
-    median_depth = cov.depth.median()
-    return(call_depth_factor*median_depth)
+    cov = pd.Series(cov.depth.values,index=cov.pos).to_dict()
+    
+    # read in amplicons table
+    amp = pd.read_csv(amplicons,sep='\t')
+    
+    # initialize list of average amplicon depths
+    avg_amp_depths = []
+    
+    # loop through amplicons
+    for i in amp.amplicon:
+        
+        tmp = amp[amp.amplicon==i]
+        
+        # get list of depths at positions within this amplicon
+        amp_sites = range(int(tmp['unique_start']),int(tmp['unique_stop'])+1)
+        avg_amp_depths.append(np.mean([cov[pos] for pos in amp_sites]))
+    
+    # return 95% quantile of this average amplicon list
+    # multiplied by the call depth factor
+    return(call_depth_factor*np.quantile(avg_amp_depths,0.95,interpolation='higher'))
 
 
 def mask_failed_amplicons(cons,cov,amplicons,depth_threshold):
