@@ -108,6 +108,11 @@ if(length(list.files(run_path, "throughput*", full.names=TRUE)) > 0) {
 } else {
 	throughput <- NULL
 }
+if(length(list.files(run_path, "drift*", full.names=TRUE)) > 0) {
+	drift <- read_csv(list.files(run_path, "drift*", full.names=TRUE))
+} else {
+	drift <- NULL
+}
 # pipeline output files
 #read_lengths <- read.table(paste0(run_path,"/artic-pipeline/run_stats/read_lengths.txt"), sep="\t")
 summaryFn <- paste0(run_path,"/artic-pipeline/run_stats/summary.txt")
@@ -117,6 +122,7 @@ mutation_fullFn <- paste0(run_path, "/artic-pipeline/run_stats/mutations-table.t
 postfiltFn <- paste0(run_path, "/artic-pipeline/5-post-filter/postfilt_summary.txt")
 postfilt_allFn <- paste0(run_path, "/artic-pipeline/5-post-filter/postfilt_all.txt")
 snpeff_reportFn <- paste0(run_path, "/artic-pipeline/5-post-filter/final_snpEff_report.txt")
+snpeff_report_with_NsFn <- paste0(run_path, "/artic-pipeline/5-post-filter/snpEff_report_with_Ns.txt")
 clade_reportFn <- paste0(run_path, "/artic-pipeline/5-post-filter/lineage_report.csv")
 
 if(file.exists(summaryFn)) {
@@ -151,6 +157,9 @@ if(file.exists(postfilt_allFn)) {
 }
 if(file.exists(snpeff_reportFn)) {
   snpeff_report <- read.table(snpeff_reportFn, sep="\t", header=TRUE, comment.char="")
+  snpeff_report_with_Ns <- read.table(snpeff_report_with_NsFn, sep="\t", header=TRUE, comment.char="")
+  snpeff_report <- rbind(snpeff_report, snpeff_report_with_Ns)
+  snpeff_report <- snpeff_report[order(snpeff_report$POS),]
 } else {
   empty_column <- rep("unknown", 1)
   snpeff_report <- data.frame("X.CHROM" = rep("MN908947.3", 2), "POS" = empty_column, "REF" = empty_column, "ALT" = empty_column, "GENE" = empty_column, "ANN" = empty_column, "AA_MUT" = empty_column)
@@ -170,6 +179,22 @@ o2 <- order(postfilt$Sample)
 postfilt <- postfilt[o2,]
 o3 <- order(dimnames(mutation_full)[[1]])
 mutation_full <- mutation_full[o3,]
+
+multi_nucleotide <- nchar(as.matrix(snpeff_report$REF))>1
+for(i in which(multi_nucleotide)) {
+  first <- snpeff_report[i,]
+  for(j in 2:nchar(as.matrix(first$REF))) {
+    new <- first
+    new$POS <- first$POS+j-1
+    new$REF <- substring(first$REF,j,j)
+    new$ALT <- substring(first$ALT,j,j)
+    snpeff_report <- rbind(snpeff_report, new)
+  }
+  first$REF <- substring(first$REF,1,1)
+  first$ALT <- substring(first$ALT,1,1)
+  snpeff_report[i,] <- first
+}
+
 snpeff_report <- unique(snpeff_report)
 snpeff_report <- snpeff_report[snpeff_report$POS != "POS",]
 o4 <- order(as.numeric(snpeff_report$POS))
@@ -405,6 +430,21 @@ plot_reads_over_time <- function() {
   geom_text(size=2.5, data=annotation2, aes(x=x, y=y, label=label), inherit.aes=FALSE, hjust=0, vjust=0.5, nudge_x=0.5) +
   theme(axis.text=element_text(size=10), legend.title=element_text(size=10), legend.text=element_text(size=10)) +
   coord_cartesian(clip = 'off')
+}
+#-------------------------------------------------
+plot_quality2 <- function() {
+  print("under construction")
+}
+#-------------------------------------------------
+plot_quality <- function() {
+  maxTime <- ceiling(max(drift$time/60)/12)*12
+  p <- ggplot(drift, aes(seconds_since_start_of_run/3600, current_median)) + 
+    scale_x_continuous(breaks=seq(0,maxTime,12), labels=seq(0,maxTime,12)) +
+    geom_line() +
+    theme_minimal() +
+    labs(x="Experiment Time (Hours)",y="Median Quality Score")
+  p # + geom_hline(yintercept=30, linetype="dashed", color = "red", size=1)
+
 }
 #-------------------------------------------------
 plot_barcode_barplot <- function() {
@@ -865,7 +905,7 @@ plot_flag_matrix <- function() {
   triangles = c("▲","△","◀","◁","▶","▷","▼","▽"),
   circles = c("⬤","○","◌","◍","◎","◐","◑","◒","◓","◔","◕"),
   diamonds = c("◆","◇","◈","◊"),
-  print = c("D", "N", "m", "~", "%", "B", "!", "○")
+  print = c("D", "N", "m", "~", "%", "B", "!", "X")
   )
   # add symbols for flags
   for(i in 1:length(names(flags))) {
@@ -873,8 +913,7 @@ plot_flag_matrix <- function() {
     if(flag == "vc") {
       vc_flag_table <- flags[flag][[1]][,-1]
       vc_calls <- vc_flag_table[vc_flag_table != "."]
-      symbol <- gsub("mismatch\\((.*)\\)", "\\1", vc_calls)
-      symbol <- gsub("+", "", symbol)
+      symbol <- gsub("mismatch\\(([^+]*)\\+?([^+]*)\\)", "\\1\\2", vc_calls)
     } else {
       symbol <- shapes$print[i]
     }
@@ -981,7 +1020,9 @@ if(!is.null(throughput)) {
 ```
 
 ## Quality scores
-(figure not added in yet)
+```{r, read-qual, echo=FALSE, fig.height=3}
+plot_quality2()
+```
 
 ## Read Length
 ```{r, read-length, echo=FALSE, fig.height=8}
@@ -1013,9 +1054,9 @@ depth_heatmap((1:98 %% 2 >= 0), "", norm=TRUE)
 plot_amplicon_hist()
 ```
 
-**Amplicons**: Experimental samples plotted in black. No-template controls (NTCs) plotted in blue. Depth threshold indicated with red line.
+**Amplicons**: Samples in black. No-template controls (NTCs) in blue. Depth threshold as red line.
 
-**Depth threshold**: `` `r threshold` ``
+**Depth threshold**: `r threshold`
 
 **Samples with positions less than depth threshold**:
 
@@ -1089,7 +1130,7 @@ if(sum(select_many) > 0) {
 
 ## Flags identified
 ```{r, flag-table, echo=FALSE}
-draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status"))])
+draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Run", "Barcode", "Alpha", "Coverage", "Status"))])
 ```
 
 \pagebreak
@@ -1099,7 +1140,7 @@ draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Alpha", "Coverage", "Status
 plot_flag_matrix()
 ```
 
-**Variants**: \textcolor{variantBlue}{$\blacksquare$} = Variant in consensus, \textcolor{variantRed}{$\blacksquare$} =  Ambiguity in consensus (above depth threshold outlined in section \ref{low_depth} on page \pageref{low_depth}) ; **Flags**: D = depth, N = NTC, (m|n|s) = present only in (m)edaka, (n)anopolish, (s)amtools, ~ = mixed, % = MAF, B = strand bias, ! = key position, $\circ$ = present in <2 GISAID sequences
+**Variants**: \textcolor{variantBlue}{$\blacksquare$} = Variant in consensus, \textcolor{variantRed}{$\blacksquare$} =  Ambiguity in consensus (above depth threshold outlined in section \ref{low_depth} on page \pageref{low_depth}) ; **Flags**: D = depth, N = NTC, (m|n|s) = present only in (m)edaka, (n)anopolish, (s)amtools, ~ = mixed, % = MAF, B = strand bias, ! = key position, X = present in <2 GISAID sequences
 
 ## SnpEff annotation table
 ```{r, snpeff-table, echo=FALSE, results="asis"}
