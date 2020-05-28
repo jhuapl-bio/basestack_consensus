@@ -227,8 +227,8 @@ def check_ambiguous_positions(cons,variants,depthfile,depth_threshold,masked_sit
             data['sample'] = (depthfile).split('/')[-1].split('.')[0].split('_')[0]
             data['barcode'] = (depthfile).split('/')[-1].split('.')[0].split('_')[1]
             data['chrom']=chrom
-            data['pos']= pos
-            data['ref']= ref[pos+1]
+            data['pos']= pos+1
+            data['ref']= ref[pos]
             data['alt']='N'
             data['consensus_base']='N'
             data['in_consensus']=False
@@ -298,7 +298,7 @@ def main():
     
     args = parse_arguments()
     
-    depth_threshold = max(20,calculate_depth_threshold(args.ntc_depthfile, args.call_depth_factor))
+    depth_threshold = max(20,calculate_depth_threshold(args.ntc_depthfile,args.amplicons,args.call_depth_factor))
     mask_cons,masked_sites = mask_consensus_sites(args.consensus,args.depthfile,depth_threshold,args.amplicons,args.outdir,args.prefix)
     
     # read vcf as text file
