@@ -41,7 +41,11 @@ def calculate_depth_threshold(ntc_depthfile,amplicons,call_depth_factor):
     
     # return 95% quantile of this average amplicon list
     # multiplied by the call depth factor
-    return(call_depth_factor*np.quantile(avg_amp_depths,0.95,interpolation='higher'))
+    qvalue = np.quantile(avg_amp_depths,0.95,interpolation='lower')
+    
+    # round this number up to better reflect the amplicon depth mode
+    qvalue = int(np.ceil(qvalue))
+    return(call_depth_factor*qvalue)
 
 
 def mask_failed_amplicons(cons,cov,amplicons,depth_threshold):
@@ -66,7 +70,7 @@ def mask_failed_amplicons(cons,cov,amplicons,depth_threshold):
         depths = [cov[pos] for pos in amp_sites]
         
         # calculate metric to be used to assess amplicon failure
-        if sum(d < depth_threshold for d in depths) > 0:
+        if sum(d <= depth_threshold for d in depths) > 0:
             cons = ['N' if (pos+1) in amp_sites else cons[pos] for pos,base in enumerate(cons)]
             
             # add amplicon to list of masked amplicons
@@ -113,7 +117,7 @@ def mask_consensus_sites(consensus,depthfile,depth_threshold,amplicons,outdir,pr
         
         # for non ambiguous bases
         # change basecalls to N if coverage is below threshold
-        elif cov[pos+1] < depth_threshold:
+        elif cov[pos+1] <= depth_threshold:
             cons[pos] = 'N'
             depthmask.append(pos+1)
             
@@ -210,7 +214,7 @@ def check_ambiguous_positions(cons,variants,depthfile,depth_threshold,masked_sit
         if (cov[pos+1]>depth_threshold and (pos+1) not in masked_sites.amp_mask.values) or ((pos+1) in key_snps):
 
             # determine case number and description
-            if cov[pos+1]<depth_threshold or (pos+1) in masked_sites.amp_mask.values:
+            if cov[pos+1]<=depth_threshold or (pos+1) in masked_sites.amp_mask.values:
                 # this must be a key snp
                 assert (pos+1) in key_snps
                 case=19
@@ -355,8 +359,7 @@ def main():
         
         # ignore this position if the depth is too low
         
-        
-        if cov[pos] < depth_threshold:
+        if cov[pos] <= depth_threshold:
             continue
         
         # get illumina read depth and pileup if applicable
