@@ -377,7 +377,7 @@ annotation_snp$SnpEff <- factor(snpeff_annotations, levels = c(levels(snpeff_rep
 
 # create color object for annotations
 cols <- brewer.pal(n=6, name="Dark2")
-snpeff_colors <- c("downstream_gene_variant" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "upstream_gene_variant" = cols[5], "stop_gained" = cols[4], "start_lost" = cols[6], "none" = "white")
+snpeff_colors <- c("intergenic_region" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "stop_gained" = cols[4], "start_lost" = cols[6], "none" = "white")
 lineage_levels <- levels(factor(annotation_sample$lineage))
 lineage_colors <- brewer.pal(n=length(lineage_levels), name="Set3")
 names(lineage_colors) <- lineage_levels
@@ -661,7 +661,7 @@ genome_cartoon_overview <- function(mutation_subset) {
   
   labels <- unlist(apply(mutation_subset, 1, function(v){ u <- unique(v); return(paste(u[u!=""], collapse=", "))}))
   labels[SNP %in% snpeff_subset$POS] <- paste(as.character(snpeff_subset$GENE), as.character(snpeff_subset$AA_MUT), sep=": ")
-  rename_sel <- snpeff_subset$ANN %in% c("upstream_gene_variant","downstream_gene_variant")
+  rename_sel <- snpeff_subset$ANN %in% c("intergenic_region")
   labels[SNP %in% snpeff_subset$POS][rename_sel] <- paste0(snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)[rename_sel]
   rename_sel <- snpeff_subset$ANN %in% c("synonymous_variant")
   labels[SNP %in% snpeff_subset$POS][rename_sel] <- paste0(snpeff_subset$GENE, ": ", snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)[rename_sel]
@@ -755,7 +755,7 @@ genome_cartoons <- function(mutation_subset) {
 
     labels[labels_sel] <- paste(as.character(snpeff_subset$GENE), as.character(snpeff_subset$AA_MUT), sep=": ")[snpeff_labels_sel]
 
-    rename_sel <- snpeff_subset$ANN[snpeff_labels_sel] %in% c("upstream_gene_variant","downstream_gene_variant")
+    rename_sel <- snpeff_subset$ANN[snpeff_labels_sel] %in% c("intergenic_region")
     labels[labels_sel] <- replace(labels[labels_sel], rename_sel, snpeff_labels[snpeff_labels_sel][rename_sel])
     rename_sel <- snpeff_subset$ANN[snpeff_labels_sel] %in% c("synonymous_variant")
     labels[labels_sel] <- replace(labels[labels_sel], rename_sel, paste0(snpeff_subset$GENE, ": ", snpeff_labels)[snpeff_labels_sel][rename_sel])
