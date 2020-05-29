@@ -101,6 +101,8 @@ logfile="${outdir}"/logs/fast5-subset-human-filtered"${sample_name}"-$(date +"%F
 if [ ! -d "${sequencing_run}" ];then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
+else
+	sequencing_run="${sequencing_run%/}"
 fi
 
 if [ -s "$outdir/$name-human-filtered-subset.fast5" ];then

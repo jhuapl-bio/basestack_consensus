@@ -98,6 +98,8 @@ hash=$(git rev-parse --short HEAD)
 if [ ! -d "${sequencing_run}" ];then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
+else
+	sequencing_run="${sequencing_run%/}"
 fi
 
 # check for existence of run_config.txt and for barcoding 
