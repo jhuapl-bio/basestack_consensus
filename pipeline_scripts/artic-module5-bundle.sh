@@ -68,6 +68,8 @@ echo_log() {
 # Default values
 #===================================================================================================
 
+sequencing_run="${sequencing_run%/}"
+
 # input files
 sequencing_run_name=$(basename "$sequencing_run")
 consensus_dir="${sequencing_run}"/artic-pipeline/4-draft-consensus
@@ -116,8 +118,6 @@ hash=$(git rev-parse --short HEAD)
 if [ ! -d "${sequencing_run}" ];then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
-else
-	sequencing_run="${sequencing_run%/}"
 fi
 
 if [[ -f "${postfilter_dir}/module5-${sequencing_run_name}.complete" ]]; then

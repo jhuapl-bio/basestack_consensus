@@ -65,6 +65,7 @@ echo_log() {
 
 # sequencing run directory
 sequencing_run=$(dirname $(dirname $(dirname "$barcode_dir")))
+sequencing_run="${sequencing_run%/}"
 
 #===================================================================================================
 # Default values
@@ -96,8 +97,6 @@ hash=$(git rev-parse --short HEAD)
 if [ ! -d "${sequencing_run}" ];then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
-else
-	sequencing_run="${sequencing_run%/}"
 fi
 
 if [ ! -s "${sequencing_run}/run_config.txt" ];then
