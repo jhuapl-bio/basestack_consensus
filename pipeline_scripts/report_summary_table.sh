@@ -350,16 +350,12 @@ while read barcode label; do
 		"$flag" >> "$outfile"
 
 	depth_outfile="$normalize_path/$filebase/$filebase.depth"
-	if ! [[ -s "$depth_outfile" ]]; then
-		echo_log "  creating depth file"
-		samtools depth -d 0 -a "$alignment" > "$depth_outfile"
-	fi
+	echo_log "  creating depth file"
+	samtools depth -d 0 -a "$alignment" > "$depth_outfile"
 
 	normalized_depth_outfile="$normalize_path/$filebase/$filebase.covfiltered.depth"
-	if ! [[ -s "$normalized_depth_outfile" ]]; then
-		echo_log "  creating normalized depth file"
-		samtools depth -d 0 -a "$normalized_alignment" > "$normalized_depth_outfile"
-	fi
+	echo_log "  creating normalized depth file"
+	samtools depth -d 0 -a "$normalized_alignment" > "$normalized_depth_outfile"
 
 	mutations_outfile="$stats_path/mutations-$filebase.txt"
 	echo_log "  creating mutations file"
@@ -374,10 +370,8 @@ while read barcode label; do
 
 	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.nanopolish.primertrimmed.rg.sorted.bam")
 	trimmed_depth_outfile="${trimmed_alignment%.bam}.depth"
-	if ! [[ -s "$trimmed_depth_outfile" ]]; then
-		echo_log "  creating trimmed depth file"
-		samtools depth -d 0 -a "$trimmed_alignment" > "$trimmed_depth_outfile"
-	fi
+	echo_log "  creating trimmed depth file"
+	samtools depth -d 0 -a "$trimmed_alignment" > "$trimmed_depth_outfile"
 
 	echo_log "    primer trimmed alignment: $trimmed_alignment"
 	vcf=$(find "$draftconsensus_path" -name "*${barcode}*.all_callers.combined.vcf")
