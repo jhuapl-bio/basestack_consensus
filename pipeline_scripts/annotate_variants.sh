@@ -77,8 +77,37 @@ fi
   
 # Make report
 # Report of all 3 letter amino acide codes
-awk '/^#/ { if ( $1 == "#CHROM" ) { new_fields="GENE\tANN\tAA_MUT" ; OFS="\t"; print $0"\t"new_fields ; next } ; print ; next } {  split($8,a,"|") ; split(a[11],m,".") ; o_cols="."; ann=a[4]"\t"a[2]"\t"m[2] ; print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"o_cols"\t"ann }' ${OUT_DIR}/${VCF_BASE}_ann.vcf > ${OUT_DIR}/${VCF_BASE}_ann_3letter_code.vcf
+#awk '/^#/ { if ( $1 == "#CHROM" ) { new_fields="GENE\tANN\tAA_MUT" ; OFS="\t"; print $0"\t"new_fields ; next } ; print ; next } {  split($8,a,"|") ; split(a[11],m,".") ; o_cols="."; ann=a[4]"\t"a[2]"\t"m[2] ; print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"o_cols"\t"ann }' ${OUT_DIR}/${VCF_BASE}_ann.vcf > ${OUT_DIR}/${VCF_BASE}_ann_3letter_code.vcf
+split($8,a,"|") ;
+split(a[11],m,".") ;
+o_cols="." ;
+ann=a[4]"\t"a[2]"\t"m[2] ;
+print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"o_cols"\t"ann ;
 
+awk -F $'\t' '/^#/ { if ( $1 == "#CHROM" ) { new_fields="GENE\tANN\tAA_MUT" ; OFS="\t"; print $0"\t"new_fields ; next } ; print ; next } {
+	n = split($8, a, ",");
+	AA_MUT = "";
+	for(i=1; i<=n; i++) {
+		m = split(a[i], b, "|");
+		if(AA_MUT == "") {
+			GENE = b[4];
+			ANN = b[2];
+		}
+		if(substr(b[11], 1, 2) == "p.") {
+			if(AA_MUT != "") {
+				if(AA_MUT != b[11]) {
+					AA_MUT = gensub(/([A-Za-z]+[0-9]+)[\*A-Za-z]+/, "\\1X", "g", AA_MUT);
+					ANN = "ambiguous";
+				}
+			} else {
+				AA_MUT = gensub(/p\.(.*)/, "\\1", "g", b[11]);
+				GENE = b[4];
+				ANN = b[2];
+			}
+		}
+	}
+	printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", $1, $2, $3, $4, $5, $6, $7, ".", GENE, ANN, AA_MUT);
+}' "${OUT_DIR}/${VCF_BASE}_ann.vcf" > "${OUT_DIR}/${VCF_BASE}_ann_3letter_code.vcf"
 
 # Report of all clean vcf
 awk '/^#/ { if ( $1 == "#CHROM" ) { OFS="\t" ; print } else { print }}' ${OUT_DIR}/${VCF_BASE}_ann_3letter_code.vcf > ${OUT_DIR}/${VCF_BASE}_ann_clean.vcf 
