@@ -39,8 +39,9 @@ fi
 while read barcode name; do
     vcf="${postfilter_dir}"/"${name}"_"${barcode}".allsnps.combined.vcf
     if [[ -s "$vcf"  ]]; then
-	    bash -x "${annotate}" "${vcf}" "${snpEff_config}" "${DBNAME}" "${postfilter_dir}"
-	    echo "File not found (snpEff not run): $vcf"
+		"${annotate}" "${vcf}" "${snpEff_config}" "${DBNAME}" "${postfilter_dir}"
+	else
+		echo "File not found (snpEff not run): $vcf"
     fi
 done < "$manifest"
 echo "SnpEff completed on run ${postfilter_dir}"
