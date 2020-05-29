@@ -235,7 +235,7 @@ def check_ambiguous_positions(cons,variants,depthfile,depth_threshold,masked_sit
             
             # set up the row 
             data={}
-            data['run_id'] = (depthfile).split('/')[-5]
+            data['run_id'] = (depthfile).split('/')[-4]
             data['sample'] = (depthfile).split('/')[-1].split('.')[0].split('_')[0]
             data['barcode'] = (depthfile).split('/')[-1].split('.')[0].split('_')[1]
             data['chrom']=chrom
