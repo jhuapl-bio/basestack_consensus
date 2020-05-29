@@ -77,13 +77,6 @@ fi
   
 # Make report
 # Report of all 3 letter amino acide codes
-#awk '/^#/ { if ( $1 == "#CHROM" ) { new_fields="GENE\tANN\tAA_MUT" ; OFS="\t"; print $0"\t"new_fields ; next } ; print ; next } {  split($8,a,"|") ; split(a[11],m,".") ; o_cols="."; ann=a[4]"\t"a[2]"\t"m[2] ; print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"o_cols"\t"ann }' ${OUT_DIR}/${VCF_BASE}_ann.vcf > ${OUT_DIR}/${VCF_BASE}_ann_3letter_code.vcf
-split($8,a,"|") ;
-split(a[11],m,".") ;
-o_cols="." ;
-ann=a[4]"\t"a[2]"\t"m[2] ;
-print $1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"o_cols"\t"ann ;
-
 awk -F $'\t' '/^#/ { if ( $1 == "#CHROM" ) { new_fields="GENE\tANN\tAA_MUT" ; OFS="\t"; print $0"\t"new_fields ; next } ; print ; next } {
 	n = split($8, a, ",");
 	AA_MUT = "";
