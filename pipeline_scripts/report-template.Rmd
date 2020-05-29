@@ -180,20 +180,20 @@ postfilt <- postfilt[o2,]
 o3 <- order(dimnames(mutation_full)[[1]])
 mutation_full <- mutation_full[o3,]
 
-multi_nucleotide <- nchar(as.matrix(snpeff_report$REF))>1
-for(i in which(multi_nucleotide)) {
-  first <- snpeff_report[i,]
-  for(j in 2:nchar(as.matrix(first$REF))) {
-    new <- first
-    new$POS <- first$POS+j-1
-    new$REF <- substring(first$REF,j,j)
-    new$ALT <- substring(first$ALT,j,j)
-    snpeff_report <- rbind(snpeff_report, new)
-  }
-  first$REF <- substring(first$REF,1,1)
-  first$ALT <- substring(first$ALT,1,1)
-  snpeff_report[i,] <- first
-}
+#multi_nucleotide <- nchar(as.matrix(snpeff_report$REF))>1
+#for(i in which(multi_nucleotide)) {
+#  first <- snpeff_report[i,]
+#  for(j in 2:nchar(as.matrix(first$REF))) {
+#    new <- first
+#    new$POS <- first$POS+j-1
+#    new$REF <- substring(first$REF,j,j)
+#    new$ALT <- substring(first$ALT,j,j)
+#    snpeff_report <- rbind(snpeff_report, new)
+#  }
+#  first$REF <- substring(first$REF,1,1)
+#  first$ALT <- substring(first$ALT,1,1)
+#  snpeff_report[i,] <- first
+#}
 
 snpeff_report <- unique(snpeff_report)
 snpeff_report <- snpeff_report[snpeff_report$POS != "POS",]
@@ -270,36 +270,37 @@ for(i in sample_barcodes) {
 }
 rownames(depth_plot_all) <- sample_barcodes
 
-depth_plot_min <- NULL
+depth_plot_mean <- NULL
 for(i in sample_barcodes) {
 	d <- as.matrix(depth_norm[depth_norm[,1]==i,2:4])
 	b <- rep(-1,dim(amplicons)[[1]])
 	for(a in 1:dim(amplicons)[[1]]) {
 		sel <- as.numeric(d[,2]) >= amplicons$unique_start[a] & as.numeric(d[,2]) <= amplicons$unique_stop[a]
 		if(sum(sel) > 0) {
-		  b[a] <- min(as.numeric(d[sel,3]))
+		  b[a] <- mean(as.numeric(d[sel,3]))
 		} else {
 		  b[a] <- 0
 		}
 	}
-  depth_plot_min <- rbind(depth_plot_min, b)
+  depth_plot_mean <- rbind(depth_plot_mean, b)
 }
-rownames(depth_plot_min) <- sample_barcodes
+rownames(depth_plot_mean) <- sample_barcodes
 
 # identify low coverage regions
 threshold <- postfilt_all$ont_depth_thresh[1]
-below_threshold <- function(v) { return(v<threshold) }
+below_threshold <- function(v) { return(v<=threshold) }
 low_coverage_regions <- tapply(depth_norm[,4], depth_norm[,1], below_threshold)
 low_coverage_totals <- unlist(lapply(low_coverage_regions, sum))
 names(low_coverage_totals) <- gsub("depth-norm-", "", names(low_coverage_totals))
 
 # remove entire amplicons with a minimum below the threshold
-for(sample_barcode in dimnames(depth_plot_min)[[1]]) {
-  for(a in which(depth_plot_min[1,] < threshold)) {
-    low_coverage_regions[sample_barcode][[1]][seq(amplicons$unique_start[a], amplicons$unique_stop[a], 1)] <- TRUE
+for(i in seq_along(dimnames(depth_plot_mean)[[1]])) {
+  sample_barcode <-dimnames(depth_plot_mean)[[1]][i] 
+  for(a in which(depth_plot_mean[i,] <= threshold)) {
+    low_coverage_regions[sample_barcode][[1]][seq(amplicons$primer_f_start[a], amplicons$primer_r_stop[a], 1)] <- TRUE
   }
   low_coverage_regions[sample_barcode][[1]][seq(1, amplicons$primer_f_stop[1], 1)] <- TRUE
-  low_coverage_regions[sample_barcode][[1]][seq(amplicons$unique_start[98], 29903, 1)] <- TRUE
+  low_coverage_regions[sample_barcode][[1]][seq(amplicons$primer_r_start[98], 29903, 1)] <- TRUE
 }
 
 # add SNP info to postfilt table
@@ -377,7 +378,7 @@ annotation_snp$SnpEff <- factor(snpeff_annotations, levels = c(levels(snpeff_rep
 
 # create color object for annotations
 cols <- brewer.pal(n=6, name="Dark2")
-snpeff_colors <- c("intergenic_region" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "stop_gained" = cols[4], "start_lost" = cols[6], "ambiguous" = "white", "none" = "white")
+snpeff_colors <- c("intergenic_region" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "stop_gained" = cols[4], "start_lost" = cols[6], "ambiguous" = "white", "none" = "gray70")
 lineage_levels <- levels(factor(annotation_sample$lineage))
 lineage_colors <- brewer.pal(n=length(lineage_levels), name="Set3")
 names(lineage_colors) <- lineage_levels
@@ -538,7 +539,7 @@ depth_plot <- function(plot_sel, title_additional) {
 		bar_data <- depth_plot_all[i,plot_sel]
 		bar_data[bar_data < 1] <- 1
 		bar_colors <- rep(flagFillDict[barcode], length(bar_data))
-		bar_colors[bar_data < threshold] <- flagColors["No"]
+		bar_colors[bar_data <= threshold] <- flagColors["No"]
 		barplot(bar_data, log='y', axes=F, col=NA, border=NA, ylim=c(1,1e5), ylab="")
 		abline(h=c(1,10,100,1000,1e4,1e5), col="gray80")
 		b <- barplot(bar_data, log='y', axes=F, add=TRUE, col=bar_colors, border=NA, ylim=c(1,1e5))
@@ -555,20 +556,20 @@ plot_readlen <- function() {
 }
 #-------------------------------------------------
 plot_amplicon_hist <- function() {
-  h <- hist(depth_plot_min, breaks=500, plot=F)
-  h$counts[h$counts==0] <- 0.5
+  h <- hist(depth_plot_mean, breaks=500, plot=F)
+  h$counts[h$counts==0] <- NA
   par(lwd = 1)
   b <- barplot(h$counts, log='y', axes=F, xlab="", main="", ylab="", plot=F)
   slope <- lm(range(b) ~ range(h$mids))$coefficients[2]
   fill <- "black"
   barplot(h$counts, col=fill, border=fill, log='y', axes=F, xlab="average amplicon depth (number of reads)", main="", ylab="", cex.lab=1, ylim=c(0.5,1e3), xlim=c(0,300*slope))
-  sel_ntc <- grepl("NTC", rownames(depth_plot_min))
+  sel_ntc <- grepl("NTC", rownames(depth_plot_mean))
   if(sum(sel_ntc)>0) {
-    depth_ntc <- depth_plot_min[sel_ntc]
+    depth_ntc <- depth_plot_mean[sel_ntc]
     h_ntc <- NULL
     h_ntc <- hist(depth_ntc, plot=F, breaks=h$breaks)
     new_thresh <- max(50, 2*quantile(depth_ntc, 0.95))
-    h_ntc$counts[h_ntc$counts==0] <- 0.5
+    h_ntc$counts[h_ntc$counts==0] <- NA
     b_ntc <- barplot(h_ntc$counts, log='y', plot=F)
     slope_ntc <- lm(range(b_ntc) ~ range(h_ntc$mids))$coefficients[2]
     barplot(h_ntc$counts, col="dodgerblue2", border="dodgerblue2", log='y', axes=F, xlab="", main="", ylab="", add=T, ylim=c(0.5,1e3), xlim=c(0,300*slope_ntc))
@@ -660,10 +661,10 @@ genome_cartoon_overview <- function(mutation_subset) {
   snpeff_subset <- subset(snpeff_report, snpeff_report$POS %in% SNP)
   
   labels <- unlist(apply(mutation_subset, 1, function(v){ u <- unique(v); return(paste(u[u!=""], collapse=", "))}))
-  labels[SNP %in% snpeff_subset$POS] <- paste(as.character(snpeff_subset$GENE), as.character(snpeff_subset$AA_MUT), sep=": ")
-  rename_sel <- snpeff_subset$ANN %in% c("intergenic_region")
+  labels[SNP %in% snpeff_subset$POS] <- paste(as.character(snpeff_subset$GENE[!duplicated(snpeff_subset$POS)]), as.character(snpeff_subset$AA_MUT[!duplicated(snpeff_subset$POS)]), sep=": ")
+  rename_sel <- snpeff_subset$ANN %in% c("intergenic_region") & !duplicated(snpeff_subset$POS)
   labels[SNP %in% snpeff_subset$POS][rename_sel] <- paste0(snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)[rename_sel]
-  rename_sel <- snpeff_subset$ANN %in% c("synonymous_variant")
+  rename_sel <- snpeff_subset$ANN %in% c("synonymous_variant") & !duplicated(snpeff_subset$POS)
   labels[SNP %in% snpeff_subset$POS][rename_sel] <- paste0(snpeff_subset$GENE, ": ", snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)[rename_sel]
   colors <- rep("white", length(SNP))
   colors <- replace(colors, (SNP %in% snpeff_subset$POS), annotation_colors$SnpEff[as.character(snpeff_subset$ANN)])
@@ -1078,7 +1079,7 @@ depth_plot((1:98 %% 2 == 0), "-nCoV2019_2")
 \label{sec:variants}
 
 ## Genome cartoons
-```{r, genome-cartoon-overview, eval=TRUE, echo=FALSE, fig.height=6, results="asis"}
+```{r, genome-cartoon-overview, eval=TRUE, echo=FALSE, fig.height=6, results="asis", warning=FALSE, message=FALSE}
 genome_cartoon_overview(mutation_no_low_coverage)
 ```
 
@@ -1356,3 +1357,4 @@ Thomas Mehoke, Shirlee Wohl, Melanie Kirsche, Srividya Ramakrishnan, Yunfan Fan,
 # print out all packages used
 sessionInfo()
 ```
+
