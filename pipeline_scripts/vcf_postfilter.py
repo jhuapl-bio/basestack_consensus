@@ -375,7 +375,7 @@ def main():
             illumina_depth,illumina_alt_allele_freq,illumina_allele_string = parse_allele_counts(info, data['alt'], 'illumina')
         
         # add basic data to this record
-        data['run_id'] = (args.depthfile).split('/')[-5]
+        data['run_id'] = (args.depthfile).split('/')[-4]
         data['sample'] = (args.depthfile).split('/')[-1].split('.')[0].split('_')[0]
         data['barcode'] = (args.depthfile).split('/')[-1].split('.')[0].split('_')[1]
         
