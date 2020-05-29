@@ -71,12 +71,20 @@ def mask_failed_amplicons(cons,cov,amplicons,depth_threshold):
         
         # calculate metric to be used to assess amplicon failure
         if sum(d <= depth_threshold for d in depths) > 0:
+            # if consecutive amplicons failed, mask region between them
+            if (i-1) in failed_amplicons:
+                prev = amp[amp.amplicon==(i-1)]
+                amp_sites = range(int(prev['unique_start']),int(tmp['unique_stop'])+1)
+            # now mask all the sites in amp_sites
             cons = ['N' if (pos+1) in amp_sites else cons[pos] for pos,base in enumerate(cons)]
             
             # add amplicon to list of masked amplicons
             failed_amplicons.append(i)
             ampmask=ampmask+list(amp_sites)
     
+    # remove any duplicates from ampmask list
+    # caused by remasking of overlapping regions
+    ampmask = sorted(list(set(ampmask)))
     return(cons,failed_amplicons,ampmask)
 
 
