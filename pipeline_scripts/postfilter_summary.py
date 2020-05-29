@@ -139,33 +139,35 @@ def generate_postfilter_summary(rundir):
                 alpha.append('Yes')
             else:
                 alpha.append('No')
-            
-            # make the flags look nice
-            if not printflag:
-                flags.append('')
-                num_flagged.append(0)
-                snps.append(', '.join(snp))
+                                    
+            # only print flags for complete genomes
+            if not complete:
+                flags.append('see full output')
+                snps.append('see full output')
+                num_flagged.append(len(printflag))
             else:
-                # join the flags
-                flagstr = ', '.join(printflag)
+                # make the flags look nice and add them
                 
-                # format the flags
-                flaglist=[item.split(":") for item in flagstr.split(", ")]
-                flagdict={}
-                
-                for key,val in flaglist:
-                    flagdict.setdefault(key, []).append(val)
-                
-                flagstr='; '.join("{!s}={!r}".format(key,val) for (key,val) in flagdict.items())
-                flagstr=flagstr.replace('\'','')
-                
-                num_flagged.append(len(flagdict))
-                
-                if not complete:
-                    flags.append('see full output')
-                    snps.append('see full output')
+                if not printflag: # this will be an empty list if there are no flags
+                    flags.append('')
+                    num_flagged.append(0)
+                    snps.append(', '.join(snp))
                 else:
-                    # add the flags
+                    # join the flags
+                    flagstr = ', '.join(printflag)
+                    
+                    # format the flags
+                    flaglist=[item.split(":") for item in flagstr.split(", ")]
+                    flagdict={}
+                    
+                    for key,val in flaglist:
+                        flagdict.setdefault(key, []).append(val)
+                    
+                    flagstr='; '.join("{!s}={!r}".format(key,val) for (key,val) in flagdict.items())
+                    flagstr=flagstr.replace('\'','')
+                    
+                    # add flags and counts to final list
+                    num_flagged.append(len(flagdict))
                     flags.append(flagstr)
                     snps.append(', '.join(snp))
             
@@ -174,6 +176,7 @@ def generate_postfilter_summary(rundir):
     
     # make the dataframe
     df = pd.DataFrame({'Run':runs,'Sample':samplenames,'Barcode':barcodes,'Coverage':coverage,'Variants':snps,'Flags':flags,'Flagged Positions':num_flagged,'Alpha':alpha,'Status':status})
+    df = df.sort_values(by='Sample')
     df.to_csv(os.path.join(rundir,'postfilt_summary.txt'),sep='\t',index=False)
     
     # output the large table
