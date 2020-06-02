@@ -17,8 +17,8 @@ awk -F $'\t' 'BEGIN{
 		start_f = primer_start[amplicon]["LEFT"]+1;
 		stop_f = primer_stop[amplicon]["LEFT"];
 		unique_start = (primer_start[amplicon-1]["RIGHT"] ? primer_stop[amplicon-1]["RIGHT"]+1 : primer_stop[amplicon]["LEFT"]+1);
-		unique_stop = (primer_start[amplicon+1]["LEFT"] ? primer_start[amplicon+1]["LEFT"] : primer_start[amplicon]["RIGHT"]+1);
-		start_r = primer_start[amplicon]["RIGHT"]+2;
+		unique_stop = (primer_start[amplicon+1]["LEFT"] ? primer_start[amplicon+1]["LEFT"] : primer_start[amplicon]["RIGHT"]-1);
+		start_r = primer_start[amplicon]["RIGHT"]+1;
 		stop_r = primer_stop[amplicon]["RIGHT"];
 		printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\n", amplicon, start_f, stop_f, unique_start, unique_stop, start_r, stop_r);
 	}
