@@ -14,6 +14,30 @@ from variant_status import status_by_case
 import variant_flags as fl
 
 
+def get_amp_sites(i,amp):
+    """ 
+    Function to return unique positions for each amplicon
+    Wrapping in a function to more easily deal with first and last amplicons
+    """
+    
+    # deal with special first amplicon
+    if i==1:
+        amp_sites = range(55,int(amp[amp.amplicon==i+1]['primer_f_stop'])+1)
+    
+    # deal with special last amplicon
+    elif i==98:
+        amp_sites = range(int(amp[amp.amplicon==i-1]['primer_r_start']),29837)
+    
+    # deal with all other amplicons
+    else:
+        prev = amp[amp.amplicon==i-1]
+        subs = amp[amp.amplicon==i+1]
+        amp_sites = range(int(prev['primer_r_start']),int(subs['primer_f_stop'])+1)
+    
+    # remember values are 1-indexed
+    return(amp_sites)
+    
+
 def calculate_depth_threshold(ntc_depthfile,amplicons,call_depth_factor):
     """
     Determine the read depth threshold to use for calling non-ambiguous bases
@@ -33,10 +57,8 @@ def calculate_depth_threshold(ntc_depthfile,amplicons,call_depth_factor):
     # loop through amplicons
     for i in amp.amplicon:
         
-        tmp = amp[amp.amplicon==i]
-        
         # get list of depths at positions within this amplicon
-        amp_sites = range(int(tmp['unique_start']),int(tmp['unique_stop'])+1)
+        amp_sites = get_amp_sites(i,amp)
         avg_amp_depths.append(np.mean([cov[pos] for pos in amp_sites]))
     
     # return 95% quantile of this average amplicon list
@@ -62,19 +84,17 @@ def mask_failed_amplicons(cons,cov,amplicons,depth_threshold):
     
     # loop through amplicons
     for i in amp.amplicon:
-        
-        tmp = amp[amp.amplicon==i]
-        
+                
         # get list of depths at positions within this amplicon
-        amp_sites = range(int(tmp['unique_start']),int(tmp['unique_stop'])+1)
+        amp_sites = get_amp_sites(i,amp)
         depths = [cov[pos] for pos in amp_sites]
         
         # calculate metric to be used to assess amplicon failure
         if sum(d <= depth_threshold for d in depths) > 0:
             # if consecutive amplicons failed, mask region between them
             if (i-1) in failed_amplicons:
-                prev = amp[amp.amplicon==(i-1)]
-                amp_sites = range(int(prev['unique_start']),int(tmp['unique_stop'])+1)
+                amp_sites_prev = get_amp_sites(i-1,amp)
+                amp_sites = range(min(amp_sites_prev),max(amp_sites))
             # now mask all the sites in amp_sites
             cons = ['N' if (pos+1) in amp_sites else cons[pos] for pos,base in enumerate(cons)]
             
