@@ -1051,8 +1051,8 @@ depth_heatmap((1:98 %% 2 >= 0), "", norm=TRUE)
 ### Amplicon depth threshold
 \label{low_depth}
 
-```{r, echo=FALSE, fig.height=4}
-plot_amplicon_hist()
+```{r, amplicon-histogram, echo=FALSE, fig.height=4}
+#plot_amplicon_hist()
 ```
 
 **Amplicons**: Samples in black. No-template controls (NTCs) in blue. Depth threshold as red line.
