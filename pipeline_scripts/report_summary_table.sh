@@ -249,6 +249,9 @@ depthfile="$stats_path/depth-all.txt"
 mutations_pos="$stats_path/mutations-pos.txt"
 mutations_all="$stats_path/mutations-all.txt"
 mutations_table="$stats_path/mutations-table.txt"
+depth_mutations_pos="$stats_path/depth_mutations-pos.txt"
+depth_mutations_all="$stats_path/depth_mutations-all.txt"
+depth_mutations_table="$stats_path/depth_mutations-table.txt"
 
 echo_log "====== Call to ${YELLOW}"$(basename $0)"${NC} from ${GREEN}"$(hostname)"${NC} ======"
 
@@ -299,6 +302,8 @@ if ! [[ -s "$demuxfile" ]]; then
 else
 	echo_log "Demux count already present - will not overwrite it"
 fi
+
+ont_depth_thresh=$(head -n2 "$postfilt_all" | awk -F $'\t' '{if(NR==1){for(i=1; i<=NF; i++){if($i=="ont_depth_thresh"){col=i;}}}else{print $col}}')
 
 echo_log "Reading manifest"
 while read barcode label; do
@@ -360,17 +365,36 @@ while read barcode label; do
 	mutations_outfile="$stats_path/mutations-$filebase.txt"
 	echo_log "  creating mutations file"
 	final_consensus=$(find "$postfilter_path" -regextype posix-extended -regex ".*/.*$barcode.*(complete|partial).fasta")
+	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.nanopolish.primertrimmed.rg.sorted.bam")
+	del_depth_outfile="${trimmed_alignment%.bam}.del.depth"
 	echo_log "    final consensus: $final_consensus"
 	if [[ -s "$final_consensus" ]]; then
 		"$bin_path/mutations.sh" \
 			$("$bin_path/fix_fasta.sh" "$reference" | tail -n1) \
 			$("$bin_path/fix_fasta.sh" "$final_consensus" | tail -n1) \
 			| tail -n+55 | head -n-67 > "$mutations_outfile"
+
+		depth_mutations_outfile="$stats_path/depth_mutations-$filebase.txt"
+		echo_log "  creating depth mutations file"
+
+		awk -F $'\t' -v THRESH="$ont_depth_thresh" '{
+			if(NR==FNR) {
+				if($3 > THRESH) {
+					depth[$2] = $3;
+				}
+			} else {
+				REF=gensub(/([A-Z]+)[0-9]+[A-Z]+/, "\\1", "g", $1);
+				POS=gensub(/[A-Z]+([0-9]+)[A-Z]+/, "\\1", "g", $1);
+				ALT=gensub(/[A-Z]+[0-9]+([A-Z]+)/, "\\1", "g", $1);
+				if(depth[POS]) {
+					printf("%s\n", $1);
+				}
+			}
+		}' "$del_depth_outfile" "$mutations_outfile" > "$depth_mutations_outfile"
 	fi
 
-	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.nanopolish.primertrimmed.rg.sorted.bam")
-	trimmed_depth_outfile="${trimmed_alignment%.bam}.depth"
 	echo_log "  creating trimmed depth file"
+	trimmed_depth_outfile="${trimmed_alignment%.bam}.depth"
 	samtools depth -d 0 -a "$trimmed_alignment" > "$trimmed_depth_outfile"
 
 	echo_log "    primer trimmed alignment: $trimmed_alignment"
@@ -460,6 +484,42 @@ awk '{
 	}
 	printf("\n");
 }' "$mutations_pos" "$mutations_all" > "$mutations_table"
+
+echo_log "Identifying mutations above depth threshold"
+rm -f "$depth_mutations_all"
+find "$stats_path" -name "depth_mutations-*.txt" ! -name "depth_mutations-pos.txt" ! -name "depth_mutations-all.txt" ! -name "depth_mutations-table.txt" | while read fn; do
+	base=$(basename "${fn%.txt}")
+	base="${base#depth_mutations-}"
+	awk -v BASE="$base" 'BEGIN{ printf("%s", BASE); } {
+		printf("\t%s", $1);
+	} END { printf("\n"); }' "$fn" >> "$depth_mutations_all"
+	cut -c2- "$fn" | rev | cut -c2- | rev
+done | sort | uniq > "$depth_mutations_pos"
+
+awk '{
+	if(NR==FNR) {
+		a[$1];
+	} else {
+		for(i=2; i<=NF; i++) {
+			pos=substr($i,2,length($i)-2);
+			m[$1][pos] = $i;
+		}
+	}
+} END {
+	printf("virus");
+	PROCINFO["sorted_in"] = "@ind_num_asc";
+	for(i in a) { printf("\t%s", i); }
+	for(sample in m) {
+		printf("\n%s", sample);
+		for(i in a){
+			printf("\t");
+			if(i in m[sample]) {
+				printf("%s", m[sample][i]);
+			}
+		}
+	}
+	printf("\n");
+}' "$depth_mutations_pos" "$depth_mutations_all" > "$depth_mutations_table"
 
 #===================================================================================================
 # BUILD MARKDOWN FILE
