@@ -304,6 +304,7 @@ else
 fi
 
 ont_depth_thresh=$(head -n2 "$postfilt_all" | awk -F $'\t' '{if(NR==1){for(i=1; i<=NF; i++){if($i=="ont_depth_thresh"){col=i;}}}else{print $col}}')
+echo_log "Depth threshold: $ont_depth_thresh"
 
 echo_log "Reading manifest"
 while read barcode label; do
@@ -330,19 +331,29 @@ while read barcode label; do
 	normalized_reads=$(samtools idxstats "$normalized_alignment" | grep "$ref_header" | cut -f3)
 	draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.consensus.fasta")
 	consensus_length=$(($ref_length - $(tail -n+2 "$draft_consensus" | grep -o N | wc -l)))
+	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.nanopolish.primertrimmed.rg.sorted.bam")
+	del_depth_file="${trimmed_alignment%.bam}.del.depth"
+	vcf=$(find "$draftconsensus_path" -name "*${barcode}*.all_callers.combined.vcf")
 	post_filter=$(find "$postfilter_path" -name "*$barcode*.variant_data.txt")
+	final_consensus=$(find "$postfilter_path" -regextype posix-extended -regex ".*/.*$barcode.*(complete|partial).fasta")
 
-	echo_log "    FASTQ file: $gather"
+	echo_log "    FASTQ file: ${gather#$run_path/}"
+	echo_log "    full alignment: ${alignment#$run_path/}"
+	echo_log "    normalized alignment: ${normalized_alignment#$run_path/}"
+	echo_log "    primer trimmed alignment: ${trimmed_alignment#$run_path/}"
+	echo_log "    depth file: ${del_depth_file#$run_path/}"
+	echo_log "    variant file: ${vcf#$run_path/}"
+	echo_log "    draft consensus: ${draft_consensus#$run_path/}"
+	echo_log "    variant file: ${post_filter#$run_path/}"
+	echo_log "    final consensus: ${final_consensus#$run_path/}"
+
+	echo_log "    barcode stats:"
 	echo_log "      number of reads: $length_filter"
-	echo_log "    full alignment: $alignment"
 	echo_log "      aligned reads: $aligned_reads"
-	echo_log "    normalized alignment: $normalized_alignment"
 	echo_log "      normalized reads: $normalized_reads"
-	echo_log "    draft consensus: $draft_consensus"
 	echo_log "      unambiguous consensus: $consensus_length"
-	echo_log "    variant file: $post_filter"
 
-	echo_log "  adding line to summary file"
+	echo_log "    adding line to summary file"
 	flag=$(grep "^$label" "$postfilt_summary" | cut -d$'\t' -f7)
 	printf "%s\t%s\t%'d\t%'d\t%'d\t%'d (%s %%)\t%s\n" \
 		"$label" \
@@ -355,27 +366,23 @@ while read barcode label; do
 		"$flag" >> "$outfile"
 
 	depth_outfile="$normalize_path/$filebase/$filebase.depth"
-	echo_log "  creating depth file"
+	echo_log "    creating depth file"
 	samtools depth -d 0 -a "$alignment" > "$depth_outfile"
 
 	normalized_depth_outfile="$normalize_path/$filebase/$filebase.covfiltered.depth"
-	echo_log "  creating normalized depth file"
+	echo_log "    creating normalized depth file"
 	samtools depth -d 0 -a "$normalized_alignment" > "$normalized_depth_outfile"
 
 	mutations_outfile="$stats_path/mutations-$filebase.txt"
-	echo_log "  creating mutations file"
-	final_consensus=$(find "$postfilter_path" -regextype posix-extended -regex ".*/.*$barcode.*(complete|partial).fasta")
-	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.nanopolish.primertrimmed.rg.sorted.bam")
-	del_depth_outfile="${trimmed_alignment%.bam}.del.depth"
-	echo_log "    final consensus: $final_consensus"
 	if [[ -s "$final_consensus" ]]; then
+		echo_log "  creating mutations file"
 		"$bin_path/mutations.sh" \
 			$("$bin_path/fix_fasta.sh" "$reference" | tail -n1) \
 			$("$bin_path/fix_fasta.sh" "$final_consensus" | tail -n1) \
 			| tail -n+55 | head -n-67 > "$mutations_outfile"
 
 		depth_mutations_outfile="$stats_path/depth_mutations-$filebase.txt"
-		echo_log "  creating depth mutations file"
+		echo_log "    creating depth mutations file"
 
 		awk -F $'\t' -v THRESH="$ont_depth_thresh" '{
 			if(NR==FNR) {
@@ -390,19 +397,16 @@ while read barcode label; do
 					printf("%s\n", $1);
 				}
 			}
-		}' "$del_depth_outfile" "$mutations_outfile" > "$depth_mutations_outfile"
+		}' "$del_depth_file" "$mutations_outfile" > "$depth_mutations_outfile"
 	fi
 
-	echo_log "  creating trimmed depth file"
+	echo_log "    creating trimmed depth file"
 	trimmed_depth_outfile="${trimmed_alignment%.bam}.depth"
 	samtools depth -d 0 -a "$trimmed_alignment" > "$trimmed_depth_outfile"
 
-	echo_log "    primer trimmed alignment: $trimmed_alignment"
-	vcf=$(find "$draftconsensus_path" -name "*${barcode}*.all_callers.combined.vcf")
-	outPrefix=$(basename "${vcf%.all_callers.combined.vcf}")
-
 	if [[ -s "$vcf" && -s "$trimmed_alignment" && skip_igv == "false" ]]; then
 
+		outPrefix=$(basename "${vcf%.all_callers.combined.vcf}")
 		igv_out_path="$stats_path/igv"
 		mkdir -p "$igv_out_path"
 
@@ -431,22 +435,22 @@ done < "$manifest"
 
 printf "\tuncalled\t%'d\tNA\tNA\tNA\tNA\n" $(grep unclassified "$stats_path/demux_count.txt" | cut -f1) >> "$outfile"
 
-echo_log "Calculating depth"
+echo_log "Consolidating depth"
 find "$normalize_path" -name "*.depth" ! -name "*covfiltered.depth" -print0 | while read -d $'\0' f; do
 	base=$(basename "$f")
 	awk -v BASE="${base%%.*}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
 done > "$depthfile"
 
-echo_log "Calculating depth"
+echo_log "Consolidating normalized depth"
 find "$normalize_path" -name "*.covfiltered.depth" -print0 | while read -d $'\0' f; do
 	base=$(basename "$f")
 	awk -v BASE="${base%.covfiltered.depth}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
 done > "${depthfile/-all/-norm-all}"
 
-echo_log "Calculating depth"
-find "$draftconsensus_path" -name "*.nanopolish.primertrimmed.rg.sorted.depth" -print0 | while read -d $'\0' f; do
+echo_log "Consolidating trimmed depth"
+find "$draftconsensus_path" -name "*.nanopolish.primertrimmed.rg.sorted.del.depth" -print0 | while read -d $'\0' f; do
 	base=$(basename "$f")
-	awk -v BASE="${base%.nanopolish.primertrimmed.rg.sorted.depth}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
+	awk -v BASE="${base%.nanopolish.primertrimmed.rg.sorted.del.depth}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
 done > "${depthfile/-all/-trim-all}"
 
 echo_log "Identifying mutations"
