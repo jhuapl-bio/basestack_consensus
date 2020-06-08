@@ -3,7 +3,7 @@
 scheme="$1"
 
 awk -F $'\t' 'BEGIN{
-	printf "amplicon\tprimer_f_start\tprimer_f_stop\tunique_start\tunique_stop\tprimer_r_start\tprimer_r_stop\n"
+	printf "amplicon\tprimer_f_start\tprimer_f_stop\tunique_start\tunique_stop\tprimer_r_start\tprimer_r_stop\tmask_start\tmask_stop\n"
 } {
 	n = split($4, a, "_");
 	amplicon = a[2];
@@ -20,6 +20,10 @@ awk -F $'\t' 'BEGIN{
 		unique_stop = (primer_start[amplicon+1]["LEFT"] ? primer_start[amplicon+1]["LEFT"] : primer_start[amplicon]["RIGHT"]-1);
 		start_r = primer_start[amplicon]["RIGHT"]+1;
 		stop_r = primer_stop[amplicon]["RIGHT"];
-		printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\n", amplicon, start_f, stop_f, unique_start, unique_stop, start_r, stop_r);
+
+		mask_start = (primer_start[amplicon-1]["RIGHT"] ? primer_start[amplicon-1]["RIGHT"]+1 : primer_stop[amplicon]["LEFT"]+1);
+		mask_stop = (primer_stop[amplicon+1]["LEFT"] ? primer_stop[amplicon+1]["LEFT"] : primer_start[amplicon]["RIGHT"]-1);
+
+		printf("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", amplicon, start_f, stop_f, unique_start, unique_stop, start_r, stop_r, mask_start, mask_stop);
 	}
 }' "$1"
