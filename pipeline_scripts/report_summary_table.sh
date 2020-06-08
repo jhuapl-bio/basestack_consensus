@@ -243,6 +243,7 @@ echo_log() {
 # MAIN BODY
 #===================================================================================================
 
+amplicons="$stats_path/amplicons.txt"
 outfile="$stats_path/summary.txt"
 demuxfile="$stats_path/demux_count.txt"
 depthfile="$stats_path/depth-all.txt"
@@ -277,11 +278,14 @@ echo_log "  working directory: ${CYAN}$workdir${NC}"
 echo_log "  threads: ${CYAN}1${NC}"
 echo_log "output arguments"
 echo_log "  log file: ${CYAN}$logfile${NC}"
+echo_log "  amplicons: ${CYAN}${amplicons}${NC}"
 echo_log "  summary file: ${CYAN}${summary#$run_path}${NC}"
 echo_log "  demux file: ${CYAN}${demuxfile#$run_path}${NC}"
 echo_log "  depth file: ${CYAN}${depthfile#$run_path}${NC}"
 echo_log "  mutation file: ${CYAN}${mutations_table#$run_path}${NC}"
 echo_log "------ processing pipeline output ------"
+
+scheme_amplicon_profile.sh "$bed" > "$amplicons"
 
 printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
 	"Sample" \
@@ -344,14 +348,21 @@ while read barcode label; do
 	echo_log "    depth file: ${del_depth_file#$run_path/}"
 	echo_log "    variant file: ${vcf#$run_path/}"
 	echo_log "    draft consensus: ${draft_consensus#$run_path/}"
-	echo_log "    variant file: ${post_filter#$run_path/}"
+	echo_log "    variant data: ${post_filter#$run_path/}"
 	echo_log "    final consensus: ${final_consensus#$run_path/}"
 
 	echo_log "    barcode stats:"
 	echo_log "      number of reads: $length_filter"
 	echo_log "      aligned reads: $aligned_reads"
 	echo_log "      normalized reads: $normalized_reads"
-	echo_log "      unambiguous consensus: $consensus_length"
+	echo_log "      unambiguous consensus nucleotides: $consensus_length"
+
+	depth_outfile="$normalize_path/$filebase/$filebase.depth"
+	normalized_depth_outfile="$normalize_path/$filebase/$filebase.covfiltered.depth"
+	mutations_outfile="$stats_path/mutations-$filebase.txt"
+	depth_mask_outfile="$stats_path/amplicon_depth_mask-$filebase.txt"
+	depth_mutations_outfile="$stats_path/depth_mutations-$filebase.txt"
+	trimmed_depth_outfile="${trimmed_alignment%.bam}.depth"
 
 	echo_log "    adding line to summary file"
 	flag=$(grep "^$label" "$postfilt_summary" | cut -d$'\t' -f7)
@@ -365,43 +376,71 @@ while read barcode label; do
 		$(echo "$consensus_length" | awk -v L="$ref_length" '{printf("%0.1f", (100*$1/L))}') \
 		"$flag" >> "$outfile"
 
-	depth_outfile="$normalize_path/$filebase/$filebase.depth"
 	echo_log "    creating depth file"
 	samtools depth -d 0 -a "$alignment" > "$depth_outfile"
 
-	normalized_depth_outfile="$normalize_path/$filebase/$filebase.covfiltered.depth"
 	echo_log "    creating normalized depth file"
 	samtools depth -d 0 -a "$normalized_alignment" > "$normalized_depth_outfile"
 
-	mutations_outfile="$stats_path/mutations-$filebase.txt"
 	if [[ -s "$final_consensus" ]]; then
-		echo_log "  creating mutations file"
+		echo_log "    creating mutations file"
 		"$bin_path/mutations.sh" \
 			$("$bin_path/fix_fasta.sh" "$reference" | tail -n1) \
 			$("$bin_path/fix_fasta.sh" "$final_consensus" | tail -n1) \
 			| tail -n+55 | head -n-67 > "$mutations_outfile"
 
-		depth_mutations_outfile="$stats_path/depth_mutations-$filebase.txt"
 		echo_log "    creating depth mutations file"
 
 		awk -F $'\t' -v THRESH="$ont_depth_thresh" '{
 			if(NR==FNR) {
-				if($3 > THRESH) {
-					depth[$2] = $3;
+				if(NR==1) {
+					for(i=1; i<=NF; i++) {
+						if($i == "mask_start") {
+							mask_start_col = i;
+						} else if($i == "mask_stop") {
+							mask_stop_col = i;
+						}
+					}
+				} else {
+					mask_start[$1] = $mask_start_col;
+					mask_stop[$1] = $mask_stop_col;
 				}
+			} else {
+				depth[$2] = $3;
+			}
+		} END {
+			for(amplicon in mask_start) {
+				start=mask_start[amplicon];
+				stop=mask_stop[amplicon];
+				min[amplicon]=999999999999;
+				for(i=start; i<=stop; i++) {
+					if(depth[i] <= min) {
+						min[amplicon] = depth[i];
+					}
+				}
+				if(min[amplicon] <= THRESH) {
+					for(i=start; i<=stop; i++) {
+						printf("%s\n", i);
+					}
+				}
+			}
+		}' "$amplicons" "$del_depth_file" > "$depth_mask_outfile"
+
+		awk -F $'\t' -v THRESH="$ont_depth_thresh" '{
+			if(NR==FNR) {
+				depth_mask[$1];
 			} else {
 				REF=gensub(/([A-Z]+)[0-9]+[A-Z]+/, "\\1", "g", $1);
 				POS=gensub(/[A-Z]+([0-9]+)[A-Z]+/, "\\1", "g", $1);
 				ALT=gensub(/[A-Z]+[0-9]+([A-Z]+)/, "\\1", "g", $1);
-				if(depth[POS]) {
+				if(!depth[POS]) {
 					printf("%s\n", $1);
 				}
 			}
-		}' "$del_depth_file" "$mutations_outfile" > "$depth_mutations_outfile"
+		}' "$depth_mask_outfile" "$mutations_outfile" > "$depth_mutations_outfile"
 	fi
 
 	echo_log "    creating trimmed depth file"
-	trimmed_depth_outfile="${trimmed_alignment%.bam}.depth"
 	samtools depth -d 0 -a "$trimmed_alignment" > "$trimmed_depth_outfile"
 
 	if [[ -s "$vcf" && -s "$trimmed_alignment" && skip_igv == "false" ]]; then
