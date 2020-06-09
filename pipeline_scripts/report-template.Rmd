@@ -133,7 +133,7 @@ if(file.exists(depth_allFn)) {
 } else {
   depth_all <- NULL
   for(i in levels(summary$Sample)) {
-    depth_one <- data.frame(V1=rep(i, 29903), V2=rep("MN908947.3", 29903), V3=seq(1, 29903), V4=rep(1, 29903))
+    depth_one <- data.frame(V1=rep(i, genome_ref$length), V2=rep(genome_ref$reference$accession, genome_ref$length), V3=seq(1, genome_ref$length), V4=rep(1, genome_ref$length))
   }
   depth_all <- rbind(depth_all, depth_one)
 }
@@ -142,7 +142,7 @@ if(file.exists(depth_trimFn)) {
 } else {
   depth_norm <- NULL
   for(i in levels(summary$Sample)) {
-    depth_one <- data.frame(V1=rep(i, 29903), V2=rep("MN908947.3", 29903), V3=seq(1, 29903), V4=rep(1, 29903))
+    depth_one <- data.frame(V1=rep(i, genome_ref$length), V2=rep(genome_ref$reference$accession, genome_ref$length), V3=seq(1, genome_ref$length), V4=rep(1, genome_ref$length))
   }
   depth_norm <- rbind(depth_norm, depth_one)
 }
@@ -162,7 +162,7 @@ if(file.exists(snpeff_reportFn)) {
   snpeff_report <- snpeff_report[order(snpeff_report$POS),]
 } else {
   empty_column <- rep("unknown", 1)
-  snpeff_report <- data.frame("X.CHROM" = rep("MN908947.3", 2), "POS" = empty_column, "REF" = empty_column, "ALT" = empty_column, "GENE" = empty_column, "ANN" = empty_column, "AA_MUT" = empty_column)
+  snpeff_report <- data.frame("X.CHROM" = rep(genome_ref$reference$accession, 2), "POS" = empty_column, "REF" = empty_column, "ALT" = empty_column, "GENE" = empty_column, "ANN" = empty_column, "AA_MUT" = empty_column)
 }
 if(file.exists(clade_reportFn)) {
   clade_report <- read.table(clade_reportFn, sep=",", header=TRUE)
@@ -245,7 +245,7 @@ for(i in 1:length(flagList)){
 summary$Consensus <- factor(summary$Consensus, levels = c("Yes", "Yes*", "Maybe", "No", "NA"))
 summary$Raw.Reads <- paste0(summary$Raw.Reads, " (", sprintf("%0.1f", 100*as.numeric(gsub(",", "", summary$Raw.Reads))/sum(as.numeric(gsub(",", "", summary$Raw.Reads)))),"%)")
 summary$Depth <- rep("NA", dim(summary)[1])
-summary$Depth[!uncalled_row] <- c(paste0(format(round(tapply(depth_all[,4],factor(depth_all[,1], levels=sample_barcodes), sum)/29903, 0), big.mark=",", trim=T), "x"))
+summary$Depth[!uncalled_row] <- c(paste0(format(round(tapply(depth_all[,4],factor(depth_all[,1], levels=sample_barcodes), sum)/genome_ref$length, 0), big.mark=",", trim=T), "x"))
 summary$Coverage <- sapply(as.matrix(summary$Coverage), function(s) { return(strsplit(s, " ")[[1]][1] )})
 summary$Lineage <- rep(NA, dim(summary)[1])
 if(dim(clade_report)[1]>0) {
@@ -301,7 +301,7 @@ for(i in seq_along(dimnames(depth_plot_mean)[[1]])) {
     low_coverage_regions[sample_barcode][[1]][seq(amplicons$primer_f_start[a], amplicons$primer_r_stop[a], 1)] <- TRUE
   }
   low_coverage_regions[sample_barcode][[1]][seq(1, amplicons$primer_f_stop[1], 1)] <- TRUE
-  low_coverage_regions[sample_barcode][[1]][seq(amplicons$primer_r_start[98], 29903, 1)] <- TRUE
+  low_coverage_regions[sample_barcode][[1]][seq(amplicons$primer_r_start[98], genome_ref$length, 1)] <- TRUE
 }
 
 # add SNP info to postfilt table
@@ -646,11 +646,11 @@ plot_homoplasy_heatmap <- function() {
 }
 #-------------------------------------------------
 genome_cartoon_overview <- function(mutation_subset) {
-  features <- GRanges("MN908947.3", IRanges(sapply(genome_ref$genes, function(g){return(g$start)}), 
-                                    width=sapply(genome_ref$genes, function(g){return(g$end-g$start+1)}),
-                                    names=names(genome_ref$genes)),
+  features <- GRanges(genome_ref$reference$accession, IRanges(c(1, sapply(genome_ref$genes, function(g){return(g$start)}), genome_ref$length), 
+                                    width=c(1,sapply(genome_ref$genes, function(g){return(g$end-g$start+1)}),1),
+                                    names=c("",names(genome_ref$genes),"")),
 #                      fill = rep(c('#2ca25f', '#99d8c9'), 10)[seq(1, length(genome_ref$genes))],
-                      fill = brewer.pal(n=11, name="Set3"),
+                      fill = c(NA, brewer.pal(n=11, name="Set3"), NA),
                       color = "white",
                       height = unit(1/8, "inches"))
 
@@ -670,7 +670,7 @@ genome_cartoon_overview <- function(mutation_subset) {
   colors <- rep("white", length(SNP))
   colors <- replace(colors, (SNP %in% snpeff_subset$POS), annotation_colors$SnpEff[as.character(snpeff_subset$ANN)])
 
-  sample.gr <- GRanges("MN908947.3", IRanges(SNP, width=1, names=labels))
+  sample.gr <- GRanges(genome_ref$reference$accession, IRanges(SNP, width=1, names=labels))
   sample.gr$shape <- rep("triangle_point_down", length(sample.gr), replace=TRUE)
   sample.gr$color <- colors
   sample.gr$border <- "black"
@@ -679,7 +679,7 @@ genome_cartoon_overview <- function(mutation_subset) {
   
   sample.gr$score <- rowSums(nchar(mutation_subset) > 0)
   
-  lolliplot(sample.gr, features, type="circle", xlab="genome position (nucleotide)", ylab="# of samples", xaxis=c(1,seq(5,25,5)*1000,29903), xaxis.gp = gpar(fontsize = 7), legend = list(annotation_colors$SnpEff))
+  lolliplot(sample.gr, features, type="circle", xlab="genome position (nucleotide)", ylab="# of samples", xaxis=c(1,seq(5,25,5)*1000,genome_ref$length), xaxis.gp = gpar(fontsize = 7), legend = list(annotation_colors$SnpEff))
 
   if(1==2) {
     # change opacity of labels based on e.g. QUAL?
@@ -729,7 +729,7 @@ genome_cartoon_overview <- function(mutation_subset) {
 }
 #-------------------------------------------------
 genome_cartoons <- function(mutation_subset) {
-  features <- GRanges("MN908947.3", IRanges(sapply(genome_ref$genes, function(g){return(g$start)}), 
+  features <- GRanges(genome_ref$reference$accession, IRanges(sapply(genome_ref$genes, function(g){return(g$start)}), 
                                     width=sapply(genome_ref$genes, function(g){return(g$end-g$start+1)})),
 #                                    names=names(genome_ref$genes)),
 #                      fill = rep(c('#2ca25f', '#99d8c9'), 10)[seq(1, length(genome_ref$genes))],
@@ -767,7 +767,7 @@ genome_cartoons <- function(mutation_subset) {
 
     cat(paste0("\n\n### ", flagFillTeXDict[barcode], "{[", flagDict[barcode], "]: ", sample, "}\n\n"))
     if(length(SNP) > 0) {
-      sample.gr <- GRanges("MN908947.3", IRanges(SNP, width=1, names=labels))
+      sample.gr <- GRanges(genome_ref$reference$accession, IRanges(SNP, width=1, names=labels))
       sample.gr$shape <- rep("triangle_point_down", length(sample.gr), replace=TRUE)
       sample.gr$color <- colors
       sample.gr$border <- "black"
@@ -776,7 +776,7 @@ genome_cartoons <- function(mutation_subset) {
     } else {
       sample.gr <- GRanges(c(seqnames=NULL,ranges=NULL,strand=NULL))
     }
-    lolliplot(sample.gr, features, type="circle", xlab="genome position (nucleotide)", ylab="", xaxis=c(1,seq(5,25,5)*1000,29903), xaxis.gp = gpar(fontsize = 7))
+    lolliplot(sample.gr, features, type="circle", xlab="genome position (nucleotide)", ylab="", xaxis=c(1,seq(5,25,5)*1000,genome_ref$length), xaxis.gp = gpar(fontsize = 7))
   }
 
   if(1==2) {
@@ -968,7 +968,7 @@ print_igv_plot <- function(row) {
       alleles <- postfilt_all$ont_alleles[postfilt_all$pos == nt & postfilt_all$sample == sample]
       cat(paste0("\n### ", colorlevels(flag), "{[", flag, "]: ", sample, " ", flagString, " - ", alleles, "}\n"))
       if(nt != "see full output") {
-        pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample_barcode,"/",sample_barcode,"-MN908947.3_",nt,".png")
+        pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample_barcode,"/",sample_barcode,"-",genome_ref$reference$accession,".3_",nt,".png")
         if(file.exists(pngFn)) {
           cat(paste0("\\includegraphics[width=13cm]{",pngFn,"}\n"))
         } else {
