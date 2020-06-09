@@ -729,11 +729,11 @@ genome_cartoon_overview <- function(mutation_subset) {
 }
 #-------------------------------------------------
 genome_cartoons <- function(mutation_subset) {
-  features <- GRanges(genome_ref$reference$accession, IRanges(sapply(genome_ref$genes, function(g){return(g$start)}), 
-                                    width=sapply(genome_ref$genes, function(g){return(g$end-g$start+1)})),
-#                                    names=names(genome_ref$genes)),
+  features <- GRanges(genome_ref$reference$accession, IRanges(c(1, sapply(genome_ref$genes, function(g){return(g$start)}), genome_ref$length), 
+                                    width=c(1,sapply(genome_ref$genes, function(g){return(g$end-g$start+1)}),1),
+                                    names=c("",names(genome_ref$genes),"")),
 #                      fill = rep(c('#2ca25f', '#99d8c9'), 10)[seq(1, length(genome_ref$genes))],
-                      fill = brewer.pal(n=length(genome_ref$genes), name="Set3"),
+                      fill = c(NA, brewer.pal(n=11, name="Set3"), NA),
                       color = "white",
                       height = unit(1/8, "inches"))
   sample.gr.all <- list()

@@ -430,7 +430,7 @@ while read barcode label; do
 					}
 				}
 			}
-			for(i=mask_stop[98]; i<29903; i++) {
+			for(i=mask_stop[98]; i<=29903; i++) {
 				printf("%s\n", i);
 			}
 		}' "$amplicons" "$del_depth_file" > "$depth_mask_outfile"
