@@ -118,7 +118,7 @@ if(length(list.files(run_path, "drift*", full.names=TRUE)) > 0) {
 summaryFn <- paste0(run_path,"/artic-pipeline/run_stats/summary.txt")
 depth_allFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-all.txt")
 depth_trimFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-del-all.txt")
-mutation_fullFn <- paste0(run_path, "/artic-pipeline/run_stats/mutations-table.txt")
+mutation_fullFn <- paste0(run_path, "/artic-pipeline/run_stats/depth_mutations-table.txt")
 postfiltFn <- paste0(run_path, "/artic-pipeline/5-post-filter/postfilt_summary.txt")
 postfilt_allFn <- paste0(run_path, "/artic-pipeline/5-post-filter/postfilt_all.txt")
 snpeff_reportFn <- paste0(run_path, "/artic-pipeline/5-post-filter/final_snpEff_report.txt")
@@ -166,6 +166,7 @@ if(file.exists(snpeff_reportFn)) {
 }
 if(file.exists(clade_reportFn)) {
   clade_report <- read.table(clade_reportFn, sep=",", header=TRUE)
+  clade_report <- clade_report[order(clade_report$taxon),]
 } else {
   empty_column <- rep("", dim(mutation_full)[1])
   clade_report <- data.frame("taxon" = summary$Sample, "lineage" = rep("", length(summary$Sample)))
