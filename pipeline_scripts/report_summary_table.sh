@@ -414,7 +414,7 @@ while read barcode label; do
 				stop=mask_stop[amplicon];
 				depth_min[amplicon]=999999999999;
 				for(i=start; i<=stop; i++) {
-					if(depth[i] <= min) {
+					if(depth[i] <= depth_min) {
 						depth_min[amplicon] = depth[i];
 					}
 				}
@@ -426,7 +426,7 @@ while read barcode label; do
 			}
 		}' "$amplicons" "$del_depth_file" > "$depth_mask_outfile"
 
-		awk -F $'\t' -v THRESH="$ont_depth_thresh" '{
+		awk -F $'\t' '{
 			if(NR==FNR) {
 				depth_mask[$1];
 			} else {
