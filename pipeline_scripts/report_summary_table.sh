@@ -412,13 +412,13 @@ while read barcode label; do
 			for(amplicon in mask_start) {
 				start=mask_start[amplicon];
 				stop=mask_stop[amplicon];
-				depth_min[amplicon]=999999999999;
+				depth_min=999999999999;
 				for(i=start; i<=stop; i++) {
 					if(depth[i] <= depth_min) {
-						depth_min[amplicon] = depth[i];
+						depth_min = depth[i];
 					}
 				}
-				if(depth_min[amplicon] <= THRESH) {
+				if(depth_min <= THRESH) {
 					for(i=start; i<=stop; i++) {
 						printf("%s\n", i);
 					}
