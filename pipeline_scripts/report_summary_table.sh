@@ -412,13 +412,16 @@ while read barcode label; do
 			for(amplicon in mask_start) {
 				start=mask_start[amplicon];
 				stop=mask_stop[amplicon];
-				depth_min=999999999999;
+				depth_min[amplicon]=999999999999;
 				for(i=start; i<=stop; i++) {
-					if(depth[i] <= depth_min) {
-						depth_min = depth[i];
+					if(depth[i] <= depth_min[amplicon]) {
+						depth_min[amplicon] = depth[i];
 					}
 				}
-				if(depth_min <= THRESH) {
+				if(depth_min[amplicon] <= THRESH) {
+					if(amplicon > 1 && depth_min[amplicon-1] <= THRESH) {
+						start = mask_start[amplicon-1];
+					}
 					for(i=start; i<=stop; i++) {
 						printf("%s\n", i);
 					}
@@ -428,12 +431,12 @@ while read barcode label; do
 
 		awk -F $'\t' '{
 			if(NR==FNR) {
-				depth_mask[$1];
+				depth_mask[$1] = 1;
 			} else {
 				REF=gensub(/([A-Z]+)[0-9]+[A-Z]+/, "\\1", "g", $1);
 				POS=gensub(/[A-Z]+([0-9]+)[A-Z]+/, "\\1", "g", $1);
 				ALT=gensub(/[A-Z]+[0-9]+([A-Z]+)/, "\\1", "g", $1);
-				if(!depth[POS]) {
+				if(!depth_mask[POS]) {
 					printf("%s\n", $1);
 				}
 			}
