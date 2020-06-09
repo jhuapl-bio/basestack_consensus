@@ -409,6 +409,9 @@ while read barcode label; do
 				depth[$2] = $3;
 			}
 		} END {
+			for(i=1; i<mask_start[1]; i++) {
+				printf("%s\n", i);
+			}
 			for(amplicon in mask_start) {
 				start=mask_start[amplicon];
 				stop=mask_stop[amplicon];
@@ -426,6 +429,9 @@ while read barcode label; do
 						printf("%s\n", i);
 					}
 				}
+			}
+			for(i=mask_stop[98]; i<29903; i++) {
+				printf("%s\n", i);
 			}
 		}' "$amplicons" "$del_depth_file" > "$depth_mask_outfile"
 
