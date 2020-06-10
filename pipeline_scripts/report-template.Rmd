@@ -100,7 +100,7 @@ run_config <- read.table(paste0(run_path,"/run_config.txt"))
 manifest <- read.table(paste0(run_path,"/manifest.txt"))
 amplicons <- read.table(paste0(run_path,"/../amplicons"), sep="\t", header=TRUE)
 problematic_sites <- read.vcfR(paste0(run_path,"/../problematic_sites_sarsCov2.vcf"), verbose = FALSE, skip=24)
-genome_ref <- fromJSON(file=paste0(protocol_path, "/genome.json"))
+genome_ref <- rjson::fromJSON(file=paste0(protocol_path, "/genome.json"))
 important_positions <- read.table(paste0(nextstrain_path,"/latest/alpha/clade_related_snps.txt"), sep="\t", header=TRUE, comment.char="")
 common_positions <- read.vcfR(paste0(nextstrain_path,"/latest/alpha/alignments.vcf"), verbose = FALSE, skip=3)
 if(length(list.files(run_path, "throughput*", full.names=TRUE)) > 0) {
@@ -117,13 +117,14 @@ if(length(list.files(run_path, "drift*", full.names=TRUE)) > 0) {
 #read_lengths <- read.table(paste0(run_path,"/artic-pipeline/run_stats/read_lengths.txt"), sep="\t")
 summaryFn <- paste0(run_path,"/artic-pipeline/run_stats/summary.txt")
 depth_allFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-all.txt")
-depth_trimFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-del-all.txt")
+depth_trimFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-trim-all.txt")
 mutation_fullFn <- paste0(run_path, "/artic-pipeline/run_stats/depth_mutations-table.txt")
 postfiltFn <- paste0(run_path, "/artic-pipeline/5-post-filter/postfilt_summary.txt")
 postfilt_allFn <- paste0(run_path, "/artic-pipeline/5-post-filter/postfilt_all.txt")
 snpeff_reportFn <- paste0(run_path, "/artic-pipeline/5-post-filter/final_snpEff_report.txt")
 snpeff_report_with_NsFn <- paste0(run_path, "/artic-pipeline/5-post-filter/snpEff_report_with_Ns.txt")
 clade_reportFn <- paste0(run_path, "/artic-pipeline/5-post-filter/lineage_report.csv")
+low_coverageFn <- paste0(run_path, "/artic-pipeline/run_stats/amplicon_depth_mask_all.txt")
 
 if(file.exists(summaryFn)) {
   summary <- read.table(summaryFn, sep="\t", header=TRUE)
@@ -164,7 +165,6 @@ if(file.exists(snpeff_reportFn)) {
   empty_column <- rep("unknown", 1)
   snpeff_report <- data.frame("X.CHROM" = rep(genome_ref$reference$accession, 2), "POS" = empty_column, "REF" = empty_column, "ALT" = empty_column, "GENE" = empty_column, "ANN" = empty_column, "AA_MUT" = empty_column)
 }
-
 empty_column <- rep("", dim(mutation_full)[1])
 clade_report <- data.frame("taxon" = summary$Sample, "lineage" = rep("", length(summary$Sample)))
 tryCatch({
@@ -207,6 +207,17 @@ rownames(snpeff_report) <- NULL
 
 uncalled_row <- grepl('uncalled', summary$Barcode, fixed=TRUE)
 sample_barcodes <- paste(summary$Sample, summary$Barcode, sep="_")[!uncalled_row]
+
+low_coverage_regions <- list()
+for(i in sample_barcodes) {
+  low_coverage_regions[[i]] <- rep(FALSE, genome_ref$length)
+}
+if(file.exists(low_coverageFn)){
+  low_coverage <- read.table(low_coverageFn, sep="\t")
+  for(i in levels(factor(low_coverage[,1]))){
+    low_coverage_regions[[i]][low_coverage[low_coverage[,1]==i,2]] <- TRUE
+  }
+}
 
 # create mutation objects
 mutation_full <- t(mutation_full)
@@ -292,20 +303,20 @@ rownames(depth_plot_mean) <- sample_barcodes
 
 # identify low coverage regions
 threshold <- postfilt_all$ont_depth_thresh[1]
-below_threshold <- function(v) { return(v<=threshold) }
-low_coverage_regions <- tapply(depth_norm[,4], depth_norm[,1], below_threshold)
-low_coverage_totals <- unlist(lapply(low_coverage_regions, sum))
-names(low_coverage_totals) <- gsub("depth-norm-", "", names(low_coverage_totals))
+#below_threshold <- function(v) { return(v<=threshold) }
+#low_coverage_regions <- tapply(depth_norm[,4], depth_norm[,1], below_threshold)
+#low_coverage_totals <- unlist(lapply(low_coverage_regions, sum))
+#names(low_coverage_totals) <- gsub("depth-norm-", "", names(low_coverage_totals))
 
 # remove entire amplicons with a minimum below the threshold
-for(i in seq_along(dimnames(depth_plot_mean)[[1]])) {
-  sample_barcode <-dimnames(depth_plot_mean)[[1]][i] 
-  for(a in which(depth_plot_mean[i,] <= threshold)) {
-    low_coverage_regions[sample_barcode][[1]][seq(amplicons$primer_f_start[a], amplicons$primer_r_stop[a], 1)] <- TRUE
-  }
-  low_coverage_regions[sample_barcode][[1]][seq(1, amplicons$primer_f_stop[1], 1)] <- TRUE
-  low_coverage_regions[sample_barcode][[1]][seq(amplicons$primer_r_start[98], genome_ref$length, 1)] <- TRUE
-}
+# for(i in seq_along(dimnames(depth_plot_mean)[[1]])) {
+#   sample_barcode <-dimnames(depth_plot_mean)[[1]][i] 
+#   for(a in which(depth_plot_mean[i,] <= threshold)) {
+#     low_coverage_regions[sample_barcode][[1]][seq(amplicons$primer_f_start[a], amplicons$primer_r_stop[a], 1)] <- TRUE
+#   }
+#   low_coverage_regions[sample_barcode][[1]][seq(1, amplicons$primer_f_stop[1], 1)] <- TRUE
+#   low_coverage_regions[sample_barcode][[1]][seq(amplicons$primer_r_start[98], genome_ref$length, 1)] <- TRUE
+# }
 
 # add SNP info to postfilt table
 mutation_no_low_coverage <- mutation_full
@@ -317,10 +328,10 @@ for(i in seq_along(low_coverage_regions)) {
   mutation_no_low_coverage_bool[low_coverage_rows, low_coverage_cols] <- FALSE
 }
 f <- function(row) { return(paste(as.matrix(row[sapply(as.matrix(row),nchar)>0]), collapse=", ")) }
-mutation_collapse <- apply(mutation_no_low_coverage, 2, f)
+mutation_collapse <- apply(mutation_full, 2, f)
 mutation_counts <- nchar(gsub("[^,]", "", mutation_collapse))+1
 select_many <- mutation_counts > 30
-mutation_collapse[select_many] <- paste(mutation_counts[select_many], "SNPs")
+# mutation_collapse[select_many] <- paste(mutation_counts[select_many], "SNPs")
 postfilt <- postfilt[,!(names(postfilt) %in% "Flagged.Positions")]
 
 # remove any outlier samples from mutation table
@@ -340,7 +351,7 @@ if(sum(select_many)>0) {
     samples_with_asterisks <- c(samples_with_asterisks, new_names_with_asterisks)
     mutation_table <- cbind(mutation_table, new_cols)
   }
-  
+
   mutation_bool_many <- subset(mutation_no_low_coverage_bool, select=select_many)
   new_cols <- subset(mutation_no_low_coverage_bool, subset=rowSums(subset(mutation_no_low_coverage_bool, select=!select_many) > 0) != 0, select=select_many)
   if(dim(new_cols)[2] > 0) {
@@ -387,7 +398,7 @@ lineage_levels <- levels(factor(annotation_sample$lineage))
 if(length(lineage_levels)>3){
   lineage_colors <- brewer.pal(n=length(lineage_levels), name="Set3")
 } else {
-  lineage_colors <- lineage_levels
+  lineage_colors <- brewer.pal(n=3, name="Set3")[1:length(lineage_levels)]
 }
 names(lineage_colors) <- lineage_levels
 annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]],
@@ -485,7 +496,7 @@ print_low_depth_regions <- function() {
   get_regions <- function(i){
     d <- depth_norm
     l <- levels(factor(d[,1]))
-    r <- d[d[,1]==l[i] & low_coverage_regions[[i]] & d[,3] >= 55 & d[,3]<=amplicons$primer_r_stop[97], 3]
+    r <- d[d[,1]==l[i] & low_coverage_regions[[i]] & d[,3] >= 55 & d[,3]<=amplicons$primer_r_stop[98], 3]
     if(length(r) > 0) {
       return(region_collapse(r))
     } else {
