@@ -164,13 +164,16 @@ if(file.exists(snpeff_reportFn)) {
   empty_column <- rep("unknown", 1)
   snpeff_report <- data.frame("X.CHROM" = rep(genome_ref$reference$accession, 2), "POS" = empty_column, "REF" = empty_column, "ALT" = empty_column, "GENE" = empty_column, "ANN" = empty_column, "AA_MUT" = empty_column)
 }
-if(file.exists(clade_reportFn)) {
+
+empty_column <- rep("", dim(mutation_full)[1])
+clade_report <- data.frame("taxon" = summary$Sample, "lineage" = rep("", length(summary$Sample)))
+tryCatch({
   clade_report <- read.table(clade_reportFn, sep=",", header=TRUE)
-  clade_report <- clade_report[order(clade_report$taxon),]
-} else {
-  empty_column <- rep("", dim(mutation_full)[1])
-  clade_report <- data.frame("taxon" = summary$Sample, "lineage" = rep("", length(summary$Sample)))
-}
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
+clade_report <- clade_report[order(clade_report$taxon),]
 
 # sort all tables
 o1 <- order(paste0(summary$Sample, summary$Barcode))
@@ -216,7 +219,7 @@ mutation_full_bool[(mutation_full_bool > 0) & !(consensus_call %in% c("A","C","G
 
 # set up color objects for our data (needs to be streamlined)
 summary$Consensus <- rep("NA", dim(summary)[1])
-summary$Consensus[summary$Sample %in% postfilt$Sample] <- as.character(postfilt$Status)
+summary$Consensus[summary$Sample %in% postfilt$Sample] <- as.character(postfilt$Status)[postfilt$Sample %in% summary$Sample]
 flagList <- summary$Consensus
 flagList <- as.character(flagList)
 flagList[flagList == ""] <- "No"
@@ -348,8 +351,8 @@ if(sum(select_many)>0) {
 
 postfilt_rows <- levels(factor(postfilt_all$pos))
 postfilt_cols <- levels(factor(postfilt_all$sample))
-mut_rows <- dimnames(mutation_bool)[[1]]
-mut_cols <- dimnames(mutation_bool)[[2]]
+mut_rows <- dimnames(mutation_full_bool)[[1]]
+mut_cols <- dimnames(mutation_full_bool)[[2]]
 
 combined_rows <- sort(as.numeric(c(postfilt_rows, mut_rows[!(mut_rows %in% postfilt_rows)])))
 combined_cols <- postfilt_cols
@@ -381,7 +384,11 @@ annotation_snp$SnpEff <- factor(snpeff_annotations, levels = c(levels(snpeff_rep
 cols <- brewer.pal(n=6, name="Dark2")
 snpeff_colors <- c("intergenic_region" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "stop_gained" = cols[4], "start_lost" = cols[6], "ambiguous" = "white", "none" = "gray70")
 lineage_levels <- levels(factor(annotation_sample$lineage))
-lineage_colors <- brewer.pal(n=length(lineage_levels), name="Set3")
+if(length(lineage_levels)>3){
+  lineage_colors <- brewer.pal(n=length(lineage_levels), name="Set3")
+} else {
+  lineage_colors <- lineage_levels
+}
 names(lineage_colors) <- lineage_levels
 annotation_colors <- list(Flag = flagColors[flagColors != flagColors["NA"]],
                           problematic.snp = c("caution"="khaki3", "mask"="firebrick3"),
@@ -618,7 +625,7 @@ plot_homoplasy_heatmap <- function() {
 
   # look into adding joint surprisal information theory (Stuart suggestion)
   
-  plot_matrix <- mutation_bool
+  plot_matrix <- mutation_full_bool
 
   if(dim(plot_matrix)[1] == 0) {
     cat("\nError: all samples are registering as outliers. Plot will not display.\n")
@@ -865,7 +872,7 @@ plot_flag_matrix <- function() {
   
   o <- order(as.numeric(dimnames(plot_matrix)[[1]]))
   o.col <- order(dimnames(plot_matrix)[[2]])
-  plot_matrix[o, o.col][combined_rows %in% mut_rows, combined_cols %in% mut_cols] <- mutation_bool[mut_rows %in% combined_rows, mut_cols %in% combined_cols]
+  plot_matrix[o, o.col][combined_rows %in% mut_rows, combined_cols %in% mut_cols] <- mutation_full_bool[mut_rows %in% combined_rows, mut_cols %in% combined_cols]
 
   # add overall genome flag annotation
   sample_sel <- summary$Sample %in% dimnames(plot_matrix)[[2]]
@@ -1081,7 +1088,7 @@ depth_plot((1:98 %% 2 == 0), "-nCoV2019_2")
 
 ## Genome cartoons
 ```{r, genome-cartoon-overview, eval=TRUE, echo=FALSE, fig.height=6, results="asis", warning=FALSE, message=FALSE}
-genome_cartoon_overview(mutation_no_low_coverage)
+genome_cartoon_overview(mutation_full)
 ```
 
 ```{r, genome-cartoons, eval=TRUE, echo=FALSE, fig.height=2, results="asis"}
@@ -1094,7 +1101,7 @@ genome_cartoon_overview(mutation_no_low_coverage)
 #  genome_cartoons(mutation_no_low_coverage[,columns])
 #  cat('\n\n')
 #}
-genome_cartoons(mutation_no_low_coverage)
+genome_cartoons(mutation_full)
 ```
 
 \pagebreak
