@@ -433,7 +433,7 @@ while read barcode label; do
 			for(i=mask_stop[98]; i<=29903; i++) {
 				printf("%s\n", i);
 			}
-		}' "$amplicons" "$del_depth_file" > "$depth_mask_outfile"
+		}' "$amplicons" "$del_depth_file" | sort -n | uniq > "$depth_mask_outfile"
 
 		awk -F $'\t' '{
 			if(NR==FNR) {
@@ -500,6 +500,12 @@ find "$draftconsensus_path" -name "*.nanopolish.primertrimmed.rg.sorted.del.dept
 	base=$(basename "$f")
 	awk -v BASE="${base%.nanopolish.primertrimmed.rg.sorted.del.depth}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
 done > "${depthfile/-all/-trim-all}"
+
+echo_log "Consolidating depth masks"
+find "$stats_path" -name "amplicon_depth_mask-*.txt" ! -name "amplicon_depth_mask_all.txt" -print0 | while read -d $'\0' f; do
+	base=$(basename "${f%.txt}")
+	awk -v BASE="${base#amplicon_depth_mask-}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
+done > "$stats_path/amplicon_depth_mask_all.txt"
 
 echo_log "Identifying mutations"
 rm -f "$mutations_all"
