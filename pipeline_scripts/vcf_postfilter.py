@@ -154,7 +154,10 @@ def mask_consensus_sites(consensus,depthfile,depth_threshold,amplicons,outdir,pr
     
     # output newly-masked bases to file
     d = dict(artic_mask=ambig,depth_mask=depthmask,amp_mask=ampmask,failed_amps=failed_amplicons)
-    masked_sites = pd.DataFrame(dict([ (k,pd.Series(v)) if v!=[] else (k,np.nan) for k,v in d.items() ]))
+    if any(a != [] for a in d.values()):
+        masked_sites = pd.DataFrame(dict([ (k,pd.Series(v)) if v!=[] else (k,np.nan) for k,v in d.items() ]))
+    else:
+        masked_sites = pd.DataFrame(columns = ['artic_mask','depth_mask','amp_mask','failed_amps'])
     masked_sites['depth_thresh']=depth_threshold
     
     filename=os.path.join(outdir,prefix+'.new_masked_sites.txt')
