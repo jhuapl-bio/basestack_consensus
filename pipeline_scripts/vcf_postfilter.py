@@ -90,7 +90,7 @@ def mask_failed_amplicons(cons,cov,amplicons,depth_threshold):
         depths = [cov[pos] for pos in amp_sites]
         
         # calculate metric to be used to assess amplicon failure
-        if sum(d <= depth_threshold for d in depths) > 0:
+        if sum(d < depth_threshold for d in depths) > 0:
             # if consecutive amplicons failed, mask region between them
             if (i-1) in failed_amplicons:
                 amp_sites_prev = get_amp_sites(i-1,amp)
@@ -128,7 +128,8 @@ def mask_consensus_sites(consensus,depthfile,depth_threshold,amplicons,outdir,pr
     assert len(cons)==29903
     
     ambig=[] # store ambig positions coming out of artic pipeline
-    depthmask=[] # store newly masked positions due to depth mask
+    depthmask=[] # store all masked positions due to depth mask
+    newmask=[] # store newly masked positions due to depth mask
     
     for pos,base in enumerate(cons):
         
@@ -141,23 +142,32 @@ def mask_consensus_sites(consensus,depthfile,depth_threshold,amplicons,outdir,pr
         # save bases that were already 'N'
         if base=='N':
             ambig.append(pos+1)
+            if cov[pos+1] < depth_threshold:
+                depthmask.append(pos+1)
             continue
         
         # for non ambiguous bases
         # change basecalls to N if coverage is below threshold
-        elif cov[pos+1] <= depth_threshold:
+        elif cov[pos+1] < depth_threshold:
             cons[pos] = 'N'
             depthmask.append(pos+1)
+            newmask.append(pos+1)
             
     # mask bases based on failed amplicons
     cons,failed_amplicons,ampmask = mask_failed_amplicons(cons,cov,amplicons,depth_threshold)
     
+    # get list of all depth/amplicon-masked sites
+    allmask = sorted(list(set(depthmask + ampmask)))
+    # get list of all ambiguous sites not masked for coverage
+    nomask = [x for x in ambig if x not in allmask]
+    
     # output newly-masked bases to file
-    d = dict(artic_mask=ambig,depth_mask=depthmask,amp_mask=ampmask,failed_amps=failed_amplicons)
+    d = dict(artic_ambig=ambig,new_depth_mask=newmask,all_depth_mask=depthmask,amp_mask=ampmask,
+             failed_amps=failed_amplicons,all_masked=allmask,non_masked_ambig=nomask)
     if any(a != [] for a in d.values()):
         masked_sites = pd.DataFrame(dict([ (k,pd.Series(v)) if v!=[] else (k,np.nan) for k,v in d.items() ]))
     else:
-        masked_sites = pd.DataFrame(columns = ['artic_mask','depth_mask','amp_mask','failed_amps'])
+        masked_sites = pd.DataFrame()
     masked_sites['depth_thresh']=depth_threshold
     
     filename=os.path.join(outdir,prefix+'.new_masked_sites.txt')
@@ -242,10 +252,10 @@ def check_ambiguous_positions(cons,variants,depthfile,depth_threshold,masked_sit
         
         # check depth at this position
         # only include positions below depth threshold if they are in a key position
-        if (cov[pos+1]>depth_threshold and (pos+1) not in masked_sites.amp_mask.values) or ((pos+1) in key_snps):
+        if (cov[pos+1]>=depth_threshold and (pos+1) not in masked_sites.amp_mask.values) or ((pos+1) in key_snps):
 
             # determine case number and description
-            if cov[pos+1]<=depth_threshold or (pos+1) in masked_sites.amp_mask.values:
+            if cov[pos+1]<depth_threshold or (pos+1) in masked_sites.amp_mask.values:
                 # this must be a key snp
                 assert (pos+1) in key_snps
                 case=19
@@ -390,7 +400,7 @@ def main():
         
         # ignore this position if the depth is too low
         
-        if cov[pos] <= depth_threshold:
+        if cov[pos] < depth_threshold:
             continue
         
         # get illumina read depth and pileup if applicable
