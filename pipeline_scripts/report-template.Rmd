@@ -1023,8 +1023,6 @@ pandoc.table(summary, split.cells = c(3,2,7,4,6,1,1), split.table = Inf,
              emphasize.rownames = FALSE, style="rmarkdown")
 ```
 
-\textcolor{myRed}{No = Red} = Incomplete genome (<25k nucleotides)
-
 **Consensus flags**: \textcolor{myDarkGreen}{Yes = Dark Green} = Genome is okay for submission ; \textcolor{myLightGreen}{Yes* = Light Green} = light green = Easy modification is possibly needed ; \textcolor{myYellow}{Maybe = Yellow} = Something unexpected may be happening ; \textcolor{myRed}{No = Red} = Incomplete genome (<25k nt)
 
 (See section \ref{sec:flags} on page \pageref{sec:flags} for reasons for these flag calls. See section \ref{sec:pipeline_postfilter} on page \pageref{sec:pipeline_postfilter} for full flag definitions.)
