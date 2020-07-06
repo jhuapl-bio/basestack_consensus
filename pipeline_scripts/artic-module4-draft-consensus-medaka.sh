@@ -1,6 +1,6 @@
 #!/bin/bash
 source /home/idies/workspace/covid19/bashrc
-conda activate artic-ncov2019-medaka
+conda activate artic-ncov2019
 
 #---------------------------------------------------------------------------------------------------
 

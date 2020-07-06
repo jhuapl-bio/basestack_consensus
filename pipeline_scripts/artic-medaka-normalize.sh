@@ -1,5 +1,5 @@
 . "/home/idies/workspace/Storage/ernluaw1/persistent/Miniconda3/etc/profile.d/conda.sh"
-conda activate artic-ncov2019-medaka
+conda activate artic-ncov2019
 
 
 echo_log() {

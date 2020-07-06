@@ -1,7 +1,7 @@
 #!/bin/bash
 
 source /home/idies/workspace/covid19/bashrc
-conda activate artic-ncov2019-medaka
+conda activate artic-ncov2019
 
 export JAVA_HOME="/home/idies/workspace/covid19/code/jdk-11.0.2"
 export PATH=$JAVA_HOME/bin:$PATH
