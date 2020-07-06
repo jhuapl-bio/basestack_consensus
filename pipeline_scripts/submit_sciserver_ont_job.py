@@ -135,7 +135,7 @@ def authenticate_user():
                 USERNAME=user.userName
         except requests.exceptions.ConnectionError as e:
                 print("Connection Error: Authentication Token was not generated.")
-                print("     Please log back in to SciServer, reboot terminal, and try again.")
+                print("     Please log back in to SciServer and try again.")
                 sys.exit(1)
         except Exception as e:
                 if "Error when getting the keystone user with token" in str(e.args[0]):
