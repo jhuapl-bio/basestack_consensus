@@ -42,11 +42,11 @@ for bamfile in `ls $DIR/*.nanopolish.primertrimmed.rg.sorted.bam`; do
         fi
 
 	echo 'Illumina sample: '$illuminasample
-	freebayesvcf=`ls /home/idies/workspace/covid19/illumina/*/trimmedvariantcalling/$illuminasample'_'*'.freebayes.vcf' 2>/dev/null`
-        ivarvcf=`ls /home/idies/workspace/covid19/illumina/*/trimmedvariantcalling/$illuminasample'_'*'.ivar.vcf' 2>/dev/null`
-	illuminasamtoolsvcf=`ls /home/idies/workspace/covid19/illumina/*/trimmedvariantcalling/$illuminasample'_'*'.samtools.vcf' 2>/dev/null`
-	illuminabam=`ls /home/idies/workspace/covid19/illumina/*/trimmedvariantcalling/$illuminasample'_'*'.norm200.bam' 2>/dev/null`
-	illuminampileup=`ls /home/idies/workspace/covid19/illumina/*/trimmedvariantcalling/$illuminasample'_'*'.mpileup' 2>/dev/null`
+	freebayesvcf=`ls /home/idies/workspace/covid19/illumina/*/trimmedv2variantcalling/$illuminasample'_'*'.freebayes.vcf' 2>/dev/null`
+        ivarvcf=`ls /home/idies/workspace/covid19/illumina/*/trimmedv2variantcalling/$illuminasample'_'*'.ivar.vcf' 2>/dev/null`
+	illuminasamtoolsvcf=`ls /home/idies/workspace/covid19/illumina/*/trimmedv2variantcalling/$illuminasample'_'*'.samtools.vcf' 2>/dev/null`
+	illuminabam=`ls /home/idies/workspace/covid19/illumina/*/trimmedv2variantcalling/$illuminasample'_'*'.norm200.bam' 2>/dev/null`
+	illuminampileup=`ls /home/idies/workspace/covid19/illumina/*/trimmedv2variantcalling/$illuminasample'_'*'.mpileup' 2>/dev/null`
 	
 	ontmpileup=`ls $DIR/$samplename*.mpileup 2>/dev/null`
         if [ -z $freebayesvcf ] || [ -z $ivarvcf ] || [ -z $illuminasamtoolsvcf ]
