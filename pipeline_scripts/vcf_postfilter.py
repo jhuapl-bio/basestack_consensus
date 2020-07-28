@@ -90,7 +90,7 @@ def mask_failed_amplicons(cons,cov,amplicons,depth_threshold):
         depths = [cov[pos] for pos in amp_sites]
         
         # calculate metric to be used to assess amplicon failure
-        if sum(d < depth_threshold for d in depths) > 0:
+        if sum(d <= depth_threshold for d in depths) > 0:
             # if consecutive amplicons failed, mask region between them
             if (i-1) in failed_amplicons:
                 amp_sites_prev = get_amp_sites(i-1,amp)
@@ -148,7 +148,7 @@ def mask_consensus_sites(consensus,depthfile,depth_threshold,amplicons,outdir,pr
         
         # for non ambiguous bases
         # change basecalls to N if coverage is below threshold
-        elif cov[pos+1] < depth_threshold:
+        elif cov[pos+1] <= depth_threshold:
             cons[pos] = 'N'
             depthmask.append(pos+1)
             newmask.append(pos+1)
@@ -252,10 +252,10 @@ def check_ambiguous_positions(cons,variants,depthfile,depth_threshold,masked_sit
         
         # check depth at this position
         # only include positions below depth threshold if they are in a key position
-        if (cov[pos+1]>=depth_threshold and (pos+1) not in masked_sites.amp_mask.values) or ((pos+1) in key_snps):
+        if (cov[pos+1]>depth_threshold and (pos+1) not in masked_sites.amp_mask.values) or ((pos+1) in key_snps):
 
             # determine case number and description
-            if cov[pos+1]<depth_threshold or (pos+1) in masked_sites.amp_mask.values:
+            if cov[pos+1]<=depth_threshold or (pos+1) in masked_sites.amp_mask.values:
                 # this must be a key snp
                 assert (pos+1) in key_snps
                 case=19
@@ -400,7 +400,7 @@ def main():
         
         # ignore this position if the depth is too low
         
-        if cov[pos] < depth_threshold:
+        if cov[pos] <= depth_threshold:
             continue
         
         # get illumina read depth and pileup if applicable
