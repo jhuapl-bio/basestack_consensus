@@ -45,8 +45,6 @@ if [ $1 == align ] ; then
 	samtools index $datadir/align_trimmed/$prefix.sorted.bam
     done
 fi
-
-	    
 	    
 if [ $1 == trim_primers ] ; then
     bed=~/software/artic-ncov2019/primer_schemes/nCoV-2019/V3/nCoV-2019.scheme.bed
@@ -66,10 +64,41 @@ if [ $1 == trim_primers ] ; then
     done
 fi
 
+if [ $1 == trim_ends ] ; then
+    bed=~/software/artic-ncov2019/primer_schemes/nCoV-2019/V3/nCoV-2019.scheme.bed
+    
+    for i in $datadir/align_trimmed/*.sorted.bam ;
+    do
+	prefix=`basename $i .sorted.bam`
+
+	align_trim \
+	    --report $datadir/align_trimmed/$prefix.report_end.txt \
+	    $bed \
+	    < $i | \
+	    samtools sort -@ 36 -T $prefix.tmp -o $datadir/align_trimmed/$prefix.trimmed_end.sorted.bam
+
+	samtools index $datadir/align_trimmed/$prefix.trimmed_end.sorted.bam
+    done
+fi
+
 	    
-	    
-	    
+if [ $1 == trim_pairs ] ; then
+    bed=~/software/artic-ncov2019/primer_schemes/nCoV-2019/V3/nCoV-2019.scheme.bed
+
+    for i in $datadir/align_trimmed/*report.txt ;
+    do
+	prefix=`basename $i .report.txt`
+	align_trim \
+	    --remove-incorrect-pairs \
+	    --report $datadir/align_trimmed/$prefix.report_pairs.txt \
+	    $bed \
+	    < $datadir/align_trimmed/$prefix.sorted.bam | \
+	    samtools sort -@ 36 -T $prefix.tmp -o $datadir/align_trimmed/$prefix.trimmed_pairs.sorted.bam
 	
+	samtools index $datadir/align_trimmed/$prefix.trimmed_pairs.sorted.bam
+    done
+fi
+
 	     
 
     
