@@ -15,6 +15,7 @@ if [ $RUN == "test_data" ]; then
 else
    DIR="/home/idies/workspace/covid19/sequencing_runs/$RUN/artic-pipeline/5-post-filter"
 fi   
+
 OUTDIR=$DIR
 
 SCRIPT_DIR="/home/idies/workspace/covid19/code/ncov/pipeline_scripts" 
@@ -34,7 +35,7 @@ if [ ! -f "$CONS_FASTA" ]; then
 fi
 
 #usage: assign_clades.py [-h] --sequences SEQUENCES --clade CLADE --gbk GBK [--output OUTPUT] [--keep-temporary-files] [--chunk-size CHUNK_SIZE]
-                        [--nthreads NTHREADS]
+#                        [--nthreads NTHREADS]
 
 ${SCRIPT_DIR}/assign_clades.py --sequences ${CONS_FASTA} --output ${OUTDIR}/nextstrain_clades.tsv --gbk ${REF_GB} --clade ${NEXTSTRAIN_CLADES}
 echo "DONE"
