@@ -96,6 +96,10 @@ reference_annotation="/home/idies/workspace/covid19/ncov_reference/genes.gff3"
 # Pangolin reference directory
 pangolin_data="/home/idies/workspace/covid19/ncov_reference/lineages/lineages/data"
 
+# Nextstrain clade reference directory
+reference_gbk="/home/idies/workspace/covid19/ncov_reference/reference_seq.gb"
+nextstrain_clades="/home/idies/workspace/covid19/ncov_reference/clades.tsv"
+
 # snpEff reference file
 snpEff_config="/home/idies/workspace/covid19/ncov_reference/snpEff.config"
 
@@ -196,6 +200,15 @@ if [[ ! -s "${reference}" ]]; then
 	ref_files_found_flag="FALSE"
 fi
 
+if [[ ! -s "${reference_gbk}" ]]; then
+	>&2 echo "RUN ${sequencing_run_name}: Error: nCoV reference GBK  not found: ${reference_gbk}"
+	ref_files_found_flag="FALSE"
+fi
+
+if [[ ! -s "${nextstrain_clades}" ]]; then
+	>&2 echo "RUN ${sequencing_run_name}: Error: nCov nextstrain clade definitions tsv not found: ${nextstrain_clades}"
+	ref_files_found_flag="FALSE"
+fi
 
 # check submodule scripts are in path
 paths_found_flag="TRUE"
@@ -206,6 +219,7 @@ postfilter_summary=$(which postfilter_summary.py)
 combine=$(which artic-module5-combine.sh)
 pangolin=$(which artic-module5-pangolin.sh)
 snpeff=$(which artic-module5-snpEff.sh)
+assign_nextstrain_clades=$(which artic-module5-nextstrain_clades.sh)
 
 if [[ -z "${pangolin}" ]]; then
 	echo  "RUN ${sequencing_run_name}: Error: artic-module5-pangolin.sh is not in your path! Please add this script to your path and rerun"
@@ -269,6 +283,8 @@ echo_log "RUN ${sequencing_run_name}: Reference annotation: ${reference_annotati
 echo_log "RUN ${sequencing_run_name}: Case Definitions: ${case_defs}"
 echo_log "RUN ${sequencing_run_name}: Amplicon sites: ${amplicons}"
 echo_log "RUN ${sequencing_run_name}: pangolin data directory: ${pangolin_data}"
+echo_log "RUN ${sequencing_run_name}: Reference genbank : ${reference_gbk}"
+echo_log "RUN ${sequencing_run_name}: Nextstrain Clade definitions : ${nextstrain_clades}"
 echo_log "RUN ${sequencing_run_name}: snpEff config file: ${snpEff_config}"
 echo_log "RUN ${sequencing_run_name}: ------ processing Postfiltering and Annotation ------"
 
@@ -354,6 +370,7 @@ if [[ "${combine_variants_complete_flag}" == "TRUE" ]]; then
 	echo_log "RUN ${sequencing_run_name}: Starting Module 5 Pangolin and snpEff on ${sequencing_run}"
 
 	bash -x "${pangolin}" -i "${postfilter_dir}" -d "${pangolin_data}" -m "$manifest" 2>> "${logfile}"
+	bash -x "${assign_nextstrain_clades}" -i "${postfilter_dir}" -r "${reference_gbk}" -c "${nextstrain_clades}" -m "$manifest" 2>> "${logfile}"
 	bash -x "${snpeff}" -i "${postfilter_dir}" -c "${snpEff_config}" -m "$manifest" 2>> "${logfile}"
 
 else
@@ -368,6 +385,11 @@ fi
 module5_complete_flag="TRUE"
 if [[ ! -s "${postfilter_dir}/lineage_report.csv" ]]; then
 	echo_log "RUN ${sequencing_run_name}: Error: Pangolin output file - ${postfilter_dir}/lineage_report.csv not detected or empty."
+	module5_complete_flag="FALSE"
+fi
+
+if [[ ! -s "${postfilter_dir}/nextstrain_clades.tsv" ]]; then
+	echo_log "RUN ${sequencing_run_name}: Error: Assign nextstrain clades output file - ${postfilter_dir}/nextstrain_clades.tsv not detected or empty."
 	module5_complete_flag="FALSE"
 fi
 
