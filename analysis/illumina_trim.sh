@@ -1,7 +1,10 @@
 #!/bin/bash
 
-datadir=/uru/Data/Nanopore/projects/ncov/illumina
-rawdir=/uru/Data/NGS/Raw/200421_ncov
+##datadir=/uru/Data/Nanopore/projects/ncov/illumina
+##rawdir=/uru/Data/NGS/Raw/200421_ncov
+
+datadir=/uru/Data/Nanopore/projects/ncov/nextera_v2
+rawdir=/uru/Data/NGS/Raw/200807_ncov_nextflex
 
 if [ $1 == trimmomatic ] ; then
     ##stick with trimmo for getting rid of illumina adapter for now

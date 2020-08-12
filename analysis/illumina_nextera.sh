@@ -1,7 +1,10 @@
 #!/bin/bash
 
-datadir=/uru/Data/Nanopore/projects/ncov/nextera
-rawdir=/uru/Data/NGS/Raw/200722_ncov
+##datadir=/uru/Data/Nanopore/projects/ncov/nextera
+##rawdir=/uru/Data/NGS/Raw/200722_ncov
+
+datadir=/uru/Data/Nanopore/projects/ncov/nextera_v2
+rawdir=/uru/Data/NGS/Raw/200807_ncov_nextflex 
 
 if [ $1 == quick_alignment ] ; then
     mkdir -p $datadir/align
@@ -99,6 +102,6 @@ if [ $1 == trimmed_genomecov ] ; then
    for i in $datadir/align_trimmed/*.sorted.trimmed_pairs.bam ;	    
    do
        prefix=`basename $i .sorted.trimmed_pairs.bam `
-       bedtools genomecov -d -ibam $datadir/align_trimmed/$prefix.sorted.trimmed_pairs.bam > $datadir/cov/$prefix.trimmed.cov
+       bedtools genomecov -d -ibam $datadir/align_trimmed/$prefix.sorted.trimmed_pairs.bam > $datadir/cov/trimmed/$prefix.trimmed.cov
    done
 fi
