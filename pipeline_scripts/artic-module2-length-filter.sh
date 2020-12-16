@@ -1,5 +1,5 @@
 #!/bin/bash
-source /home/idies/workspace/covid19/bashrc
+source /home/user/idies/workspace/covid19/bashrc
 conda activate artic-ncov2019
 
 #---------------------------------------------------------------------------------------------------
@@ -55,7 +55,7 @@ echo_log() {
                 input=" $input"
         fi
         # print to STDOUT
-        #echo -e "[$(date +"%F %T")]$input"
+        echo -e "[$(date +"%F %T")]$input"
         # print to log file (after removing color strings)
         echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
@@ -77,7 +77,8 @@ sequencing_run="${sequencing_run%/}"
 manifest="${sequencing_run}/manifest.txt"
 
 # grabbing sample name from manifest given input barcode directory
-name=$(grep $(basename "$barcode_dir") "${manifest}" | cut -d $'\t' -f 2)
+barcode=$(basename "${barcode_dir}")
+name=$(grep "${barcode}" "${manifest}" | cut -d $'\t' -f 2)
 
 # Output directories
 gather_dir="${sequencing_run}/artic-pipeline/2-length-filter"
@@ -94,32 +95,32 @@ hash=$(git rev-parse --short HEAD)
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -d "${sequencing_run}" ];then
+if [[ ! -d "${sequencing_run}" ]]; then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
 
-if [ ! -s "${sequencing_run}/run_config.txt" ];then
+if [[ ! -s "${sequencing_run}/run_config.txt" ]]; then
     >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
     exit 1
 fi
 
-if [ ! -s "${manifest}" ];then
+if [[ ! -s "${manifest}" ]]; then
     >&2 echo "Error: Require a manifest.txt file in the sequencing run directory"
     exit 1
 fi
 
-if [ ! -d "${sequencing_run}/artic-pipeline/1-barcode-demux" ];then
+if [[ ! -d "${sequencing_run}/artic-pipeline/1-barcode-demux" ]]; then
     >&2 echo "Error: Require Module 1-barcode-demux output. Module 1 Output: '${sequencing_run}/artic-pipeline/1-barcode-demux' does not exist"
     exit 1
 fi
 
-if [ ! -d "${barcode_dir}" ];then
+if [[ ! -d "${barcode_dir}" ]]; then
     >&2 echo "Error: Input barcode directory does not exist: '${sequencing_run}/artic-pipeline/1-barcode-demux'"
     exit 1
 fi
 
-if [ ! -f "${sequencing_run}/artic-pipeline/1-barcode-demux/1-barcode-demux.complete" ];then
+if [[ ! -f "${sequencing_run}/artic-pipeline/1-barcode-demux/1-barcode-demux.complete" ]]; then
     >&2 echo "'Error: 1-barcode-demux.complete file' not detected in Module 1 output directory.  Module 1 must complete on all barcodes prior to proceeding to Module 2.."
     exit 1
 else
@@ -128,9 +129,11 @@ else
 fi
 
 # check for existence of a module 2 ouput directory.  will not overwrite previously processing
-if [ -f "${gather_dir}"/module2-"$name"_$(basename "${barcode_dir}").complete ];then
-    >&2 echo "Error: Processing for Module 2 already completed for this sample: ${gather_dir}/module2-${name}.complete"
-    >&2 echo "    Archive the previously run Module 2 output and all subsequent module ouput prior to rerunning."
+if [[ -f "${gather_dir}/module2-${name}_${barcode}.complete" ]]; then
+    >&2 echo "Warning: Processing for Module 2 already completed for this sample: ${gather_dir}/module2-${name}_${barcode}.complete"
+    #>&2 echo "    Archive the previously run Module 2 output and all subsequent module ouput prior to rerunning."
+    >&2 echo "         ...proceeding to Module 3"
+	artic-module3-normalization.sh -i "${gather_dir}/${name}_${barcode}.fastq"
     exit 1
 fi
 
@@ -161,7 +164,7 @@ artic guppyplex \
 	--min-length 400 \
 	--max-length 700 \
 	--directory "${barcode_dir}" \
-    --prefix "$gather_dir"/"${name}" 2>> "$logfile"
+    --prefix "${gather_dir}/${name}" 2>> "$logfile"
 
 
 #---------------------------------------------------------------------------------------------------
@@ -173,20 +176,19 @@ artic guppyplex \
 # QUALITY CHECKING AND MODULE 3 JOB SUBMISSION
 #===================================================================================================
 
-if [ ! -d "$gather_dir" ];then
+if [[ ! -d "$gather_dir" ]]; then
     >&2 echo_log "SAMPLE ${name}: Error: $gather_dir not created"
     exit 1
 fi
 
-if [ ! -f "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq ];then
+if [[ ! -f "${gather_dir}/${name}_${barcode}.fastq" ]]; then
     >&2 echo_log "SAMPLE: ${name}: Error: Module 2 output for sample '${name}' not found"
     exit 1
 else
  	echo_log "SAMPLE ${name}: Module 2 - Guppyplex complete"
-	touch "$gather_dir"/module2-"$name"_$(basename "${barcode_dir}").complete
+	touch "${gather_dir}/module2-${name}_${barcode}.complete"
 
-	echo_log "SAMPLE ${name}: executing submit_sciserver_ont_job.py -m 3 -i $gather_dir/${name}_$(basename ${barcode_dir}).fastq"
+	echo_log "SAMPLE ${name}: executing artic-module3-normalization.sh -i ${gather_dir}/${name}_${barcode}.fastq"
 
-	conda activate jhu-ncov 
-	submit_sciserver_ont_job.py -m 3 -i "$gather_dir"/"${name}"_"$(basename ${barcode_dir})".fastq 2>> "$logfile"
+	artic-module3-normalization.sh -i "${gather_dir}/${name}_${barcode}.fastq"
 fi

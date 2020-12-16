@@ -1,4 +1,4 @@
-﻿case,description,status
+case,description,status
 1,near depth threshold,Maybe
 2,allele in negative control,Maybe
 3,mixed variant in illumina,Maybe

@@ -1,5 +1,5 @@
 #!/bin/bash
-source /home/idies/workspace/covid19/bashrc
+source /home/user/idies/workspace/covid19/bashrc
 conda activate artic-ncov2019
 #---------------------------------------------------------------------------------------------------
 
@@ -61,7 +61,7 @@ echo_log() {
 		input=" $input"
 	fi
 	# print to STDOUT
-	#echo -e "[$(date +"%F %T")]$input"
+	echo -e "[$(date +"%F %T")]$input"
 	# print to log file (after removing color strings)
 	echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
@@ -74,10 +74,10 @@ echo_log() {
 sequencing_run=$(dirname $(dirname $(dirname "$fastq")))
 
 # location of programs used by pipeline
-software_path=/home/idies/workspace/covid19/code
-JAVA_PATH="${software_path}/jdk-14.0.1/bin"
+software_path=/home/user/idies/workspace/covid19/code
+JAVA_PATH="${software_path}/jdk-14/bin"
 samtools_path="${software_path}/samtools-1.10/bin"
-NormalizeCoveragePath="${software_path}/CoverageNormalization"
+NormalizeCoveragePath="${software_path}/ncov/pipeline_scripts/CoverageNormalization"
 
 # input files and directories
 base=$(basename "${fastq%.fastq}")
@@ -85,17 +85,15 @@ manifest="${sequencing_run}/manifest.txt"
 run_configuration="${sequencing_run}/run_config.txt"
 gather_dir="${sequencing_run}/artic-pipeline/2-length-filter"
 
-# reference sequence
-reference="$scheme_dir/$protocol/nCoV-2019.reference.fasta"
-
 # location for primer schemes
 scheme_dir="$software_path/artic-ncov2019/primer_schemes"
 
 # primer protocol
-protocol=$(awk '/primers/{ print $2 }' "${sequencing_run}/run_config.txt")
+protocol=$(awk '/primers/{ print $2 }' "${run_configuration}")
+organism=$(echo "$protocol" | cut -d"/" -f1)
 
 # reference fasta
-reference="$scheme_dir/$protocol/nCoV-2019.reference.fasta"
+reference="$scheme_dir/$protocol/$organism.reference.fasta"
 
 # Output directories
 normalize_dir="${sequencing_run}/artic-pipeline/3-normalization/$base"
@@ -116,27 +114,27 @@ hash=$(git rev-parse --short HEAD)
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -d "${sequencing_run}" ];then
+if [[ ! -d "${sequencing_run}" ]]; then
     >&2 echo_log "Error Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
 
-if [ ! -s "${run_configuration}" ];then
+if [[ ! -s "${run_configuration}" ]]; then
     >&2 echo_log "Error Require a run_config.txt file in the sequencing run directory"
     exit 1
 fi
 
-if [ ! -s "${manifest}" ];then
+if [[ ! -s "${manifest}" ]]; then
     >&2 echo_log "Error Require a manifest.txt file in the sequencing run directory"
     exit 1
 fi
 
-if [ ! -s "${fastq}" ];then
+if [[ ! -f "${fastq}" ]]; then
     >&2 echo_log "Error: Module 2 output '${fastq}' not found"
     exit 1
 fi
 
-if [ ! -f "${gather_dir}/module2-${base}.complete" ];then
+if [[ ! -f "${gather_dir}/module2-${base}.complete" ]]; then
     >&2 echo "Error: Processing for Module 2 for sample ${base} is incomplete (cannot locate ${gather_dir}/module2-${base}.complete"
     exit 1
 else
@@ -146,9 +144,13 @@ else
 fi
 
 # check for existence of a module 3 output "complete" files.  will not overwrite previous processing.
-if [ -s $(dirname "${normalizedir}")/module3-"${base}".complete ];then
-    >&2 echo "Error: Module 3 processing for this sample already completed: ${sequencing_run}/artic-pipeline/3-normalization/module3-${base}.complete"
-    >&2 echo "    Archive Module 3 and all subsequent module processing prior to rerunning."
+if [[ -f $(dirname "${normalize_dir}")/module3-"${base}".complete ]]; then
+    >&2 echo "Warning: Module 3 processing for this sample already completed: ${sequencing_run}/artic-pipeline/3-normalization/module3-${base}.complete"
+    #>&2 echo "    Archive Module 3 and all subsequent module processing prior to rerunning."
+    >&2 echo "         ...proceeding to Module 4"
+	align_out="$normalize_dir/$base.sam"
+	out_sam="${align_out%.sam}.covfiltered.sam"
+	artic-module4-bundle.sh -i "${out_sam%.sam}.fq" -t 5
     exit 1
 fi
 
@@ -183,6 +185,8 @@ cd "$normalize_dir"
 align_out="$normalize_dir/$base.sam"
 echo_log "SAMPLE ${base}: output file = $align_out" 
 
+samtools faidx "$reference"
+
 minimap2 -a \
 	-x map-ont \
 	-t 32 \
@@ -215,16 +219,12 @@ samtools depth -a -d 0 "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth" 2>> "$log
 # QUALITY CHECKING AND MODULE 4 JOB SUBMISSION
 #===================================================================================================
 
-if [ ! -f "${out_sam%.sam}.fq" ]; then
+if [[ ! -f "${out_sam%.sam}.fq" ]]; then
     >&2 echo_log "SAMPLE ${base}: Error: Module 3 output ${out_sam%.sam}.fq not found"
     exit 1
 else
 	echo_log "SAMPLE ${base}: Module 3 complete for sample '${base}'"
-        touch $(dirname "${normalize_dir}")/module3-"${base}".complete
+	touch $(dirname "${normalize_dir}")/module3-"${base}".complete
 
-	conda activate jhu-ncov
-	submit_sciserver_ont_job.py -m 4 -i "${out_sam%.sam}.fq" -t 5 2>> "$logfile" 
+	artic-module4-bundle.sh -i "${out_sam%.sam}.fq" -t 5
 fi
-
-
-

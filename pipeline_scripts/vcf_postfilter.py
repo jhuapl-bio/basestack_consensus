@@ -10,6 +10,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
+sys.path.insert(0, "/home/user/idies/workspace/covid19/code/ncov/pipeline_scripts")
 from variant_status import status_by_case
 import variant_flags as fl
 
@@ -381,7 +382,7 @@ def main():
         data = tmp.to_dict('records')[0]
         
         # store information from info column and remove it from dictionary
-        info = dict(item.split("=") for item in data['info'].split(";"))
+        info = dict(item.split("=") for item in data['info'].split(";") if len(item) > 0)
         del data['info']
         
         # determine if there is illumina data for this sample

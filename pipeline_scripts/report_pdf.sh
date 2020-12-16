@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source /home/idies/workspace/covid19/bashrc
+source /home/user/idies/workspace/covid19/bashrc
 conda activate jhu-ncov
 
 #---------------------------------------------------------------------------------------------------
@@ -28,7 +28,7 @@ usage() {
 	echo -e "   -h      show this message"
 	echo -e "   -i      sequencing run folder"
 	echo -e "   -o      output PDF"
-	echo -e "   -n      nextstrain path (default: ${CYAN}/home/idies/workspace/covid19/nextstrain${NC})"
+	echo -e "   -n      nextstrain path (default: ${CYAN}/home/user/idies/workspace/covid19/nextstrain${NC})"
 	echo -e ""
 }
 #===================================================================================================
@@ -95,11 +95,10 @@ if ! [[ -s "$run_info" ]]; then
 	exit
 fi
 
-plate=$(grep "plate" "${run_path}/run_info.txt" | cut -f2)
-row=$(grep "row" "${run_path}/run_info.txt" | cut -f2)
+run_title=$(grep "title" "${run_path}/run_info.txt" | cut -f2)
 
 if [[ -z "$out_file" ]]; then
-	out_file="$run_path/artic-pipeline/run_stats/plate$plate-row$row-$(basename $run_path)-report.pdf"
+	out_file="$run_path/artic-pipeline/report.pdf"
 fi
 out_rmd="${out_file%.pdf}.Rmd"
 
@@ -233,8 +232,7 @@ echo_log() {
 #===================================================================================================
 
 sed -e "s@<RUN_PATH>@${run_path}@" \
-	-e "s@<PLATE>@${plate}@" \
-	-e "s@<ROW>@${row}@" \
+	-e "s@<RUN_TITLE>@${run_title}@" \
 	-e "s@<PROTOCOL_PATH>@${protocol_path}@" \
 	-e "s@<NEXTSTRAIN_PATH>@${nextstrain_path}@" \
 	"$bin_path/report-template.Rmd" > "$out_rmd"

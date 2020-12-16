@@ -1,4 +1,4 @@
-﻿case,description,status
+case,description,status
 1,near depth threshold,Alarm
 2,allele in negative control,Alarm
 3,illumina variant callers disagree,Alarm

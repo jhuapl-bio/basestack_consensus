@@ -1,5 +1,5 @@
 #!/bin/bash
-source /home/idies/workspace/covid19/bashrc
+source /home/user/idies/workspace/covid19/bashrc
 conda activate nextstrain
 
 # usage function
@@ -38,7 +38,7 @@ fi
 
 echo "Making Nextstrain clades for consensus sequences in ${postfilter_dir}"
 
-if [ ! -f "${postfilter_dir}"/postfilt_consensus_all.fasta ]; then
+if [[ ! -f "${postfilter_dir}"/postfilt_consensus_all.fasta ]]; then
    while read barcode name; do
        cat "${postfilter_dir}"/"${name}"_"${barcode}".complete.fasta >> "${postfilter_dir}"/postfilt_consensus_all.fasta
    done < "$manifest"

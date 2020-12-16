@@ -6,6 +6,8 @@
 
 ###
 
+conda activate jhu-ncov
+
 VCF=$1
 CONFIG=$2
 DBNAME=$3
@@ -23,17 +25,12 @@ EOM
 
 [ -z $1 ] && { usage; }
 
-PATHENV="/home/idies/workspace/covid19/miniconda3/etc/profile.d/conda.sh"
-JARPATH="/home/idies/workspace/covid19/miniconda3/envs/jhu-ncov/share/snpeff-4.3.1t-3/"
+JARPATH="/opt/conda/envs/jhu-ncov/share/snpeff-4.3.1t-4/"
 
 VCF_BASE=$( basename ${VCF} ".vcf")
 CONFIG_DIR=$( dirname ${CONFIG} )
 CONFIG_DATA=${CONFIG_DIR}/data/
 AA_DATA=${CONFIG_DIR}/amino_acid_codes.txt
-
-source ${PATHENV}
-#conda activate nextstrain
-conda activate jhu-ncov
 
 if [[ ! -r "$CONFIG" ]]
 then
@@ -49,12 +46,12 @@ fi
 
 # CHECK 2: LOAD ENVIRONMENT
 
-if ! [ -x "$(command -v snpEff)" ]; then
+if ! [[ -x "$(command -v snpEff)" ]]; then
   echo 'Error: snpEff is not installed.' >&2
   exit 1
 fi
 
-if ! [ -x "$(command -v java)" ]; then
+if ! [[ -x "$(command -v java)" ]]; then
   echo 'Error: java is not installed.' >&2
   exit 1
 fi

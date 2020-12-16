@@ -1,5 +1,5 @@
 #!/bin/bash
-source /home/idies/workspace/covid19/bashrc
+source /home/user/idies/workspace/covid19/bashrc
 conda activate artic-ncov2019
 
 #---------------------------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ echo_log() {
                 input=" $input"
         fi
         # print to STDOUT
-        #echo -e "[$(date +"%F %T")]$input"
+        echo -e "[$(date +"%F %T")]$input"
         # print to log file (after removing color strings)
         echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
@@ -76,7 +76,7 @@ sequencing_run=$(dirname $(dirname $(dirname $(dirname "$normalized_fastq"))))
 #===================================================================================================
 
 # location of programs used by pipeline
-software_path=/home/idies/workspace/covid19/code
+software_path=/home/user/idies/workspace/covid19/code
 
 # input files, these files should be in the sequencing run directory
 manifest="${sequencing_run}/manifest.txt"
@@ -106,34 +106,34 @@ hash=$(git rev-parse --short HEAD)
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -f "${normalized_fastq}" ];then
+if [[ ! -f "${normalized_fastq}" ]]; then
     >&2 echo "Error: Fastq file ${normalized_fastq} does not exist"
     exit 1
 fi
 
-if [ ! -d "${sequencing_run}" ];then
+if [[ ! -d "${sequencing_run}" ]]; then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
 
-if [ ! -d "${scheme_dir}" ];then
+if [[ ! -d "${scheme_dir}" ]]; then
     >&2 echo "Error: Primer scheme directory ${scheme_dir} does not exist"
     exit 1
 fi
 
-if [ ! -s "${sequencing_run}/run_config.txt" ];then
+if [[ ! -s "${sequencing_run}/run_config.txt" ]]; then
     >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
     >&2 echo "${sequencing_run}/run_config.txt does not exist"
     exit 1
 fi
 
-if [ ! -s "${sequencing_run}/manifest.txt" ];then
+if [[ ! -s "${sequencing_run}/manifest.txt" ]]; then
     >&2 echo "Error: Require a manifest.txt file in the sequencing run directory"
     >&2 echo "${sequencing_run}/manifest.txt does not exist"
     exit 1
 fi
 
-if [ ! -f "${sequencing_run}"/artic-pipeline/3-normalization/module3-$(basename "${normalized_fastq%.covfiltered.fq}").complete ];then
+if [[ ! -f "${sequencing_run}"/artic-pipeline/3-normalization/module3-$(basename "${normalized_fastq%.covfiltered.fq}").complete ]]; then
     >&2 echo "Error: Module 3 Normalization must be completed prior to running Module 4."
     >&2 echo "${sequencing_run}/artic-pipeline/3-normalization/module3-$(basename ${normalized_fastq%.covfiltered.fq}).complete does not exist"
     exit 1
@@ -142,8 +142,8 @@ else
     conda env export > "${logfile%.log}-env.yml"
 fi
 
-if [ -f "$consensus_dir"/$(basename "${normalized_fastq%.covfiltered.fq}").medaka.merged.vcf ];then
-    >&2 echo "Error: Medaka VCF already exsists for this sample: $consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}).medaka.merged.vcf"
+if [[ -f "$consensus_dir"/$(basename "${normalized_fastq%.covfiltered.fq}").medaka.merged.vcf ]]; then
+    >&2 echo "Warning: Medaka VCF already exsists for this sample: $consensus_dir/$(basename ${normalized_fastq%.covfiltered.fq}).medaka.merged.vcf"
     >&2 echo "    Archive all previous medaka processing before rerunning."
     exit 1
 fi

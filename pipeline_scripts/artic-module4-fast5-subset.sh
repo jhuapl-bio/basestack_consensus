@@ -1,5 +1,5 @@
 #!/bin/bash
-source /home/idies/workspace/covid19/bashrc
+source /home/user/idies/workspace/covid19/bashrc
 conda activate artic-ncov2019
 
 #---------------------------------------------------------------------------------------------------
@@ -62,7 +62,7 @@ echo_log() {
                 input=" $input"
         fi
         # print to STDOUT
-        #echo -e "[$(date +"%F %T")]$input"
+        echo -e "[$(date +"%F %T")]$input"
         # print to log file (after removing color strings)
         echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
@@ -99,24 +99,24 @@ hash=$(git rev-parse --short HEAD)
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -d "${sequencing_run}" ];then
+if [[ ! -d "${sequencing_run}" ]]; then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
 
-if [ ! -s "${run_configuration}" ];then
+if [[ ! -s "${run_configuration}" ]]; then
     >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
     >&2 echo "${sequencing_run}/run_config.txt does not exist"
     exit 1
 fi
 
-if [ ! -s "${sequencing_run}/manifest.txt" ];then
+if [[ ! -s "${sequencing_run}/manifest.txt" ]]; then
     >&2 echo "Error: Require a manifest.txt file in the sequencing run directory"
     >&2 echo "${sequencing_run}/manifest.txt does not exist"
     exit 1
 fi
 
-if [ ! -f "${sequencing_run}"/artic-pipeline/3-normalization/module3-"${sample_name}".complete ];then
+if [[ ! -f "${sequencing_run}"/artic-pipeline/3-normalization/module3-"${sample_name}".complete ]]; then
     >&2 echo "Error: Module 3 Normalization must be completed prior to running Module 4."
     >&2 echo "${sequencing_run}/artic-pipeline/3-normalization/module3-$sample_name.complete does not exist"
     exit 1
@@ -125,8 +125,8 @@ else
     conda env export > "${logfile%.log}-env.yml"
 fi
 
-if [ -s "$outdir/${sample_name}-no_human-covfiltered_0.fast5" ];then
-    >&2 echo "Fast5 subset already exists for this sample: $outdir/${sample_name}-no_human-covfiltered_0.fast5"
+if [[ -s "$outdir/${sample_name}-no_human-covfiltered_0.fast5" ]]; then
+    >&2 echo "Warning: Fast5 subset already exists for this sample: $outdir/${sample_name}-no_human-covfiltered_0.fast5"
     >&2 echo "    Archive previous fast5 subset processing before rerunning."
     exit 1
 fi

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-source /home/idies/workspace/covid19/bashrc
-conda activate artic-ncov2019
+source /home/user/idies/workspace/covid19/bashrc
+conda activate jhu-ncov
 
-export JAVA_HOME="/home/idies/workspace/covid19/code/jdk-11.0.2"
+export JAVA_HOME="/home/user/idies/workspace/covid19/code/jdk-14"
 export PATH=$JAVA_HOME/bin:$PATH
 
 #---------------------------------------------------------------------------------------------------
@@ -48,7 +48,7 @@ usage() {
 # set default values here
 logfile="/dev/null"
 tempdir="/tmp"
-skip_igv="false"
+skip_igv="true"
 
 # report current hash of miseq-analysis git repo
 bin_path="$(dirname $0)"
@@ -129,13 +129,14 @@ if ! [[ -d "$bin_path" ]]; then
 	usage
 	exit
 fi
-vcfigv_repo_path="$bin_path/../../vcfigv"
-if ! [[ -d "$vcfigv_repo_path" ]]; then
-	echo -e "${RED}Error: vcfigv repository ${CYAN}$vcfigv_repo_path${RED} does not exist.${NC}"
-	usage
-	exit
+if [[ "$skip_igv" != "true" ]]; then
+	vcfigv_repo_path="$bin_path/../../vcfigv"
+	if ! [[ -d "$vcfigv_repo_path" ]]; then
+		echo -e "${RED}Error: vcfigv repository ${CYAN}$vcfigv_repo_path${RED} does not exist.${NC}"
+		usage
+		exit
+	fi
 fi
-
 if [[ -z "$stats_path" ]]; then
 	stats_path="$run_path/$stats_base"
 fi
@@ -458,8 +459,7 @@ while read barcode label; do
 		igv_out_path="$stats_path/igv"
 		mkdir -p "$igv_out_path"
 
-		JAVA_PATH="$bin_path/../../jdk-14.0.1/bin"
-		"$JAVA_PATH/java" -cp "$vcfigv_repo_path/src" \
+		"$JAVA_HOME/bin/java" -cp "$vcfigv_repo_path/src" \
 			Vcf2Bat \
 			--squish \
 			--nocombine \
@@ -583,8 +583,7 @@ awk '{
 # BUILD MARKDOWN FILE
 #===================================================================================================
 
-/home/idies/workspace/covid19/code/ncov/pipeline_scripts/report_pdf.sh \
-	-i "$run_path"
+report_pdf.sh -i "$run_path"
 
 #---------------------------------------------------------------------------------------------------
 

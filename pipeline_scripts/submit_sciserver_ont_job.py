@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 # submit a shell command as a batch job.
 # See https://github.com/sciserver/SciScript-Python/blob/Feature_Jobs/py3/SciServer/Jobs.py
 
@@ -30,7 +31,7 @@ dataVolumes = None, resultsFolderPath = "", jobAlias = ""):
     :param dataVolumes: a list with the names of data volumes that will be mounted to the docker Image.
            E.g., dataVolumes=[{"name":"SDSS_DAS"}, {"name":"Recount"}].
            A list of available data volumes can be found as the 'volumes' property in the dockerComputeDomain object. If dataVolumes=None, then all available data volumes are mounted.
-    :param resultsFolderPath: full path to results folder (string) where the shell command is executed. E.g.: /home/idies/workspace/rootVolume/username/userVolume/jobsFolder. If not set, then a default folder will be set automatically.
+    :param resultsFolderPath: full path to results folder (string) where the shell command is executed. E.g.: /home/user/idies/workspace/rootVolume/username/userVolume/jobsFolder. If not set, then a default folder will be set automatically.
     :param jobAlias: alias (string) of job, defined by the user.
     :return: the job ID (int)
     :raises: Throws an exception if the HTTP request to the Authentication URL returns an error. Throws an exception if the HTTP request to the JOBM API returns an error, or if the volumes defined by the user are not available in the Docker compute domain.
@@ -157,7 +158,7 @@ def get_job_environment(token, USERNAME):
 	USERVOLUMES=['Storage/'+ USERNAME + '/persistent','Temporary/'+ USERNAME +'/scratch']
 	DATAVOLUMES=['COVID-19']
 
-	RESULTSFOLDERPATH = "/home/idies/workspace/Temporary/" + USERNAME + "/scratch/jobs"
+	RESULTSFOLDERPATH = "/home/user/idies/workspace/Temporary/" + USERNAME + "/scratch/jobs"
 
 	domains=Jobs.getDockerComputeDomains()
 	domain=None
@@ -188,12 +189,12 @@ def get_job_environment(token, USERNAME):
 def get_module_script(module): 
 	script = {
 		0: "still gotta make this", 
-		1: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module1-barcode-demux.sh", 
-		2: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module2-length-filter.sh",
-		3: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module3-normalization.sh", 
-		4: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module4-bundle.sh",
-		5: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module5-bundle.sh",
-		6: "/home/idies/workspace/covid19/code/ncov/pipeline_scripts/report_summary_table.sh"
+		1: "/home/user/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module1-barcode-demux.sh", 
+		2: "/home/user/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module2-length-filter.sh",
+		3: "/home/user/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module3-normalization.sh", 
+		4: "/home/user/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module4-bundle.sh",
+		5: "/home/user/idies/workspace/covid19/code/ncov/pipeline_scripts/artic-module5-bundle.sh",
+		6: "/home/user/idies/workspace/covid19/code/ncov/pipeline_scripts/report_summary_table.sh"
 	} 
 	return script.get(module, "Invalid module number") 
 

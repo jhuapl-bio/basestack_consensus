@@ -1,5 +1,5 @@
 #!/bin/bash
-source /home/idies/workspace/covid19/bashrc
+source /home/user/idies/workspace/covid19/bashrc
 conda activate jhu-ncov
 
 #---------------------------------------------------------------------------------------------------
@@ -33,8 +33,10 @@ usage() {
 }
 
 #---------------------------------------------------------------------------------------------------
-#default threads
+# set defaults
 threads=6
+logfile=/dev/null
+
 #---------------------------------------------------------------------------------------------------
 
 # parse input arguments
@@ -59,7 +61,7 @@ echo_log() {
                 input=" $input"
         fi
         # print to STDOUT
-        #echo -e "[$(date +"%F %T")]$input"
+        echo -e "[$(date +"%F %T")]$input"
         # print to log file (after removing color strings)
         echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
@@ -69,16 +71,45 @@ echo_log() {
 # module 4 - bundle
 #---------------------------------------------------------------------------------------------------
 
-subset=$(which artic-module4-fast5-subset.sh)
-medaka=$(which artic-module4-draft-consensus-medaka.sh)
-nanopolish=$(which artic-module4-draft-consensus-nanopolish.sh)
-samtools=$(which artic-module4-draft-consensus-samtools.sh)
+sequencing_run=$(dirname $(dirname $(dirname $(dirname "$normalized_fastq"))))
+manifest="${sequencing_run}/manifest.txt"
+consensus_dir="${sequencing_run}/artic-pipeline/4-draft-consensus"
 
-bash -x "$subset" -i "${normalized_fastq%fq}sam" -t $threads
-bash -x "$medaka" -i "$normalized_fastq" -t $threads
-bash -x "$nanopolish" -i "$normalized_fastq" -t $threads
-bash -x "$samtools" -i "$normalized_fastq"
+if [[ ! -f "${normalized_fastq}" ]]; then
+    >&2 echo_log "Error: Module 3 output '${normalized_fastq}' not found"
+    exit 1
+fi
 
+if [[ ! -d "${sequencing_run}" ]]; then
+    >&2 echo_log "Error: Sequencing run ${sequencing_run} does not exist"
+    exit 1
+fi
+
+if [[ ! -s "${manifest}" ]]; then
+    >&2 echo_log "Error: Require a manifest.txt file in the sequencing run directory"
+    exit 1
+fi
+
+module4_complete_flag="TRUE"
+while IFS=$'\t' read barcode name; do
+	if [[ ! -f "${consensus_dir}/module4-${name}_${barcode}.all_callers.complete" ]]; then
+		module4_complete_flag="FALSE"
+	fi
+done < "${manifest}"
+
+if [[ "${module4_complete_flag}" == "TRUE" ]]; then
+	echo_log "Warning: Module 4 complete for ${sequencing_run}."
+        echo_log "         ...proceeding to Module 5"
+        artic-module5-bundle.sh -i "$sequencing_run"
+else
+        subset=$(which artic-module4-fast5-subset.sh)
+        medaka=$(which artic-module4-draft-consensus-medaka.sh)
+        nanopolish=$(which artic-module4-draft-consensus-nanopolish.sh)
+        samtools=$(which artic-module4-draft-consensus-samtools.sh)
+
+        "$subset" -i "${normalized_fastq%fq}sam" -t $threads
+        "$medaka" -i "$normalized_fastq" -t $threads
+        "$nanopolish" -i "$normalized_fastq" -t $threads
+        "$samtools" -i "$normalized_fastq"
+fi
 #---------------------------------------------------------------------------------------------------
-
-

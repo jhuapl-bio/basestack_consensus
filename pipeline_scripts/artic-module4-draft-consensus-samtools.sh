@@ -1,5 +1,5 @@
 #!/bin/bash
-source /home/idies/workspace/covid19/bashrc
+source /home/user/idies/workspace/covid19/bashrc
 conda activate artic-ncov2019
 #---------------------------------------------------------------------------------------------------
 
@@ -57,7 +57,7 @@ echo_log() {
                 input=" $input"
         fi
         # print to STDOUT
-        #echo -e "[$(date +"%F %T")]$input"
+        echo -e "[$(date +"%F %T")]$input"
         # print to log file (after removing color strings)
         echo -e "[$(date +"%F %T")]$input\r" | sed -r 's/\x1b\[[0-9;]*m?//g' >> "$logfile"
 }
@@ -85,8 +85,8 @@ manifest="${sequencing_run}/manifest.txt"
 run_configuration="${sequencing_run}/run_config.txt"
 
 # location of programs used by pipeline
-software_path="/home/idies/workspace/covid19/code"
-JAVA_PATH="${software_path}/jdk-14.0.1/bin"
+software_path="/home/user/idies/workspace/covid19/code"
+JAVA_PATH="${software_path}/jdk-14/bin"
 VariantValidatorPath="${software_path}/ncov/pipeline_scripts/VariantValidator"
 
 # reference sequence
@@ -111,40 +111,40 @@ hash=$(git rev-parse --short HEAD)
 # QUALITY CHECKING
 #===================================================================================================
 
-if [ ! -d "${sequencing_run}" ];then
+if [[ ! -d "${sequencing_run}" ]]; then
     >&2 echo "Error: Sequencing run ${sequencing_run} does not exist"
     exit 1
 fi
 
-if [ ! -d "${consensus_dir}" ];then
+if [[ ! -d "${consensus_dir}" ]]; then
     >&2 echo "Error: Require module 4 draft consensus output"
     >&2 echo "    ${consensus_dir} does not exist"
     exit 1
 fi
 
-if [ ! -s "${run_configuration}" ];then
+if [[ ! -s "${run_configuration}" ]]; then
     >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
     exit 1
 fi
 
-if [ ! -s "${manifest}" ];then
+if [[ ! -s "${manifest}" ]]; then
     >&2 echo "Error Require a manifest.txt file in the sequencing run directory"
     >&2 echo "${sequencing_run}/manifest.txt does not exist"
     exit 1
 fi
 
-if [ ! -f "${normalized_fastq}" ];then
+if [[ ! -f "${normalized_fastq}" ]]; then
     >&2 echo "Error: Fastq file ${normalized_fastq} does not exist"
     exit 1
 fi
 
-if [ ! -f "${input_nanopolish_vcf}" ];then
+if [[ ! -f "${input_nanopolish_vcf}" ]]; then
     >&2 echo "Error: Nanopolish output vcf file  does not exist"
     exit 1
-elif [ ! -f "${input_nanopolish_bamfile}" ];then
+elif [[ ! -f "${input_nanopolish_bamfile}" ]]; then
     >&2 echo "Error: Nanopolish output bam file ${input_nanopolish_bamfile} does not exist"
     exit 1
-elif [[ ! -f "${input_medaka_vcf_zip}" ]] && [[ ! -f "${input_medaka_vcf}" ]];then
+elif [[ ! -f "${input_medaka_vcf_zip}" ]] && [[ ! -f "${input_medaka_vcf}" ]]; then
     >&2 echo "Error: Medaka output vcf file ${input_medaka_vcf} or its zip do not exist"
     exit 1
 else
@@ -181,15 +181,15 @@ samtools mpileup --reference "${reference}" "${input_nanopolish_bamfile}" -o "${
 
 # Run samtools-based variant calling
 "$JAVA_PATH/java" \
--cp "${VariantValidatorPath}/src" CallVariants \
-pileup_file="${mpileup}" \
-out_file="${allelefreqcalls}" 2>> "${logfile}"
+    -cp "${VariantValidatorPath}/src" CallVariants \
+    pileup_file="${mpileup}" \
+    out_file="${allelefreqcalls}" 2>> "${logfile}"
 
 echo_log "Starting Module 4 Merging and Allele Frequencies on \
     ${input_nanopolish_vcf}, ${input_medaka_vcf}, ${allelefreqcalls}"
 
 # Run merging and allele frequency counts
-if [ ! -r "${input_medaka_vcf}" ]; then
+if [[ ! -r "${input_medaka_vcf}" ]]; then
     echo_log "Unzipping ${input_medaka_vcf_zip}"
     gunzip -c "${input_medaka_vcf_zip}" > "${input_medaka_vcf}" 2>> "${logfile}"
 fi
@@ -199,16 +199,16 @@ printf "${input_nanopolish_vcf}\n${input_medaka_vcf}\n${allelefreqcalls}" > "${f
 
 # Run merging
 "$JAVA_PATH/java" \
--cp "${VariantValidatorPath}/src" MergeVariants \
-illumina_bam="${illumina_bam}" \
-file_list="${filelist}" \
-out_file="${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf" 2>> "${logfile}"
+    -cp "${VariantValidatorPath}/src" MergeVariants \
+    illumina_bam="${illumina_bam}" \
+    file_list="${filelist}" \
+    out_file="${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf" 2>> "${logfile}"
 
 "$JAVA_PATH/java" \
--cp "${VariantValidatorPath}/src" AddAlleleFrequencies \
-vcf_file="${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf"  \
-ont_mpileup="${mpileup}" \
-out_file="${consensus_dir}/${samplename}.all_callers.combined.vcf" 2>> "${logfile}"
+    -cp "${VariantValidatorPath}/src" AddAlleleFrequencies \
+    vcf_file="${consensus_dir}/${samplename}.all_callers.combined.noallelefreqs.vcf"  \
+    ont_mpileup="${mpileup}" \
+    out_file="${consensus_dir}/${samplename}.all_callers.combined.vcf" 2>> "${logfile}"
 
 #---------------------------------------------------------------------------------------------------
 
@@ -234,7 +234,6 @@ while IFS=$'\t' read barcode name; do
 done < "${manifest}"
 
 if [[ "${module4_complete_flag}" == "TRUE" ]]; then
-	echo_log "Submitting Module 5 job for ${sequencing_run}."
-	conda activate jhu-ncov
-	submit_sciserver_ont_job.py -m 5 -i "$sequencing_run"
+	echo_log "Beginning Module 5 for ${sequencing_run}."
+	artic-module5-bundle.sh -i "$sequencing_run"
 fi

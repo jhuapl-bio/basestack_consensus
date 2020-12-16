@@ -1,6 +1,6 @@
 ---
 title: "SARS-CoV-2 Run Report"
-author: "Plate <PLATE>, Row <ROW>"
+author: "<RUN_TITLE>"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 params:
   run_path: "<RUN_PATH>"
@@ -12,6 +12,7 @@ output:
     latex_engine: xelatex
     number_sections: true
 header-includes:
+    \usepackage{MnSymbol}
     \definecolor{myDarkGreen}{rgb}{0.14,0.55,0.17}
     \definecolor{myLightGreen}{rgb}{0.46,0.77,0.46}
     \definecolor{myYellow}{rgb}{0.86,0.65,0.13}
@@ -378,6 +379,7 @@ annotation_sample$Flag <- factor(annotation_sample$Flag, levels = c("Yes", "Yes*
 # add SNP annotations
 snpeff_annotations <- rep("none", length(combined_rows))
 snpeff_options <- snpeff_report[snpeff_report$POS %in% combined_rows, c(2,6)]
+snpeff_options$ANN[duplicated(snpeff_options$POS, fromLast=T)] <- snpeff_options$ANN[duplicated(snpeff_options$POS, fromLast=F)]
 snpeff_annotations[combined_rows %in% snpeff_report$POS] <- as.character(unique(snpeff_options)[,2])
 annotation_snp <- data.frame(SnpEff = snpeff_annotations,
                              clade.defining = factor(combined_rows %in% common_positions@fix[,2][common_positions@gt[,5]=="YES"]),
@@ -389,11 +391,11 @@ annotation_snp$problematic.snp <- factor(annotation_snp$problematic.snp)
 rownames(annotation_snp) <- combined_rows
 levels(annotation_snp$clade.defining) = c("no", "yes")
 levels(annotation_snp$common.snp) = c("no", "yes")
-annotation_snp$SnpEff <- factor(snpeff_annotations, levels = c(levels(snpeff_report$ANN), "none"))
+annotation_snp$SnpEff <- factor(snpeff_annotations, levels = c(levels(as.factor(snpeff_report$ANN)), "none"))
 
 # create color object for annotations
 cols <- brewer.pal(n=6, name="Dark2")
-snpeff_colors <- c("intergenic_region" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "stop_gained" = cols[4], "start_lost" = cols[6], "ambiguous" = "white", "none" = "gray70")
+snpeff_colors <- c("intergenic_region" = cols[1], "missense_variant" = cols[2], "synonymous_variant" = cols[3], "stop_gained" = cols[4], "start_lost" = cols[6], "stop_lost&splice_region_variant" = "gray30", "ambiguous" = "white", "none" = "gray70")
 lineage_levels <- levels(factor(annotation_sample$lineage))
 if(length(lineage_levels)>3){
   lineage_colors <- brewer.pal(n=length(lineage_levels), name="Set3")
@@ -641,25 +643,32 @@ plot_homoplasy_heatmap <- function() {
   if(dim(plot_matrix)[1] == 0) {
     cat("\nError: all samples are registering as outliers. Plot will not display.\n")
   } else {
-    sample_sel <- summary$Sample %in% dimnames(plot_matrix)[[2]]
-    snp_sel <- dimnames(annotation_snp)[[1]] %in% dimnames(plot_matrix)[[1]]
-  
-    pheatmap(plot_matrix,
-            labels_col=samples_with_asterisks,
-            labels_row=dimnames(plot_matrix)[[1]],
-            col=annotation_colors$Variants,
-            ylab="mutation position",
-            fontsize_row=8, fontsize_col=10,
-            margins=c(10,5),
-            legend=FALSE,
-   #         legend_breaks=c(0,1,2),
-   #         legend_labels=c("Wuhan-Hu-1","Variant","Ambiguous"),
-            angle_col=270,
-            annotation_col=subset(annotation_sample, sample_sel),
-            annotation_row=subset(annotation_snp, snp_sel),
-            annotation_colors=annotation_colors
-            )
-    grid.text("Variant position (nucleotide)", x=unit(ncol(plot_matrix), "npc"), y=unit(0, "npc"), just="right", rot=-90, gp=gpar(col="black", fontsize=12))
+    if(dim(plot_matrix)[2] == 1) {
+      cluster_cols <- FALSE
+      cat("\nError: Homoplasy heatmap will only print when there is data for more than one sample.\n")
+    } else {
+      cluster_cols <- TRUE
+      sample_sel <- summary$Sample %in% dimnames(plot_matrix)[[2]]
+      snp_sel <- dimnames(annotation_snp)[[1]] %in% dimnames(plot_matrix)[[1]]
+    
+      pheatmap(plot_matrix,
+              cluster_cols=cluster_cols,
+              labels_col=samples_with_asterisks,
+              labels_row=dimnames(plot_matrix)[[1]],
+              col=annotation_colors$Variants,
+              ylab="mutation position",
+              fontsize_row=8, fontsize_col=10,
+              margins=c(10,5),
+              legend=FALSE,
+    #         legend_breaks=c(0,1,2),
+    #         legend_labels=c("Wuhan-Hu-1","Variant","Ambiguous"),
+              angle_col=270,
+              annotation_col=subset(annotation_sample, sample_sel),
+              annotation_row=subset(annotation_snp, snp_sel),
+              annotation_colors=annotation_colors
+              )
+      grid.text("Variant position (nucleotide)", x=unit(ncol(plot_matrix), "npc"), y=unit(0, "npc"), just="right", rot=-90, gp=gpar(col="black", fontsize=12))
+    }
   }
 }
 #-------------------------------------------------
@@ -673,12 +682,11 @@ genome_cartoon_overview <- function(mutation_subset) {
                       height = unit(1/8, "inches"))
 
   # remove positions covered by multi-site variants
-  mutation_subset <- mutation_subset[!(dimnames(mutation_subset)[[1]] %in% c(snpeff_report$POS[sapply(as.character(snpeff_report$REF), nchar)>1]+1)),]
-  mutation_subset <- mutation_subset[apply(nchar(mutation_subset), 1, sum) > 0,]
-    
+  mutation_subset <- subset(mutation_subset, !(dimnames(mutation_subset)[[1]] %in% c(snpeff_report$POS[sapply(as.character(snpeff_report$REF), nchar)>1]+1)))
+
+  mutation_subset <- subset(mutation_subset, apply(nchar(mutation_subset), 1, sum) > 0)
   SNP <- as.numeric(dimnames(mutation_subset)[[1]])
   snpeff_subset <- subset(snpeff_report, snpeff_report$POS %in% SNP)
-  
   labels <- unlist(apply(mutation_subset, 1, function(v){ u <- unique(v); return(paste(u[u!=""], collapse=", "))}))
   labels[SNP %in% snpeff_subset$POS] <- paste(as.character(snpeff_subset$GENE[!duplicated(snpeff_subset$POS)]), as.character(snpeff_subset$AA_MUT[!duplicated(snpeff_subset$POS)]), sep=": ")
   rename_sel <- snpeff_subset$ANN %in% c("intergenic_region") & !duplicated(snpeff_subset$POS)
@@ -696,7 +704,7 @@ genome_cartoon_overview <- function(mutation_subset) {
   sample.gr$label.parameter.gp <- gpar(fontsize = 5)
   
   sample.gr$score <- rowSums(nchar(mutation_subset) > 0)
-  
+
   lolliplot(sample.gr, features, type="circle", xlab="genome position (nucleotide)", ylab="# of samples", xaxis=c(1,seq(5,25,5)*1000,genome_ref$length), xaxis.gp = gpar(fontsize = 7), legend = list(annotation_colors$SnpEff))
 
   if(1==2) {
@@ -758,18 +766,20 @@ genome_cartoons <- function(mutation_subset) {
   for(i in 1:dim(mutation_subset)[2]) {
     sample <- dimnames(mutation_subset)[[2]][i]
     barcode <- strsplit(sample_barcodes[grepl(sample, sample_barcodes)], "_")[[1]][2]
-    
+  
     # remove positions covered by multi-site variants
-    mutation_subset <- mutation_subset[!(dimnames(mutation_subset)[[1]] %in% c(snpeff_report$POS[sapply(as.character(snpeff_report$REF), nchar)>1]+1)),]
-    
+    mutation_subset <- subset(mutation_subset, !(dimnames(mutation_subset)[[1]] %in% c(snpeff_report$POS[sapply(as.character(snpeff_report$REF), nchar)>1]+1)))
+
+  mutation_subset <- subset(mutation_subset, apply(nchar(mutation_subset), 1, sum) > 0)
+  
     SNP <- as.numeric(names(which(nchar(mutation_subset[,i])>0)))
     snpeff_subset <- subset(snpeff_report, snpeff_report$POS %in% SNP)
-    
-    labels <- mutation_subset[which(nchar(mutation_subset[,i])>0),i]
+  
+    labels <- subset(mutation_subset, nchar(mutation_subset[,i])>0)[,i]
     REF <- sapply(labels, substr, 1, 1)
     ALT <- sapply(labels, function(s){return(substr(s, nchar(s), nchar(s)))})
     snpeff_labels <- paste0(snpeff_subset$REF, snpeff_subset$POS, snpeff_subset$ALT)
-    
+  
     labels_sel <- labels %in% snpeff_labels
     snpeff_labels_sel <- snpeff_labels %in% labels
 
@@ -883,91 +893,99 @@ plot_flag_matrix <- function() {
   
   o <- order(as.numeric(dimnames(plot_matrix)[[1]]))
   o.col <- order(dimnames(plot_matrix)[[2]])
-  plot_matrix[o, o.col][combined_rows %in% mut_rows, combined_cols %in% mut_cols] <- mutation_full_bool[mut_rows %in% combined_rows, mut_cols %in% combined_cols]
 
-  # add overall genome flag annotation
-  sample_sel <- summary$Sample %in% dimnames(plot_matrix)[[2]]
-  snp_sel <- dimnames(annotation_snp)[[1]] %in% dimnames(plot_matrix)[[1]]
-
-  h <- pheatmap(plot_matrix[o,],
-          labels_row=dimnames(plot_matrix)[[1]][o],
-          labels_col=dimnames(plot_matrix)[[2]],
-          cluster_rows=FALSE,
-          cluster_cols=FALSE,
-          col=annotation_colors$Variants,
-          ylab="mutation position",
-          fontsize_row=7, fontsize_col=10,
-          margins=c(10,5),
-          legend=FALSE,
-          treeheight_row=0,
-          annotation_col=subset(annotation_sample, sample_sel),
-          annotation_row=subset(annotation_snp, snp_sel),
-          annotation_colors=annotation_colors
-          )
-  
-  flag_columns <- which(grepl("_flag", names(postfilt_all), fixed=TRUE))
-  flags <- list()
-  for(i in flag_columns) {
-    flag <- names(postfilt_all)[i]
-    name <- gsub("_flag", "", flag)
-    flags[[name]] <- dcast(postfilt_all, pos ~ sample, value.var = c(flag), fill=".")
-  }
-
-  flag_matrix <- matrix(data="",
-                        nrow=length(postfilt_rows),
-                        ncol=length(postfilt_cols)
-                      )
-  dimnames(flag_matrix)[[1]] <- flags[names(flags)[1]][[1]]$pos
-  dimnames(flag_matrix)[[2]] <- names(flags[names(flags)[1]][[1]])[-1]
-
-  shapes <- list( # from: https://en.wikipedia.org/wiki/Geometric_Shapes
-  squares = c("⬛","⬜","⬒","⬓","◧","◨","◩","◪","▣","▤","▥"),
-  triangles = c("▲","△","◀","◁","▶","▷","▼","▽"),
-  circles = c("⬤","○","◌","◍","◎","◐","◑","◒","◓","◔","◕"),
-  diamonds = c("◆","◇","◈","◊"),
-  print = c("D", "N", "m", "~", "%", "B", "!", "X")
-  )
-  # add symbols for flags
-  for(i in 1:length(names(flags))) {
-    flag <- names(flags)[i]
-    if(flag == "vc") {
-      vc_flag_table <- flags[flag][[1]][,-1]
-      vc_calls <- vc_flag_table[vc_flag_table != "."]
-      symbol <- gsub("mismatch\\(([^+]*)\\+?([^+]*)\\)", "\\1\\2", vc_calls)
+  if(length(o.col) == 1) {
+      cat("\nError: Flag matrix will only print when there is data for more than one sample.\n")
     } else {
-      symbol <- shapes$print[i]
-    }
-    sel <- as.matrix(flags[flag][[1]])[,-1] != "."
-    flag_matrix[sel] <- paste0(flag_matrix[sel], symbol)
-  }
+      plot_matrix[o, o.col][combined_rows %in% mut_rows, combined_cols %in% mut_cols] <- mutation_full_bool[mut_rows %in% combined_rows, mut_cols %in% combined_cols]
 
-  # create matrix for text displayed ordered by pheatmap clusters
-  if("order" %in% names(h$tree_row)) {
-    row_order <- h$tree_row$order
-  } else {
-    row_order <- seq(1,dim(plot_matrix)[1])
-  }
-  if("order" %in% names(h$tree_col)) {
-    col_order <- h$tree_col$order
-  } else {
-    col_order <- seq(1,dim(plot_matrix)[2])
-  }
-  # order flag_matrix rows and columns
-  flag_row_order <- order(as.numeric(dimnames(flag_matrix)[[1]]))
-  flag_col_order <- order(dimnames(flag_matrix)[[2]])
-  text_matrix <- matrix(data="",
-                        nrow=length(combined_rows),
-                        ncol=length(combined_cols)
-                      )
-  row_sel <- combined_rows %in% postfilt_rows
-  col_sel <- combined_cols %in% postfilt_cols
-  text_matrix[row_sel, col_sel] <- flag_matrix[flag_row_order, flag_col_order]
+    # add overall genome flag annotation
+    sample_sel <- summary$Sample %in% dimnames(plot_matrix)[[2]]
+    snp_sel <- dimnames(annotation_snp)[[1]] %in% dimnames(plot_matrix)[[1]]
   
-  grid.force()
-  vp <- grid.ls()$name[2]
-  g <- grid.get(grid.ls()$name[3])
-  downViewport(vp)
-  grid.text(text_matrix, x=g$x, y=g$y, gp=gpar(col="black", fontsize=5))
+    annotation_col <- subset(annotation_sample, sample_sel)
+    annotation_row <- subset(annotation_snp, snp_sel)
+    levels(annotation_row$SnpEff) <- c(levels(as.factor(snpeff_report$ANN)), "none")
+    h <- pheatmap(plot_matrix[o,],
+            labels_row=dimnames(plot_matrix)[[1]][o],
+            labels_col=dimnames(plot_matrix)[[2]],
+            cluster_rows=FALSE,
+            cluster_cols=FALSE,
+            col=annotation_colors$Variants,
+            ylab="mutation position",
+            fontsize_row=7, fontsize_col=10,
+            margins=c(10,5),
+            legend=FALSE,
+            treeheight_row=0,
+            annotation_col=annotation_col,
+            annotation_row=annotation_row,
+            annotation_colors=annotation_colors
+            )
+    
+    flag_columns <- which(grepl("_flag", names(postfilt_all), fixed=TRUE))
+    flags <- list()
+    for(i in flag_columns) {
+      flag <- names(postfilt_all)[i]
+      name <- gsub("_flag", "", flag)
+      flags[[name]] <- dcast(postfilt_all, pos ~ sample, value.var = c(flag), fill=".")
+    }
+  
+    flag_matrix <- matrix(data="",
+                          nrow=length(postfilt_rows),
+                          ncol=length(postfilt_cols)
+                        )
+    dimnames(flag_matrix)[[1]] <- flags[names(flags)[1]][[1]]$pos
+    dimnames(flag_matrix)[[2]] <- names(flags[names(flags)[1]][[1]])[-1]
+  
+    shapes <- list( # from: https://en.wikipedia.org/wiki/Geometric_Shapes
+    squares = c("⬛","⬜","⬒","⬓","◧","◨","◩","◪","▣","▤","▥"),
+    triangles = c("▲","△","◀","◁","▶","▷","▼","▽"),
+    circles = c("⬤","○","◌","◍","◎","◐","◑","◒","◓","◔","◕"),
+    diamonds = c("◆","◇","◈","◊"),
+    print = c("D", "N", "m", "~", "%", "B", "!", "X")
+    )
+    # add symbols for flags
+    for(i in 1:length(names(flags))) {
+      flag <- names(flags)[i]
+      if(flag == "vc") {
+        vc_flag_table <- flags[flag][[1]][,-1]
+        vc_calls <- vc_flag_table[vc_flag_table != "."]
+        symbol <- gsub("mismatch\\(([^+]*)\\+?([^+]*)\\)", "\\1\\2", vc_calls)
+      } else {
+        symbol <- shapes$print[i]
+      }
+      sel <- as.matrix(flags[flag][[1]])[,-1] != "."
+      flag_matrix[sel] <- paste0(flag_matrix[sel], symbol)
+    }
+  
+    # create matrix for text displayed ordered by pheatmap clusters
+    if("order" %in% names(h$tree_row)) {
+      row_order <- h$tree_row$order
+    } else {
+      row_order <- seq(1,dim(plot_matrix)[1])
+    }
+    if("order" %in% names(h$tree_col)) {
+      col_order <- h$tree_col$order
+    } else {
+      col_order <- seq(1,dim(plot_matrix)[2])
+    }
+    # order flag_matrix rows and columns
+    flag_row_order <- order(as.numeric(dimnames(flag_matrix)[[1]]))
+    flag_col_order <- order(dimnames(flag_matrix)[[2]])
+    text_matrix <- matrix(data="",
+                          nrow=length(combined_rows),
+                          ncol=length(combined_cols)
+                        )
+    row_sel <- combined_rows %in% postfilt_rows
+    col_sel <- combined_cols %in% postfilt_cols
+    text_matrix[row_sel, col_sel] <- flag_matrix[flag_row_order, flag_col_order]
+    
+    grid.force()
+    vp <- grid.ls()$name[2]
+    g <- grid.get(grid.ls()$name[3])
+    downViewport(vp)
+    grid.text(text_matrix, x=g$x, y=g$y, gp=gpar(col="black", fontsize=5))
+  }
 }
 #-------------------------------------------------
 print_igv_plot <- function(row) {

@@ -1,6 +1,6 @@
 #!/bin/bash
-source /home/idies/workspace/covid19/bashrc
-conda activate artic-ncov2019
+source /home/user/idies/workspace/covid19/bashrc
+conda activate jhu-ncov
 # usage function
 usage() {
         echo -e "usage: ${YELLOW}$0${NC} [options]"
@@ -33,7 +33,7 @@ do
        esac
 done
 
-if [ "$(uname -s)" = 'Linux' ]; then
+if [[ "$(uname -s)" = 'Linux' ]]; then
     BINDIR=$(dirname "$(readlink -f "$0" || echo "$(echo "$0" | sed -e 's,\\,/,g')")")
 else
     BINDIR=$(dirname "$(readlink "$0" || echo "$(echo "$0" | sed -e 's,\\,/,g')")")

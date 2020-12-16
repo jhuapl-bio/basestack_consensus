@@ -1,5 +1,5 @@
 #!/bin/bash
-source /home/idies/workspace/covid19/bashrc
+source /home/user/idies/workspace/covid19/bashrc
 conda activate jhu-ncov
 
 # usage function
@@ -46,7 +46,7 @@ done
 postfilter_dir="$(dirname ${consensus_dir})/5-post-filter"
 
 # make and save output directory
-if [ ! -d "$postfilter_dir" ]; then
+if [[ ! -d "$postfilter_dir" ]]; then
         mkdir "$postfilter_dir"
 fi
 
