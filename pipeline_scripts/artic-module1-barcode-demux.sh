@@ -188,6 +188,7 @@ echo_log "RUN $(basename ${sequencing_run}): Starting guppy demux module 1"
 	--require_barcodes_both_ends \
 	-i "$fastq_dir" \
 	-s "$demux_dir" \
+	--recursive \
 	--arrangements_files "$barcode_file" 2>> "$logfile"
 
 while read barcode name; do
