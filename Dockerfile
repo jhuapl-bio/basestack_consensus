@@ -23,22 +23,14 @@ RUN conda install -y python=3 \
     && conda update -y conda \
     && conda clean --all --yes
 
-ARG USER_ID
-ARG GROUP_ID
-ARG ENVIRONMENT
-
-RUN if [[ $ENVIRONMENT != "WIN" ]]; then addgroup --gid $GROUP_ID user; else addgroup --gid 1000 user; fi 
-RUN if [[ $ENVIRONMENT != "WIN" ]]; then adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user; else adduser --disabled-password --gecos '' --uid 1000 --gid 1000 user; fi 
 
 # configure directory structure exactly as it is on SciServer for ease of transition
 
-USER user
-RUN mkdir -p /home/user/idies/workspace/covid19/code \
-    && chown $USER_ID:$GROUP_ID /home/user/idies/workspace/covid19/code \
-    && chmod g+s /home/user/idies/workspace/covid19/code
+RUN mkdir -p /root/idies/workspace/covid19/code \
+    && chmod g+s /root/idies/workspace/covid19/code
 
 # install openjdk
-WORKDIR /home/user/idies/workspace/covid19/code
+WORKDIR /root/idies/workspace/covid19/code
 RUN wget https://download.java.net/java/GA/jdk14/076bab302c7b4508975440c56f6cc26a/36/GPL/openjdk-14_linux-x64_bin.tar.gz \
     && tar -xzf openjdk-14_linux-x64_bin.tar.gz \
     && rm openjdk-14_linux-x64_bin.tar.gz
@@ -57,7 +49,6 @@ RUN git clone https://github.com/mkirsche/vcfigv \
 RUN wget --no-check-certificate https://americas.oxfordnanoportal.com/software/analysis/ont-guppy-cpu_3.6.1_linux64.tar.gz \
     && tar -xzf ont-guppy-cpu_3.6.1_linux64.tar.gz \
     && rm ont-guppy-cpu_3.6.1_linux64.tar.gz
-
 # install consensus pipeline repos
 RUN git clone https://github.com/tmehoke/ncov \
     && git clone --recurse-submodules https://github.com/artic-network/artic-ncov2019 \
@@ -72,32 +63,32 @@ RUN conda env create -f ncov/environment.yml \
     && cd pangolin \
     && python setup.py install
 
-WORKDIR /home/user/idies/workspace/covid19/code/ncov/pipeline_scripts
+WORKDIR /root/idies/workspace/covid19/code/ncov/pipeline_scripts
 RUN git clone https://github.com/mkirsche/CoverageNormalization.git \
     && git clone https://github.com/mkirsche/VariantValidator.git
 
+RUN ls -lht  /root/idies/workspace/covid19/code
 # copy rest of necessary environment over
-RUN cp -r /home/user/idies/workspace/covid19/code/ncov/covid19 /home/user/idies/workspace/
+RUN cp -r /root/idies/workspace/covid19/code/ncov/covid19 /root/idies/workspace/
 
 # clone cov-lineages
-WORKDIR /home/user/idies/workspace/covid19/ncov_reference
+WORKDIR /root/idies/workspace/covid19/ncov_reference
 RUN git clone https://github.com/cov-lineages/lineages.git
 
-#RUN find /home/user/idies/workspace/covid19/ -type f -print0 | xargs -0 dos2unix
+#RUN find /root/idies/workspace/covid19/ -type f -print0 | xargs -0 dos2unix
 
 # compile java libraries
-ENV PATH="/home/user/idies/workspace/covid19/code/ncov/pipeline_scripts:${PATH}"
-ENV PATH="/home/user/idies/workspace/covid19/code/jdk-14/bin:${PATH}"
-ENV PATH="/home/user/idies/workspace/covid19/code/ont-guppy-cpu/bin:${PATH}"
+ENV PATH="/root/idies/workspace/covid19/code/ncov/pipeline_scripts:${PATH}"
+ENV PATH="/root/idies/workspace/covid19/code/jdk-14/bin:${PATH}"
+ENV PATH="/root/idies/workspace/covid19/code/ont-guppy-cpu/bin:${PATH}"
 
 # copy 13-gene genome.json over into RAMPART directory (which has a 9-gene file by default)
-RUN cp /home/user/idies/workspace/covid19/ncov_reference/genome.json /home/user/idies/workspace/covid19/code/artic-ncov2019/rampart/genome.json
+RUN cp /root/idies/workspace/covid19/ncov_reference/genome.json /root/idies/workspace/covid19/code/artic-ncov2019/rampart/genome.json
 
-#RUN chown -R $USER_ID:$GROUP_ID /home/user
 
 # install TeX libraries
 RUN wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | sh \
-    && export PATH=/home/user/.TinyTeX/bin/x86_64-linux:$PATH \
+    && export PATH=/root/.TinyTeX/bin/x86_64-linux:$PATH \
     && tlmgr path add \
     && tlmgr install mnsymbol \
     && tlmgr install multirow \
@@ -112,7 +103,7 @@ RUN wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | sh \
     && tlmgr install makecell 
 
 # set up final environment and default working directory
-RUN cat /home/user/idies/workspace/covid19/bashrc >> ~/.bashrc
-RUN chmod -R 755 /home/user/idies/workspace/covid19/code/ncov/pipeline_scripts/
-WORKDIR /home/user/idies/workspace/covid19
-
+RUN cat /root/idies/workspace/covid19/bashrc >> /root/.bashrc
+RUN cat /root/.bashrc
+RUN chmod -R 755 /root/idies/workspace/covid19/code/ncov/pipeline_scripts/
+WORKDIR /root/idies/workspace/covid19
