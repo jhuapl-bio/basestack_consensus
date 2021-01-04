@@ -177,18 +177,16 @@ artic guppyplex \
 #===================================================================================================
 
 if [[ ! -d "$gather_dir" ]]; then
-    >&2 echo_log "SAMPLE ${name}: Error: $gather_dir not created"
-    exit 1
+    mkdir "$gather_dir"
 fi
 
 if [[ ! -f "${gather_dir}/${name}_${barcode}.fastq" ]]; then
-    >&2 echo_log "SAMPLE: ${name}: Error: Module 2 output for sample '${name}' not found"
-    exit 1
-else
- 	echo_log "SAMPLE ${name}: Module 2 - Guppyplex complete"
-	touch "${gather_dir}/module2-${name}_${barcode}.complete"
-
-	echo_log "SAMPLE ${name}: executing artic-module3-normalization.sh -i ${gather_dir}/${name}_${barcode}.fastq"
-
-	artic-module3-normalization.sh -i "${gather_dir}/${name}_${barcode}.fastq"
+    touch "${gather_dir}/${name}_${barcode}.fastq"
 fi
+
+echo_log "SAMPLE ${name}: Module 2 - Guppyplex complete"
+touch "${gather_dir}/module2-${name}_${barcode}.complete"
+
+echo_log "SAMPLE ${name}: executing artic-module3-normalization.sh -i ${gather_dir}/${name}_${barcode}.fastq"
+
+artic-module3-normalization.sh -i "${gather_dir}/${name}_${barcode}.fastq"

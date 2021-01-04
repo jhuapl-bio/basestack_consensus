@@ -221,10 +221,9 @@ samtools depth -a -d 0 "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth" 2>> "$log
 
 if [[ ! -f "${out_sam%.sam}.fq" ]]; then
     >&2 echo_log "SAMPLE ${base}: Error: Module 3 output ${out_sam%.sam}.fq not found"
-    exit 1
-else
-	echo_log "SAMPLE ${base}: Module 3 complete for sample '${base}'"
-	touch $(dirname "${normalize_dir}")/module3-"${base}".complete
-
-	artic-module4-bundle.sh -i "${out_sam%.sam}.fq" -t 5
+    touch "${out_sam%.sam}.fq"
 fi
+echo_log "SAMPLE ${base}: Module 3 complete for sample '${base}'"
+touch $(dirname "${normalize_dir}")/module3-"${base}".complete
+
+artic-module4-bundle.sh -i "${out_sam%.sam}.fq" -t 5
