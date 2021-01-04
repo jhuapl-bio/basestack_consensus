@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source /root/idies/workspace/covid19/bashrc
+source $HOME/idies/workspace/covid19/bashrc
 conda activate jhu-ncov
 
 #---------------------------------------------------------------------------------------------------
@@ -28,7 +28,7 @@ usage() {
 	echo -e "   -h      show this message"
 	echo -e "   -i      sequencing run folder"
 	echo -e "   -o      output PDF"
-	echo -e "   -n      nextstrain path (default: ${CYAN}/root/idies/workspace/covid19/nextstrain${NC})"
+	echo -e "   -n      nextstrain path (default: ${CYAN}$HOME/idies/workspace/covid19/nextstrain${NC})"
 	echo -e ""
 }
 #===================================================================================================

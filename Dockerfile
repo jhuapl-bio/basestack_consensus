@@ -34,6 +34,7 @@ WORKDIR /root/idies/workspace/covid19/code
 RUN wget https://download.java.net/java/GA/jdk14/076bab302c7b4508975440c56f6cc26a/36/GPL/openjdk-14_linux-x64_bin.tar.gz \
     && tar -xzf openjdk-14_linux-x64_bin.tar.gz \
     && rm openjdk-14_linux-x64_bin.tar.gz
+
 # install samtools 1.10
 RUN wget https://github.com/samtools/samtools/releases/download/1.10/samtools-1.10.tar.bz2 \
     && tar -xjf samtools-1.10.tar.bz2 \
@@ -49,13 +50,11 @@ RUN git clone https://github.com/mkirsche/vcfigv \
 RUN wget --no-check-certificate https://americas.oxfordnanoportal.com/software/analysis/ont-guppy-cpu_3.6.1_linux64.tar.gz \
     && tar -xzf ont-guppy-cpu_3.6.1_linux64.tar.gz \
     && rm ont-guppy-cpu_3.6.1_linux64.tar.gz
-# install consensus pipeline repos
-RUN git clone https://github.com/tmehoke/ncov \
-    && git clone --recurse-submodules https://github.com/artic-network/artic-ncov2019 \
-    && git clone https://github.com/cov-lineages/pangolin.git
 
-# install conda environments
-RUN conda env create -f ncov/environment.yml \
+
+# Clone Artic and Pangolin repos and create environments to install packages
+RUN git clone --recurse-submodules https://github.com/artic-network/artic-ncov2019 \
+    && git clone https://github.com/cov-lineages/pangolin.git \
     && conda env create -f artic-ncov2019/environment.yml \
     && sed -i 's/  - python=3.6/  - python=3.7/' pangolin/environment.yml \
     && conda env create -f pangolin/environment.yml \
@@ -63,13 +62,12 @@ RUN conda env create -f ncov/environment.yml \
     && cd pangolin \
     && python setup.py install
 
+
+# Clone the Variant and CoverageNormalization repos
 WORKDIR /root/idies/workspace/covid19/code/ncov/pipeline_scripts
 RUN git clone https://github.com/mkirsche/CoverageNormalization.git \
     && git clone https://github.com/mkirsche/VariantValidator.git
 
-RUN ls -lht  /root/idies/workspace/covid19/code
-# copy rest of necessary environment over
-RUN cp -r /root/idies/workspace/covid19/code/ncov/covid19 /root/idies/workspace/
 
 # clone cov-lineages
 WORKDIR /root/idies/workspace/covid19/ncov_reference
@@ -81,9 +79,6 @@ RUN git clone https://github.com/cov-lineages/lineages.git
 ENV PATH="/root/idies/workspace/covid19/code/ncov/pipeline_scripts:${PATH}"
 ENV PATH="/root/idies/workspace/covid19/code/jdk-14/bin:${PATH}"
 ENV PATH="/root/idies/workspace/covid19/code/ont-guppy-cpu/bin:${PATH}"
-
-# copy 13-gene genome.json over into RAMPART directory (which has a 9-gene file by default)
-RUN cp /root/idies/workspace/covid19/ncov_reference/genome.json /root/idies/workspace/covid19/code/artic-ncov2019/rampart/genome.json
 
 
 # install TeX libraries
@@ -101,7 +96,28 @@ RUN wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | sh \
     && tlmgr install environ \
     && tlmgr install ulem \
     && tlmgr install makecell 
+##################################################################
 
+#Copy just the environment.yml file for quick debugging purposes. Comment this out in production
+COPY ./environment.yml /root/idies/workspace/covid19/code/ncov/
+
+#Finally, copy over the local files into the working directory and copy rest of necessary environment over to workspace
+#COPY ./ /root/idies/workspace/covid19/code/ncov/
+
+
+RUN conda env create -f /root/idies/workspace/covid19/code/ncov/environment.yml 
+
+# Re-copy yml file and the rest for quick debugging. Comment this out in production
+COPY ./ /root/idies/workspace/covid19/code/ncov/ \
+    && cp -r /root/idies/workspace/covid19/code/ncov/covid19 /root/idies/workspace/
+
+
+
+#################################################################
+# copy 13-gene genome.json over into RAMPART directory (which has a 9-gene file by default)
+RUN cp /root/idies/workspace/covid19/ncov_reference/genome.json /root/idies/workspace/covid19/code/artic-ncov2019/rampart/genome.json
+
+RUN ls /root/idies/workspace/covid19/code/ncov/pipeline_scripts
 # set up final environment and default working directory
 RUN cat /root/idies/workspace/covid19/bashrc >> /root/.bashrc
 RUN cat /root/.bashrc

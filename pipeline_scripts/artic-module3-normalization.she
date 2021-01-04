@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source $HOME/idies/workspace/covid19/bashrc
 conda activate artic-ncov2019
 #---------------------------------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ echo_log() {
 sequencing_run=$(dirname $(dirname $(dirname "$fastq")))
 
 # location of programs used by pipeline
-software_path=/root/idies/workspace/covid19/code
+software_path=$HOME/idies/workspace/covid19/code
 JAVA_PATH="${software_path}/jdk-14/bin"
 samtools_path="${software_path}/samtools-1.10/bin"
 NormalizeCoveragePath="${software_path}/ncov/pipeline_scripts/CoverageNormalization"
