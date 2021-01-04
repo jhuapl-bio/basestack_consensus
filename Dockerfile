@@ -108,8 +108,8 @@ COPY ./environment.yml /root/idies/workspace/covid19/code/ncov/
 RUN conda env create -f /root/idies/workspace/covid19/code/ncov/environment.yml 
 
 # Re-copy yml file and the rest for quick debugging. Comment this out in production
-COPY ./ /root/idies/workspace/covid19/code/ncov/ \
-    && cp -r /root/idies/workspace/covid19/code/ncov/covid19 /root/idies/workspace/
+COPY ./ /root/idies/workspace/covid19/code/ncov/ 
+RUN cp -r /root/idies/workspace/covid19/code/ncov/covid19 /root/idies/workspace/
 
 
 
@@ -121,5 +121,8 @@ RUN ls /root/idies/workspace/covid19/code/ncov/pipeline_scripts
 # set up final environment and default working directory
 RUN cat /root/idies/workspace/covid19/bashrc >> /root/.bashrc
 RUN cat /root/.bashrc
+
 RUN chmod -R 755 /root/idies/workspace/covid19/code/ncov/pipeline_scripts/
+
+RUN ls /root/idies/workspace/covid19/code/ncov/pipeline_scripts
 WORKDIR /root/idies/workspace/covid19
