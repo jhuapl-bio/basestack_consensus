@@ -138,6 +138,11 @@ if [[ ! -f "${normalized_fastq}" ]]; then
     exit 1
 fi
 
+if [[ -f "${consensus_dir}/module4-${name}_${barcode}.all_callers.complete" ]]; then
+    >&2 echo "Warning: All modules complete for this sample: ${consensus_dir}/module4-${name}_${barcode}.all_callers.complete"
+    exit 1
+fi
+
 if [[ ! -f "${input_nanopolish_vcf}" ]]; then
     >&2 echo "Error: Nanopolish output vcf file  does not exist"
     exit 1

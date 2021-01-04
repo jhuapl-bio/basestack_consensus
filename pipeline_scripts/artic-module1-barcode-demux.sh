@@ -192,7 +192,13 @@ echo_log "RUN $(basename ${sequencing_run}): Starting guppy demux module 1"
 	--arrangements_files "$barcode_file" 2>> "$logfile"
 
 while read barcode name; do
-mv "$demux_dir"/"${barcode/NB/barcode}" "$demux_dir"/"${barcode}"
+    demux_output="$demux_dir"/"${barcode/NB/barcode}"
+    correct_output="$demux_dir"/"${barcode}"
+    if [[ -d "$demux_output" ]]; then
+        mv "$demux_output" "$correct_output"
+    else
+        mkdir "$correct_output"
+    fi
 done < "$manifest" 2>> "$logfile"
     
 #---------------------------------------------------------------------------------------------------
@@ -204,16 +210,15 @@ done < "$manifest" 2>> "$logfile"
 #===================================================================================================
 
 if [[ ! -d "$demux_dir" ]]; then
-    >&2 echo_log "RUN $(basename ${sequencing_run}): Error $demux_dir not created"
-    exit 1
+    mkdir "$demux_dir"
 fi
 
+complete=TRUE
 while read barcode name; do
-    if [[ -d "$demux_dir/$barcode" ]]; then
-        complete=TRUE
-    else
-        complete=FALSE
+    if ! [[ -d "$demux_dir/$barcode" ]]; then
         echo_log "RUN $(basename ${sequencing_run}): Error ${demux_dir}/${barcode} does not exist"
+        # complete=FALSE
+        mkdir "$demux_dir/$barcode"
     fi
 done < "$manifest"
 
