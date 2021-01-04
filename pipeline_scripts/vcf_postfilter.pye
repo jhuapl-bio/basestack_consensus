@@ -10,7 +10,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
-sys.path.insert(0, "/root/idies/workspace/covid19/code/ncov/pipeline_scripts")
+sys.path.insert(0, "$HOME/idies/workspace/covid19/code/ncov/pipeline_scripts")
 from variant_status import status_by_case
 import variant_flags as fl
 

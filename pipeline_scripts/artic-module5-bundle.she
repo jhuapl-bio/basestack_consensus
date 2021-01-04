@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source $HOME/idies/workspace/covid19/bashrc
 conda activate jhu-ncov
 
 #---------------------------------------------------------------------------------------------------
@@ -80,9 +80,9 @@ postfilter_dir="${sequencing_run}/artic-pipeline/5-post-filter"
 
 # Postfiltering reference files
 # also include reference file, see CombineVariants section
-vcf_next="/root/idies/workspace/covid19/nextstrain/latest/alpha/alignments.vcf"
-case_defs="/root/idies/workspace/covid19/code/ncov/pipeline_scripts/variant_case_definitions.csv"
-amplicons="/root/idies/workspace/covid19/sequencing_runs/amplicons"
+vcf_next="$HOME/idies/workspace/covid19/nextstrain/latest/alpha/alignments.vcf"
+case_defs="$HOME/idies/workspace/covid19/code/ncov/pipeline_scripts/variant_case_definitions.csv"
+amplicons="$HOME/idies/workspace/covid19/sequencing_runs/amplicons"
 
 # Posterfiltering NTC files for baselining
 control_barcode=$(awk -F $'\t' -v control_name="${control_name}" '$2 == control_name { print $1 }' "${manifest}" | head -n1)
@@ -90,21 +90,21 @@ ntc_depthfile="${consensus_dir}/${control_name}_${control_barcode}.nanopolish.pr
 ntc_bamfile="${consensus_dir}/${control_name}_${control_barcode}.nanopolish.primertrimmed.rg.sorted.bam"
 
 # CombineVariants reference files
-reference="/root/idies/workspace/covid19/ncov_reference/sequence.fasta"
-reference_annotation="/root/idies/workspace/covid19/ncov_reference/genes.gff3"
+reference="$HOME/idies/workspace/covid19/ncov_reference/sequence.fasta"
+reference_annotation="$HOME/idies/workspace/covid19/ncov_reference/genes.gff3"
 
 # Pangolin reference directory
-pangolin_data="/root/idies/workspace/covid19/ncov_reference/lineages/lineages/data"
+pangolin_data="$HOME/idies/workspace/covid19/ncov_reference/lineages/lineages/data"
 
 # Nextstrain clade reference directory
-reference_gbk="/root/idies/workspace/covid19/ncov_reference/reference_seq.gb"
-nextstrain_clades="/root/idies/workspace/covid19/ncov_reference/clades.tsv"
+reference_gbk="$HOME/idies/workspace/covid19/ncov_reference/reference_seq.gb"
+nextstrain_clades="$HOME/idies/workspace/covid19/ncov_reference/clades.tsv"
 
 # snpEff reference file
-snpEff_config="/root/idies/workspace/covid19/ncov_reference/snpEff.config"
+snpEff_config="$HOME/idies/workspace/covid19/ncov_reference/snpEff.config"
 
 # location of programs used by pipeline
-software_path=/root/idies/workspace/covid19/code
+software_path=$HOME/idies/workspace/covid19/code
 JAVA_PATH="${software_path}/jdk-14/bin"
 
 # log file

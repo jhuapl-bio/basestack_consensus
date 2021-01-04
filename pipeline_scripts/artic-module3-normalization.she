@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source $HOME/idies/workspace/covid19/bashrc
 conda activate artic-ncov2019
 #---------------------------------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ echo_log() {
 sequencing_run=$(dirname $(dirname $(dirname "$fastq")))
 
 # location of programs used by pipeline
-software_path=/root/idies/workspace/covid19/code
+software_path=$HOME/idies/workspace/covid19/code
 JAVA_PATH="${software_path}/jdk-14/bin"
 samtools_path="${software_path}/samtools-1.10/bin"
 NormalizeCoveragePath="${software_path}/ncov/pipeline_scripts/CoverageNormalization"
@@ -221,9 +221,10 @@ samtools depth -a -d 0 "${out_sam%.sam}.bam" > "${out_sam%.sam}.depth" 2>> "$log
 
 if [[ ! -f "${out_sam%.sam}.fq" ]]; then
     >&2 echo_log "SAMPLE ${base}: Error: Module 3 output ${out_sam%.sam}.fq not found"
-    touch "${out_sam%.sam}.fq"
-fi
-echo_log "SAMPLE ${base}: Module 3 complete for sample '${base}'"
-touch $(dirname "${normalize_dir}")/module3-"${base}".complete
+    exit 1
+else
+	echo_log "SAMPLE ${base}: Module 3 complete for sample '${base}'"
+	touch $(dirname "${normalize_dir}")/module3-"${base}".complete
 
-artic-module4-bundle.sh -i "${out_sam%.sam}.fq" -t 5
+	artic-module4-bundle.sh -i "${out_sam%.sam}.fq" -t 5
+fi
