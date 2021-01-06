@@ -1,5 +1,5 @@
 #!/bin/bash
-source /home/user/idies/workspace/covid19/bashrc
+source /root/idies/workspace/covid19/bashrc
 conda activate artic-ncov2019
 
 #---------------------------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ sequencing_run=$(dirname $(dirname $(dirname $(dirname "$normalized_fastq"))))
 #===================================================================================================
 
 # location of programs used by pipeline
-software_path=/home/user/idies/workspace/covid19/code
+software_path=/root/idies/workspace/covid19/code
 
 # input files, these files should be in the sequencing run directory
 manifest="${sequencing_run}/manifest.txt"

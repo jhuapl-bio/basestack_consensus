@@ -2,7 +2,7 @@
 
 import sys
 import pandas as pd
-sys.path.insert(0, "/root/idies/workspace/covid19/code/ncov/pipeline_scripts")
+sys.path.insert(0, "$HOME/idies/workspace/covid19/code/ncov/pipeline_scripts")
 from samtools_funcs import collect_depths
 
 # get path to bamfile on which to calculate depth
