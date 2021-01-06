@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source $HOME/idies/workspace/covid19/bashrc
 conda activate jhu-ncov
 
 # usage function
