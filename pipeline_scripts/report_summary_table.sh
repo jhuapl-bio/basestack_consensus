@@ -48,7 +48,7 @@ usage() {
 # set default values here
 logfile="/dev/null"
 tempdir="/tmp"
-skip_igv="true"
+skip_igv="false"
 
 # report current hash of miseq-analysis git repo
 bin_path="$(dirname $0)"
@@ -453,7 +453,7 @@ while read barcode label; do
 	echo_log "    creating trimmed depth file"
 	samtools depth -d 0 -a "$trimmed_alignment" > "$trimmed_depth_outfile"
 
-	if [[ -s "$vcf" && -s "$trimmed_alignment" && skip_igv == "false" ]]; then
+	if [[ -s "$vcf" && -s "$trimmed_alignment" && "$skip_igv" == "false" ]]; then
 
 		outPrefix=$(basename "${vcf%.all_callers.combined.vcf}")
 		igv_out_path="$stats_path/igv"
