@@ -1004,7 +1004,7 @@ print_igv_plot <- function(row) {
       alleles <- postfilt_all$ont_alleles[postfilt_all$pos == nt & postfilt_all$sample == sample]
       cat(paste0("\n### ", colorlevels(flag), "{[", flag, "]: ", sample, " ", flagString, " - ", alleles, "}\n"))
       if(nt != "see full output") {
-        pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample_barcode,"/",sample_barcode,"-",genome_ref$reference$accession,".3_",nt,".png")
+	pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample_barcode,"/",genome_ref$reference$accession,".3_",nt,".png")
         if(file.exists(pngFn)) {
           cat(paste0("\\includegraphics[width=13cm]{",pngFn,"}\n"))
         } else {

@@ -103,3 +103,9 @@ RUN cat /root/idies/workspace/covid19/bashrc >> /root/.bashrc
 RUN cat /root/.bashrc
 RUN chmod -R 755 /root/idies/workspace/covid19/code/ncov/pipeline_scripts/
 WORKDIR /root/idies/workspace/covid19
+
+RUN apt-get update -qq -y \
+	&& apt-get install -qq -y xvfb libxtst6 \
+	&& apt-get -qq -y autoremove \
+	&& apt-get autoclean \
+	&& rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
