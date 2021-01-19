@@ -79,6 +79,37 @@ ENV PATH="/root/idies/workspace/covid19/code/jdk-14/bin:${PATH}"
 ENV PATH="/root/idies/workspace/covid19/code/ont-guppy-cpu/bin:${PATH}"
 
 ##################################################################
+# configure IGV screenshots in report
+
+# install dependencies for IGV build
+RUN apt-get update -qq -y \
+    && apt-get install -qq -y xvfb libxtst6 zip unzip curl \
+    && curl -s "https://get.sdkman.io" | bash \
+    && source "/root/.sdkman/bin/sdkman-init.sh" \
+    && sdk install gradle 6.8 \
+    && apt-get -qq -y remove curl \
+    && apt-get -qq -y autoremove \
+    && apt-get autoclean \
+    && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log
+
+# install igv
+WORKDIR /root/idies/workspace/covid19/code
+RUN git clone https://github.com/igvteam/igv
+RUN wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz \
+    && tar -xzf openjdk-11.0.2_linux-x64_bin.tar.gz
+
+# edit preferences file
+RUN sed -i 's/SAM.COLOR_BY\tUNEXPECTED_PAIR/SAM.COLOR_BY\tREAD_STRAND/' ./igv/src/main/resources/org/broad/igv/prefs/preferences.tab
+
+# build IGV
+WORKDIR /root/idies/workspace/covid19/code/igv
+RUN export JAVA_HOME="/root/idies/workspace/covid19/code/jdk-11.0.2" \
+    && export PATH=/root/idies/workspace/covid19/code/jdk-11.0.2/bin:$PATH \
+    && ./gradlew --stacktrace --debug createDist \
+    && rm ../openjdk-11.0.2_linux-x64_bin.tar.gz \
+    && rm -rf ../jdk-11.0.2
+
+##################################################################
 
 #Copy just the environment.yml file for quick debugging purposes. Comment this out in production
 COPY ./environment.yml /root/idies/workspace/covid19/code/ncov/
@@ -97,15 +128,7 @@ RUN cp -r /root/idies/workspace/covid19/code/ncov/covid19 /root/idies/workspace/
 # copy 13-gene genome.json over into RAMPART directory (which has a 9-gene file by default)
 RUN cp /root/idies/workspace/covid19/ncov_reference/genome.json /root/idies/workspace/covid19/code/artic-ncov2019/rampart/genome.json
 
-RUN ls /root/idies/workspace/covid19/code/ncov/pipeline_scripts
 # set up final environment and default working directory
 RUN cat /root/idies/workspace/covid19/bashrc >> /root/.bashrc
-RUN cat /root/.bashrc
 RUN chmod -R 755 /root/idies/workspace/covid19/code/ncov/pipeline_scripts/
 WORKDIR /root/idies/workspace/covid19
-
-RUN apt-get update -qq -y \
-	&& apt-get install -qq -y xvfb libxtst6 \
-	&& apt-get -qq -y autoremove \
-	&& apt-get autoclean \
-	&& rm -rf /var/lib/apt/lists/* /var/log/dpkg.log

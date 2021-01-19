@@ -130,7 +130,8 @@ if ! [[ -d "$bin_path" ]]; then
 	exit
 fi
 if [[ "$skip_igv" != "true" ]]; then
-	vcfigv_repo_path="$bin_path/../../vcfigv"
+	vcfigv_repo_path="/root/idies/workspace/covid19/code/vcfigv"
+	igv_path="/root/idies/workspace/covid19/code/igv/build/IGV-dist/"
 	if ! [[ -d "$vcfigv_repo_path" ]]; then
 		echo -e "${RED}Error: vcfigv repository ${CYAN}$vcfigv_repo_path${RED} does not exist.${NC}"
 		usage
@@ -454,7 +455,7 @@ while read barcode label; do
 			outprefix="$outPrefix"
 		mv "$outPrefix.bat" "$outPrefix"
 		xvfb-run \
-			--auto-servernum "$vcfigv_repo_path/IGV_2.8.10/igv.sh" \
+			--auto-servernum "$igv_path/igv.sh" \
 			-b "$outPrefix/$outPrefix.bat"
 		mv "$outPrefix" "$igv_out_path"
 	fi
