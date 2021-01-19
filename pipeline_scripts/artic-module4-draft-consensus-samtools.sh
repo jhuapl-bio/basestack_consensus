@@ -190,6 +190,10 @@ samtools mpileup --reference "${reference}" "${input_nanopolish_bamfile}" -o "${
     pileup_file="${mpileup}" \
     out_file="${allelefreqcalls}" 2>> "${logfile}"
 
+if [[ ! -f "${allelefreqcalls}" ]]; then
+    touch "${allelefreqcalls}"
+fi
+
 echo_log "Starting Module 4 Merging and Allele Frequencies on \
     ${input_nanopolish_vcf}, ${input_medaka_vcf}, ${allelefreqcalls}"
 
