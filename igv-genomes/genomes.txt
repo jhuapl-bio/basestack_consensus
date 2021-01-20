@@ -1,0 +1,3 @@
+<Server-Side Genome List>
+Human	/root/idies/workspace/covid19/igv-genomes/hg19/hg19.genome	hg19
+SARS-CoV-2	/root/idies/workspace/covid19/igv-genomes/ncov/ncov.genome	ncov
