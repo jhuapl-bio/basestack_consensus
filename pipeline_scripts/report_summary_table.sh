@@ -450,7 +450,7 @@ while read barcode label; do
 			--squish \
 			--nocombine \
 			aln="$trimmed_alignment" \
-			var="$vcf" \
+			var=<(awk -F $'\t' 'BEGIN{OFS="\t"}{if(NR>1){ $2 = sprintf("%d", $2-1)}; print($0)}' "$vcf") \
 			genome="$reference" \
 			outprefix="$outPrefix"
 		mv "$outPrefix.bat" "$outPrefix"
