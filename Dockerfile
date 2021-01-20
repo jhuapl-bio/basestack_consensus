@@ -48,14 +48,14 @@ RUN wget https://download.java.net/java/GA/jdk14/076bab302c7b4508975440c56f6cc26
     && tar -xjf samtools-1.10.tar.bz2 \
     && rm samtools-1.10.tar.bz2 \
     && git clone https://github.com/mkirsche/vcfigv \
-    && wget https://data.broadinstitute.org/igv/projects/downloads/2.8/IGV_2.8.10.zip -P vcfigv \
-    && unzip -d vcfigv vcfigv/IGV_2.8.10.zip \
-    && rm vcfigv/IGV_2.8.10.zip \
+    && rm -rf vcfigv/.git \
     && wget --no-check-certificate https://americas.oxfordnanoportal.com/software/analysis/ont-guppy-cpu_3.6.1_linux64.tar.gz \
     && tar -xzf ont-guppy-cpu_3.6.1_linux64.tar.gz \
     && rm ont-guppy-cpu_3.6.1_linux64.tar.gz \
     && git clone --recurse-submodules https://github.com/artic-network/artic-ncov2019 \
-    && git clone https://github.com/cov-lineages/pangolin.git
+    && rm -rf artic-ncov2019/.git \
+    && git clone https://github.com/cov-lineages/pangolin.git \
+    && rm -rf pangolin/.git
 
 # install conda environments
 RUN conda env create -f artic-ncov2019/environment.yml \
@@ -63,7 +63,8 @@ RUN conda env create -f artic-ncov2019/environment.yml \
     && conda env create -f pangolin/environment.yml \
     && conda activate pangolin \
     && cd pangolin \
-    && python setup.py install
+    && python setup.py install \
+    && conda clean --all --yes
 
 WORKDIR /root/idies/workspace/covid19/code/ncov/pipeline_scripts
 RUN git clone https://github.com/mkirsche/CoverageNormalization.git \
@@ -71,7 +72,9 @@ RUN git clone https://github.com/mkirsche/CoverageNormalization.git \
 
 # clone cov-lineages
 WORKDIR /root/idies/workspace/covid19/ncov_reference
-RUN git clone https://github.com/cov-lineages/lineages.git
+RUN git clone https://github.com/cov-lineages/lineages.git \
+    && rm -rf lineages/.git \
+    && rm lineages/lineage_summaries/*.svg
 
 # compile java libraries
 ENV PATH="/root/idies/workspace/covid19/code/ncov/pipeline_scripts:${PATH}"
@@ -96,18 +99,21 @@ RUN apt-get update -qq -y \
 WORKDIR /root/idies/workspace/covid19/code
 RUN git clone https://github.com/igvteam/igv
 RUN wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz \
-    && tar -xzf openjdk-11.0.2_linux-x64_bin.tar.gz
-
-# edit preferences file
-RUN sed -i 's/SAM.COLOR_BY\tUNEXPECTED_PAIR/SAM.COLOR_BY\tREAD_STRAND/' ./igv/src/main/resources/org/broad/igv/prefs/preferences.tab
-
-# build IGV
-WORKDIR /root/idies/workspace/covid19/code/igv
-RUN export JAVA_HOME="/root/idies/workspace/covid19/code/jdk-11.0.2" \
+    && tar -xzf openjdk-11.0.2_linux-x64_bin.tar.gz \
+    && sed -i 's@SAM.COLOR_BY\tUNEXPECTED_PAIR@SAM.COLOR_BY\tREAD_STRAND@' ./igv/src/main/resources/org/broad/igv/prefs/preferences.tab \
+    && sed -i 's@SAM.SORT_OPTION\tNUCLEOTIDE@SAM.SORT_OPTION\tSTRAND@' ./igv/src/main/resources/org/broad/igv/prefs/preferences.tab \
+    && sed -i 's@SAM.GROUP_OPTION\tNONE@SAM.GROUP_OPTION\tSTRAND@' ./igv/src/main/resources/org/broad/igv/prefs/preferences.tab \
+    && sed -i 's@SHOW_SEQUENCE_TRANSLATION\tFALSE@SHOW_SEQUENCE_TRANSLATION\tTRUE@' ./igv/src/main/resources/org/broad/igv/prefs/preferences.tab \
+    && sed -i 's@SAM.SHOW_CENTER_LINE\tShow center line\tboolean\tFALSE@SAM.SHOW_CENTER_LINE\tShow center line\tboolean\tTRUE@' ./igv/src/main/resources/org/broad/igv/prefs/preferences.tab \
+    && sed -i 's@IGV.genome.sequence.dir\tGenome server URL\tstring\thttps://s3.amazonaws.com/igv.org.genomes/genomes.txt@IGV.genome.sequence.dir\tGenome server URL\tstring\t/root/idies/workspace/covid19/code/ncov/igv-genomes/genomes.txt@' ./igv/src/main/resources/org/broad/igv/prefs/preferences.tab \
+    && sed -i 's@DEFAULT_GENOME_KEY\thg19@DEFAULT_GENOME_KEY\tncov@' ./igv/src/main/resources/org/broad/igv/prefs/preferences.tab \
+    && cd /root/idies/workspace/covid19/code/igv \
+    && export JAVA_HOME="/root/idies/workspace/covid19/code/jdk-11.0.2" \
     && export PATH=/root/idies/workspace/covid19/code/jdk-11.0.2/bin:$PATH \
-    && ./gradlew --stacktrace --debug createDist \
+    && ./gradlew createDist \
     && rm ../openjdk-11.0.2_linux-x64_bin.tar.gz \
-    && rm -rf ../jdk-11.0.2
+    && rm -rf ../jdk-11.0.2 \
+    && find /root/idies/workspace/covid19/code/igv -mindepth 1 -maxdepth 1 -type d ! -name "build" -exec rm -r {} \;
 
 ##################################################################
 
@@ -118,11 +124,13 @@ COPY ./environment.yml /root/idies/workspace/covid19/code/ncov/
 #COPY ./ /root/idies/workspace/covid19/code/ncov/
 
 
-RUN conda env create -f /root/idies/workspace/covid19/code/ncov/environment.yml 
+RUN conda env create -f /root/idies/workspace/covid19/code/ncov/environment.yml \
+    && conda clean --all --yes
 
 # Re-copy yml file and the rest for quick debugging. Comment this out in production
 COPY ./ /root/idies/workspace/covid19/code/ncov/
-RUN cp -r /root/idies/workspace/covid19/code/ncov/covid19 /root/idies/workspace/
+RUN cp -r /root/idies/workspace/covid19/code/ncov/covid19 /root/idies/workspace/ \
+    && ln -s /root/idies/workspace/covid19/code/ncov/igv-genomes /root/idies/workspace/covid19
 
 #################################################################
 # copy 13-gene genome.json over into RAMPART directory (which has a 9-gene file by default)
