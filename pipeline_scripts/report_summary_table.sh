@@ -48,7 +48,7 @@ usage() {
 # set default values here
 logfile="/dev/null"
 tempdir="/tmp"
-skip_igv="true"
+skip_igv="false"
 
 # report current hash of miseq-analysis git repo
 bin_path="$(dirname $0)"
@@ -130,7 +130,8 @@ if ! [[ -d "$bin_path" ]]; then
 	exit
 fi
 if [[ "$skip_igv" != "true" ]]; then
-	vcfigv_repo_path="$bin_path/../../vcfigv"
+	vcfigv_repo_path="/root/idies/workspace/covid19/code/vcfigv"
+	igv_path="/root/idies/workspace/covid19/code/igv/build/IGV-dist/"
 	if ! [[ -d "$vcfigv_repo_path" ]]; then
 		echo -e "${RED}Error: vcfigv repository ${CYAN}$vcfigv_repo_path${RED} does not exist.${NC}"
 		usage
@@ -312,15 +313,14 @@ ont_depth_thresh=$(head -n2 "$postfilt_all" | awk -F $'\t' '{if(NR==1){for(i=1; 
 echo_log "Depth threshold: $ont_depth_thresh"
 
 echo_log "Reading manifest"
+igv_out_path="$stats_path/igv"
+rm -rf "$igv_out_path"
+mkdir -p "$igv_out_path"
 while read barcode label; do
-
 	echo_log "  $barcode"
-
 	filebase="${label}_${barcode}"
-
 	demux_reads=$(grep "$barcode" "$stats_path/demux_count.txt" | cut -f1)
 	gather=$(find "$lengthfilter_path" -name "*$barcode.fastq")
-
 	if [[ -s "$gather" ]]; then
 		length_filter=$(($(wc -l < "$gather") / 4))
 	else
@@ -341,7 +341,6 @@ while read barcode label; do
 	vcf=$(find "$draftconsensus_path" -name "*${barcode}*.all_callers.combined.vcf")
 	post_filter=$(find "$postfilter_path" -name "*$barcode*.variant_data.txt")
 	final_consensus=$(find "$postfilter_path" -regextype posix-extended -regex ".*/.*$barcode.*(complete|partial).fasta")
-
 	echo_log "    FASTQ file: ${gather#$run_path/}"
 	echo_log "    full alignment: ${alignment#$run_path/}"
 	echo_log "    normalized alignment: ${normalized_alignment#$run_path/}"
@@ -351,20 +350,17 @@ while read barcode label; do
 	echo_log "    draft consensus: ${draft_consensus#$run_path/}"
 	echo_log "    variant data: ${post_filter#$run_path/}"
 	echo_log "    final consensus: ${final_consensus#$run_path/}"
-
 	echo_log "    barcode stats:"
 	echo_log "      number of reads: $length_filter"
 	echo_log "      aligned reads: $aligned_reads"
 	echo_log "      normalized reads: $normalized_reads"
 	echo_log "      unambiguous consensus nucleotides: $consensus_length"
-
 	depth_outfile="$normalize_path/$filebase/$filebase.depth"
 	normalized_depth_outfile="$normalize_path/$filebase/$filebase.covfiltered.depth"
 	mutations_outfile="$stats_path/mutations-$filebase.txt"
 	depth_mask_outfile="$stats_path/amplicon_depth_mask-$filebase.txt"
 	depth_mutations_outfile="$stats_path/depth_mutations-$filebase.txt"
 	trimmed_depth_outfile="${trimmed_alignment%.bam}.depth"
-
 	echo_log "    adding line to summary file"
 	flag=$(grep "^$label" "$postfilt_summary" | cut -d$'\t' -f7)
 	printf "%s\t%s\t%'d\t%'d\t%'d\t%'d (%s %%)\t%s\n" \
@@ -376,22 +372,17 @@ while read barcode label; do
 		"$consensus_length" \
 		$(echo "$consensus_length" | awk -v L="$ref_length" '{printf("%0.1f", (100*$1/L))}') \
 		"$flag" >> "$outfile"
-
 	echo_log "    creating depth file"
 	samtools depth -d 0 -a "$alignment" > "$depth_outfile"
-
 	echo_log "    creating normalized depth file"
 	samtools depth -d 0 -a "$normalized_alignment" > "$normalized_depth_outfile"
-
 	if [[ -s "$final_consensus" ]]; then
 		echo_log "    creating mutations file"
 		"$bin_path/mutations.sh" \
 			$("$bin_path/fix_fasta.sh" "$reference" | tail -n1) \
 			$("$bin_path/fix_fasta.sh" "$final_consensus" | tail -n1) \
 			| tail -n+55 | head -n-67 > "$mutations_outfile"
-
 		echo_log "    creating depth mutations file"
-
 		awk -F $'\t' -v THRESH="$ont_depth_thresh" '{
 			if(NR==FNR) {
 				if(NR==1) {
@@ -435,7 +426,6 @@ while read barcode label; do
 				printf("%s\n", i);
 			}
 		}' "$amplicons" "$del_depth_file" | sort -n | uniq > "$depth_mask_outfile"
-
 		awk -F $'\t' '{
 			if(NR==FNR) {
 				depth_mask[$1] = 1;
@@ -449,36 +439,26 @@ while read barcode label; do
 			}
 		}' "$depth_mask_outfile" "$mutations_outfile" > "$depth_mutations_outfile"
 	fi
-
 	echo_log "    creating trimmed depth file"
 	samtools depth -d 0 -a "$trimmed_alignment" > "$trimmed_depth_outfile"
-
-	if [[ -s "$vcf" && -s "$trimmed_alignment" && skip_igv == "false" ]]; then
-
+	if [[ -s "$vcf" && -s "$trimmed_alignment" && "$skip_igv" == "false" ]]; then
 		outPrefix=$(basename "${vcf%.all_callers.combined.vcf}")
-		igv_out_path="$stats_path/igv"
-		mkdir -p "$igv_out_path"
-
-		"$JAVA_HOME/bin/java" -cp "$vcfigv_repo_path/src" \
+		rm -rf "$outPrefix"
+		mkdir "$outPrefix"
+		java -cp "$vcfigv_repo_path/src" \
 			Vcf2Bat \
 			--squish \
 			--nocombine \
-			--svg \
 			aln="$trimmed_alignment" \
-			var="$vcf" \
+			var=<(awk -F $'\t' 'BEGIN{OFS="\t"}{if(NR>1){ $2 = sprintf("%d", $2-1)}; print($0)}' "$vcf") \
 			genome="$reference" \
-			outprefix="$outPrefix" \
-			bed="$bed"
-
+			outprefix="$outPrefix"
 		mv "$outPrefix.bat" "$outPrefix"
+		xvfb-run \
+			--auto-servernum "$igv_path/igv.sh" \
+			-b "$outPrefix/$outPrefix.bat"
 		mv "$outPrefix" "$igv_out_path"
-
-		"$vcfigv_repo_path/xvfb-run" \
-			--auto-servernum "$vcfigv_repo_path/IGV_2.8.2/igv.sh" \
-			-b "$pipelinepath/$outPrefix/$outPrefix.bat"
-
 	fi
-
 done < "$manifest"
 
 printf "\tuncalled\t%'d\tNA\tNA\tNA\tNA\n" $(grep unclassified "$stats_path/demux_count.txt" | cut -f1) >> "$outfile"
