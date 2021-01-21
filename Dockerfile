@@ -131,7 +131,8 @@ RUN conda env create -f /root/idies/workspace/covid19/code/ncov/environment.yml 
 COPY ./ /root/idies/workspace/covid19/code/ncov/
 RUN cp -r /root/idies/workspace/covid19/code/ncov/covid19 /root/idies/workspace/ \
     && ln -s /root/idies/workspace/covid19/code/ncov/igv-genomes /root/idies/workspace/covid19 \
-    && cp /root/idies/workspace/covid19/code/ncov/barcode_arrs_nb96.cfg /root/idies/workspace/covid19/code/ont-guppy-cpu/data/barcoding/
+    && cp /root/idies/workspace/covid19/code/ncov/barcode_arrs_nb96.cfg /root/idies/workspace/covid19/code/ont-guppy-cpu/data/barcoding/ \
+    && cp /root/idies/workspace/covid19/code/ncov/barcodes_masked.fasta /root/idies/workspace/covid19/code/ont-guppy-cpu/data/barcoding/
 
 #################################################################
 # copy 13-gene genome.json over into RAMPART directory (which has a 9-gene file by default)
