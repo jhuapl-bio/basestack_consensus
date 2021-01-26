@@ -115,7 +115,7 @@ if(length(list.files(run_path, "drift*", full.names=TRUE)) > 0) {
 }
 # pipeline output files
 #read_lengths <- read.table(paste0(run_path,"/artic-pipeline/run_stats/read_lengths.txt"), sep="\t")
-amplicons <- read.table(paste0(run_path,"/artic-pipeline/run_stats/amplicons"), sep="\t", header=TRUE)
+amplicons <- read.table(paste0(run_path,"/artic-pipeline/run_stats/amplicons.txt"), sep="\t", header=TRUE)
 summaryFn <- paste0(run_path,"/artic-pipeline/run_stats/summary.txt")
 depth_allFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-all.txt")
 depth_trimFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-trim-all.txt")
@@ -134,7 +134,7 @@ if(file.exists(depth_allFn)) {
   depth_all <- read.table(depth_allFn, sep="\t", fill=TRUE)
 } else {
   depth_all <- NULL
-  for(i in levels(summary$Sample)) {
+  for(i in summary$Sample) {
     depth_one <- data.frame(V1=rep(i, genome_ref$length), V2=rep(genome_ref$reference$accession, genome_ref$length), V3=seq(1, genome_ref$length), V4=rep(1, genome_ref$length))
   }
   depth_all <- rbind(depth_all, depth_one)
@@ -1120,19 +1120,34 @@ plot_barcode_barplot()
 ## Amplicon depth
 ### Read counts
 ```{r, depth-heatmap-1, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=2.5}
-depth_heatmap((1:98 %% 2 >= 0), "", norm=FALSE)
+tryCatch({
+  depth_heatmap((1:98 %% 2 >= 0), "", norm=FALSE)
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ### Multiple of NTC reads at that amplicon
 ```{r, depth-heatmap-2, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=2.5}
-depth_heatmap((1:98 %% 2 >= 0), "", norm=TRUE)
+tryCatch({
+  depth_heatmap((1:98 %% 2 >= 0), "", norm=TRUE)
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ### Amplicon depth threshold
 \label{low_depth}
 
 ```{r, amplicon-histogram, echo=FALSE, fig.height=4}
-#plot_amplicon_hist()
+tryCatch({
+  plot_amplicon_hist()
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 **Amplicons**: Samples in black. No-template controls (NTCs) in blue. Depth threshold as red line.
@@ -1142,17 +1157,32 @@ depth_heatmap((1:98 %% 2 >= 0), "", norm=TRUE)
 **Samples with positions less than depth threshold**:
 
 ```{r, echo=FALSE, results="asis"}
-print_low_depth_regions()
+tryCatch({
+  print_low_depth_regions()
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ### Primer pool 1 (nCoV2019_1)
 ```{r, depth-barplot-1, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=8}
-depth_plot((1:98 %% 2 == 1), "-nCoV2019_1")
+tryCatch({
+  depth_plot((1:98 %% 2 == 1), "-nCoV2019_1")
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ### Primer pool 2 (nCoV2019_2)
 ```{r, depth-barplot-2, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=8}
-depth_plot((1:98 %% 2 == 0), "-nCoV2019_2")
+tryCatch({
+  depth_plot((1:98 %% 2 == 0), "-nCoV2019_2")
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 # Variant calling
@@ -1160,7 +1190,12 @@ depth_plot((1:98 %% 2 == 0), "-nCoV2019_2")
 
 ## Genome cartoons
 ```{r, genome-cartoon-overview, eval=TRUE, echo=FALSE, fig.height=6, results="asis", warning=FALSE, message=FALSE}
-genome_cartoon_overview(mutation_full)
+tryCatch({
+  genome_cartoon_overview(mutation_full)
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ```{r, genome-cartoons, eval=TRUE, echo=FALSE, fig.height=2, results="asis"}
@@ -1173,7 +1208,12 @@ genome_cartoon_overview(mutation_full)
 #  genome_cartoons(mutation_no_low_coverage[,columns])
 #  cat('\n\n')
 #}
-genome_cartoons(mutation_full)
+tryCatch({
+  genome_cartoons(mutation_full)
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 \pagebreak
@@ -1182,7 +1222,12 @@ genome_cartoons(mutation_full)
 Observed nucleotide mutations as compared to Wuhan-Hu-1 reference:
 
 ```{r, homoplasy-cluster, eval=TRUE, echo=FALSE, fig.height=8}
-plot_homoplasy_heatmap()
+tryCatch({
+  plot_homoplasy_heatmap()
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ```{r echo=FALSE, results="asis"}
@@ -1218,7 +1263,12 @@ draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Run", "Barcode", "Alpha", "
 
 ## Flag matrix
 ```{r, flag-matrix, results="hide", echo=FALSE, external=FALSE, fig.height=8, dev='cairo_pdf'}
-plot_flag_matrix()
+tryCatch({
+  plot_flag_matrix()
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 **Variants**: \textcolor{variantBlue}{$\blacksquare$} = Variant in consensus, \textcolor{variantRed}{$\blacksquare$} =  Ambiguity in consensus (above depth threshold outlined in section \ref{low_depth} on page \pageref{low_depth}) ; **Flags**: D = depth, N = NTC, (m|n|s) = present only in (m)edaka, (n)anopolish, (s)amtools, ~ = mixed, % = MAF, B = strand bias, ! = key position, X = present in <2 GISAID sequences
@@ -1437,4 +1487,3 @@ Thomas Mehoke, Shirlee Wohl, Melanie Kirsche, Srividya Ramakrishnan, Yunfan Fan,
 # print out all packages used
 sessionInfo()
 ```
-
