@@ -332,7 +332,6 @@ if [[ ${#variant_data_tracker[@]} -ge 1 ]]; then
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfilter Summarization completed for ${sequencing_run}"
 else
 	echo_log "RUN ${sequencing_run_name}: Error: Module 5 Summarization not performed.  No valid variant data found to summarize."
-	exit 1
 fi
 #---------------------------------------------------------------------------------------------------
 # module 5 Combine Variants
@@ -384,7 +383,6 @@ if [[ "${combine_variants_complete_flag}" == "TRUE" ]]; then
 
 else
 	echo_log "RUN ${sequencing_run_name}: Error: Module 5 Pangolin and snpEff not performed."
-	exit 1
 fi
 
 #---------------------------------------------------------------------------------------------------
@@ -414,8 +412,8 @@ if [[ "${module5_complete_flag}" == "TRUE" ]]; then
 
 	echo_log "RUN ${sequencing_run_name}: Beginning Module 6 Report Generation..."
 
-	report_summary_table.sh -i "$sequencing_run"
 else
 	echo_log "RUN ${sequencing_run_name}: Error: Module 5 did not complete."
-	exit 1
 fi
+
+report_summary_table.sh -i "$sequencing_run"

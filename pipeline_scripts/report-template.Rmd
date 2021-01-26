@@ -99,7 +99,6 @@ flagColorsTeX <- c("Yes" = "\\textcolor{myDarkGreen}", "Yes*" = "\\textcolor{myL
 # run information
 run_config <- read.table(paste0(run_path,"/run_config.txt"))
 manifest <- read.table(paste0(run_path,"/manifest.txt"))
-amplicons <- read.table(paste0(run_path,"/../amplicons"), sep="\t", header=TRUE)
 problematic_sites <- read.vcfR(paste0(run_path,"/../problematic_sites_sarsCov2.vcf"), verbose = FALSE, skip=24)
 genome_ref <- rjson::fromJSON(file=paste0(protocol_path, "/genome.json"))
 important_positions <- read.table(paste0(nextstrain_path,"/latest/alpha/clade_related_snps.txt"), sep="\t", header=TRUE, comment.char="")
@@ -116,6 +115,7 @@ if(length(list.files(run_path, "drift*", full.names=TRUE)) > 0) {
 }
 # pipeline output files
 #read_lengths <- read.table(paste0(run_path,"/artic-pipeline/run_stats/read_lengths.txt"), sep="\t")
+amplicons <- read.table(paste0(run_path,"/artic-pipeline/run_stats/amplicons.txt"), sep="\t", header=TRUE)
 summaryFn <- paste0(run_path,"/artic-pipeline/run_stats/summary.txt")
 depth_allFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-all.txt")
 depth_trimFn <- paste0(run_path,"/artic-pipeline/run_stats/depth-trim-all.txt")
@@ -134,7 +134,7 @@ if(file.exists(depth_allFn)) {
   depth_all <- read.table(depth_allFn, sep="\t", fill=TRUE)
 } else {
   depth_all <- NULL
-  for(i in levels(summary$Sample)) {
+  for(i in summary$Sample) {
     depth_one <- data.frame(V1=rep(i, genome_ref$length), V2=rep(genome_ref$reference$accession, genome_ref$length), V3=seq(1, genome_ref$length), V4=rep(1, genome_ref$length))
   }
   depth_all <- rbind(depth_all, depth_one)
@@ -150,12 +150,18 @@ if(file.exists(depth_trimFn)) {
 }
 if(file.exists(mutation_fullFn)) {
   mutation_full <- read.table(mutation_fullFn, sep="\t", header=TRUE, row.names=1)
+} else {
+  mutation_full <- NULL
 }
 if(file.exists(postfiltFn)) {
   postfilt <- read.table(postfiltFn, sep="\t", header=TRUE)
+} else {
+  postfilt <- NULL
 }
 if(file.exists(postfilt_allFn)) {
   postfilt_all <- read.table(postfilt_allFn, sep="\t", header=TRUE)
+} else {
+  postfilt_all <- NULL
 }
 if(file.exists(snpeff_reportFn)) {
   snpeff_report <- read.table(snpeff_reportFn, sep="\t", header=TRUE, comment.char="")
@@ -166,7 +172,11 @@ if(file.exists(snpeff_reportFn)) {
   empty_column <- rep("unknown", 1)
   snpeff_report <- data.frame("X.CHROM" = rep(genome_ref$reference$accession, 2), "POS" = empty_column, "REF" = empty_column, "ALT" = empty_column, "GENE" = empty_column, "ANN" = empty_column, "AA_MUT" = empty_column)
 }
-empty_column <- rep("", dim(mutation_full)[1])
+if(!is.null(mutation_full)) {
+  empty_column <- rep("", dim(mutation_full)[1])
+} else {
+  empty_column <- NULL
+}
 clade_report <- data.frame("taxon" = summary$Sample, "lineage" = rep("", length(summary$Sample)))
 tryCatch({
   clade_report <- read.table(clade_reportFn, sep=",", header=TRUE)
@@ -180,10 +190,14 @@ clade_report <- clade_report[order(clade_report$taxon),]
 o1 <- order(paste0(summary$Sample, summary$Barcode))
 summary <- summary[o1,]
 rownames(summary) <- NULL
-o2 <- order(postfilt$Sample)
-postfilt <- postfilt[o2,]
-o3 <- order(dimnames(mutation_full)[[1]])
-mutation_full <- mutation_full[o3,]
+if(!is.null(postfilt)) {
+  o2 <- order(postfilt$Sample)
+  postfilt <- postfilt[o2,]
+}
+if(!is.null(mutation_full)) {
+  o3 <- order(dimnames(mutation_full)[[1]])
+  mutation_full <- mutation_full[o3,]
+}
 
 #multi_nucleotide <- nchar(as.matrix(snpeff_report$REF))>1
 #for(i in which(multi_nucleotide)) {
@@ -221,13 +235,17 @@ if(file.exists(low_coverageFn)){
 }
 
 # create mutation objects
-mutation_full <- t(mutation_full)
-dimnames(mutation_full)[[1]] <- gsub("X", "", dimnames(mutation_full)[[1]])
-dimnames(mutation_full)[[2]] <- gsub("_NB.*", "", dimnames(mutation_full)[[2]])
-mutation_full_bool <- nchar(mutation_full)
-mutation_full_bool[mutation_full_bool>1] <- 1
-consensus_call <- substr(mutation_full, nchar(mutation_full), nchar(mutation_full))
-mutation_full_bool[(mutation_full_bool > 0) & !(consensus_call %in% c("A","C","G","T"))] <- 2
+if(!is.null(mutation_full)) {
+  mutation_full <- t(mutation_full)
+  dimnames(mutation_full)[[1]] <- gsub("X", "", dimnames(mutation_full)[[1]])
+  dimnames(mutation_full)[[2]] <- gsub("_NB.*", "", dimnames(mutation_full)[[2]])
+  mutation_full_bool <- nchar(mutation_full)
+  mutation_full_bool[mutation_full_bool>1] <- 1
+  consensus_call <- substr(mutation_full, nchar(mutation_full), nchar(mutation_full))
+  mutation_full_bool[(mutation_full_bool > 0) & !(consensus_call %in% c("A","C","G","T"))] <- 2
+} else {
+  mutation_full_bool <- NULL
+}
 
 # set up color objects for our data (needs to be streamlined)
 summary$Consensus <- rep("NA", dim(summary)[1])
@@ -303,7 +321,11 @@ for(i in sample_barcodes) {
 rownames(depth_plot_mean) <- sample_barcodes
 
 # identify low coverage regions
-threshold <- postfilt_all$ont_depth_thresh[1]
+if(!is.null(postfilt_all)) {
+  threshold <- postfilt_all$ont_depth_thresh[1]
+} else {
+  threshold <- 20
+}
 #below_threshold <- function(v) { return(v<=threshold) }
 #low_coverage_regions <- tapply(depth_norm[,4], depth_norm[,1], below_threshold)
 #low_coverage_totals <- unlist(lapply(low_coverage_regions, sum))
@@ -322,23 +344,37 @@ threshold <- postfilt_all$ont_depth_thresh[1]
 # add SNP info to postfilt table
 mutation_no_low_coverage <- mutation_full
 mutation_no_low_coverage_bool <- mutation_full_bool
-for(i in seq_along(low_coverage_regions)) {
-  low_coverage_rows <- dimnames(mutation_no_low_coverage)[[1]] %in% which(low_coverage_regions[[i]])
-  low_coverage_cols <- dimnames(mutation_no_low_coverage)[[2]] %in% summary$Sample[i]
-  mutation_no_low_coverage[low_coverage_rows, low_coverage_cols] <- ""
-  mutation_no_low_coverage_bool[low_coverage_rows, low_coverage_cols] <- FALSE
-}
+if(!is.null(mutation_no_low_coverage)) {
+  for(i in seq_along(low_coverage_regions)) {
+    low_coverage_rows <- dimnames(mutation_no_low_coverage)[[1]] %in% which(low_coverage_regions[[i]])
+    low_coverage_cols <- dimnames(mutation_no_low_coverage)[[2]] %in% summary$Sample[i]
+    mutation_no_low_coverage[low_coverage_rows, low_coverage_cols] <- ""
+    mutation_no_low_coverage_bool[low_coverage_rows, low_coverage_cols] <- FALSE
+  }
 f <- function(row) { return(paste(as.matrix(row[sapply(as.matrix(row),nchar)>0]), collapse=", ")) }
 mutation_collapse <- apply(mutation_full, 2, f)
 mutation_counts <- nchar(gsub("[^,]", "", mutation_collapse))+1
 select_many <- mutation_counts > 30
 # mutation_collapse[select_many] <- paste(mutation_counts[select_many], "SNPs")
-postfilt <- postfilt[,!(names(postfilt) %in% "Flagged.Positions")]
+} else {
+  mutation_collapse <- NULL
+  mutation_counts <- NULL
+  select_many <- NULL
+}
+if(!is.null(postfilt)) {
+  postfilt <- postfilt[,!(names(postfilt) %in% "Flagged.Positions")]
+}
 
 # remove any outlier samples from mutation table
-mutation_table <- subset(mutation_no_low_coverage, subset=rowSums(subset(mutation_no_low_coverage, select=!select_many) != "") != 0, select=!select_many)
-mutation_bool <- subset(mutation_no_low_coverage_bool, subset=rowSums(subset(mutation_no_low_coverage_bool, select=!select_many) > 0) != 0, select=!select_many)
-samples_with_asterisks <- dimnames(mutation_table)[[2]]
+if(!is.null(mutation_no_low_coverage)) {
+  mutation_table <- subset(mutation_no_low_coverage, subset=rowSums(subset(mutation_no_low_coverage, select=!select_many) != "") != 0, select=!select_many)
+  mutation_bool <- subset(mutation_no_low_coverage_bool, subset=rowSums(subset(mutation_no_low_coverage_bool, select=!select_many) > 0) != 0, select=!select_many)
+  samples_with_asterisks <- dimnames(mutation_table)[[2]]
+} else {
+  mutation_table <- NULL
+  mutation_bool <- NULL
+  samples_with_asterisks <- NULL
+}
 if(sum(select_many)>0) {
   mutation_table_many <- subset(mutation_no_low_coverage, select=select_many)
   new_cols <- subset(mutation_no_low_coverage, subset=rowSums(subset(mutation_no_low_coverage, select=!select_many) > 0) != 0, select=select_many)
@@ -360,11 +396,20 @@ if(sum(select_many)>0) {
     mutation_bool <- cbind(mutation_bool, new_cols)
   }
 }
-
-postfilt_rows <- levels(factor(postfilt_all$pos))
-postfilt_cols <- levels(factor(postfilt_all$sample))
-mut_rows <- dimnames(mutation_full_bool)[[1]]
-mut_cols <- dimnames(mutation_full_bool)[[2]]
+if(!is.null(postfilt_all)) {
+  postfilt_rows <- levels(factor(postfilt_all$pos))
+  postfilt_cols <- levels(factor(postfilt_all$sample))
+} else {
+  postfilt_rows <- NULL
+  postfilt_cols <- NULL
+}
+if(!is.null(mutation_full_bool)) {
+  mut_rows <- dimnames(mutation_full_bool)[[1]]
+  mut_cols <- dimnames(mutation_full_bool)[[2]]
+} else {
+  mut_rows <- NULL
+  mut_cols <- NULL
+}
 
 combined_rows <- sort(as.numeric(c(postfilt_rows, mut_rows[!(mut_rows %in% postfilt_rows)])))
 combined_cols <- postfilt_cols
@@ -1076,19 +1121,34 @@ plot_barcode_barplot()
 ## Amplicon depth
 ### Read counts
 ```{r, depth-heatmap-1, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=2.5}
-depth_heatmap((1:98 %% 2 >= 0), "", norm=FALSE)
+tryCatch({
+  depth_heatmap((1:98 %% 2 >= 0), "", norm=FALSE)
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ### Multiple of NTC reads at that amplicon
 ```{r, depth-heatmap-2, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=2.5}
-depth_heatmap((1:98 %% 2 >= 0), "", norm=TRUE)
+tryCatch({
+  depth_heatmap((1:98 %% 2 >= 0), "", norm=TRUE)
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ### Amplicon depth threshold
 \label{low_depth}
 
 ```{r, amplicon-histogram, echo=FALSE, fig.height=4}
-#plot_amplicon_hist()
+tryCatch({
+  plot_amplicon_hist()
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 **Amplicons**: Samples in black. No-template controls (NTCs) in blue. Depth threshold as red line.
@@ -1098,17 +1158,32 @@ depth_heatmap((1:98 %% 2 >= 0), "", norm=TRUE)
 **Samples with positions less than depth threshold**:
 
 ```{r, echo=FALSE, results="asis"}
-print_low_depth_regions()
+tryCatch({
+  print_low_depth_regions()
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ### Primer pool 1 (nCoV2019_1)
 ```{r, depth-barplot-1, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=8}
-depth_plot((1:98 %% 2 == 1), "-nCoV2019_1")
+tryCatch({
+  depth_plot((1:98 %% 2 == 1), "-nCoV2019_1")
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ### Primer pool 2 (nCoV2019_2)
 ```{r, depth-barplot-2, eval=TRUE, echo=FALSE, warning=FALSE, fig.height=8}
-depth_plot((1:98 %% 2 == 0), "-nCoV2019_2")
+tryCatch({
+  depth_plot((1:98 %% 2 == 0), "-nCoV2019_2")
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 # Variant calling
@@ -1116,7 +1191,12 @@ depth_plot((1:98 %% 2 == 0), "-nCoV2019_2")
 
 ## Genome cartoons
 ```{r, genome-cartoon-overview, eval=TRUE, echo=FALSE, fig.height=6, results="asis", warning=FALSE, message=FALSE}
-genome_cartoon_overview(mutation_full)
+tryCatch({
+  genome_cartoon_overview(mutation_full)
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ```{r, genome-cartoons, eval=TRUE, echo=FALSE, fig.height=2, results="asis"}
@@ -1129,7 +1209,12 @@ genome_cartoon_overview(mutation_full)
 #  genome_cartoons(mutation_no_low_coverage[,columns])
 #  cat('\n\n')
 #}
-genome_cartoons(mutation_full)
+tryCatch({
+  genome_cartoons(mutation_full)
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 \pagebreak
@@ -1138,7 +1223,12 @@ genome_cartoons(mutation_full)
 Observed nucleotide mutations as compared to Wuhan-Hu-1 reference:
 
 ```{r, homoplasy-cluster, eval=TRUE, echo=FALSE, fig.height=8}
-plot_homoplasy_heatmap()
+tryCatch({
+  plot_homoplasy_heatmap()
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ```{r echo=FALSE, results="asis"}
@@ -1174,7 +1264,12 @@ draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Run", "Barcode", "Alpha", "
 
 ## Flag matrix
 ```{r, flag-matrix, results="hide", echo=FALSE, external=FALSE, fig.height=8, dev='cairo_pdf'}
-plot_flag_matrix()
+tryCatch({
+  plot_flag_matrix()
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 **Variants**: \textcolor{variantBlue}{$\blacksquare$} = Variant in consensus, \textcolor{variantRed}{$\blacksquare$} =  Ambiguity in consensus (above depth threshold outlined in section \ref{low_depth} on page \pageref{low_depth}) ; **Flags**: D = depth, N = NTC, (m|n|s) = present only in (m)edaka, (n)anopolish, (s)amtools, ~ = mixed, % = MAF, B = strand bias, ! = key position, X = present in <2 GISAID sequences
@@ -1393,4 +1488,3 @@ Thomas Mehoke, Shirlee Wohl, Melanie Kirsche, Srividya Ramakrishnan, Yunfan Fan,
 # print out all packages used
 sessionInfo()
 ```
-

@@ -195,18 +195,17 @@ fi
 postfilt_summary="$postfilter_path/postfilt_summary.txt"
 if ! [[ -s "$postfilt_summary" ]]; then
 	echo -e "${RED}Error: post-filter summary ${CYAN}$postfilt_summary${RED} does not exist.${NC}"
-	usage
-	exit
+	printf "Run\tSample\tBarcode\tCoverage\tVariants\tFlags\tFlagged Positions\tAlpha\tStatus\n" > "$postfilt_summary"
 fi
 postfilt_all="$postfilter_path/postfilt_all.txt"
-if ! [[ -s "$postfilt_summary" ]]; then
+if ! [[ -s "$postfilt_all" ]]; then
 	echo -e "${RED}Error: post-filter full report ${CYAN}$postfilt_all${RED} does not exist.${NC}"
-	usage
-	exit
+	printf "sample\trun_id\tbarcode\tchrom\tpos\tref\talt\tconsensus_base\tcase\tdescription\tstatus\thomopolymer\tin_consensus\tunambig\tont_depth\tillumina_depth\tont_depth_thresh\tillumina_depth_thresh\tont_AF\tillumina_AF\tont_alleles\tillumina_alleles\tont_strand_counts\tmedaka_qual\tnanopolish_qual\tillumina_support\tdepth_flag\tntc_flag\tvc_flag\tmixed_flag\tmaf_flag\tsb_flag\tkey_flag\tnew_flag\n" > "$postfilt_all"
 fi
 snpeff_report="$postfilter_path/final_snpEff_report.txt"
 if ! [[ -s "$snpeff_report" ]]; then
 	echo -e "${RED}Error: SnpEff report ${CYAN}$snpeff_report${RED} does not exist.${NC}"
+	rm "$snpeff_report"
 #	usage
 #	exit
 fi
@@ -468,6 +467,9 @@ find "$normalize_path" -name "*.depth" ! -name "*covfiltered.depth" -print0 | wh
 	base=$(basename "$f")
 	awk -v BASE="${base%%.*}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
 done > "$depthfile"
+if ! [[ -s "$depthfile" ]]; then
+	rm "$depthfile"
+fi
 
 echo_log "Consolidating normalized depth"
 find "$normalize_path" -name "*.covfiltered.depth" -print0 | while read -d $'\0' f; do
@@ -486,6 +488,9 @@ find "$stats_path" -name "amplicon_depth_mask-*.txt" ! -name "amplicon_depth_mas
 	base=$(basename "${f%.txt}")
 	awk -v BASE="${base#amplicon_depth_mask-}" '{printf("%s\t%s\n", BASE, $0);}' "$f"
 done > "$stats_path/amplicon_depth_mask_all.txt"
+if ! [[ -s "$stats_path/amplicon_depth_mask_all.txt" ]]; then
+	rm "$stats_path/amplicon_depth_mask_all.txt"
+fi
 
 echo_log "Identifying mutations"
 rm -f "$mutations_all"
@@ -558,6 +563,9 @@ awk '{
 	}
 	printf("\n");
 }' "$depth_mutations_pos" "$depth_mutations_all" > "$depth_mutations_table"
+if ! [[ -s "$depth_mutations_table" ]]; then
+	rm "$depth_mutations_table"
+fi
 
 #===================================================================================================
 # BUILD MARKDOWN FILE
