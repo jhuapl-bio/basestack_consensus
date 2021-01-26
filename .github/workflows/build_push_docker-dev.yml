@@ -1,8 +1,8 @@
 name: Build and push Docker image upon release
 
 on:
-  release:
-    types: [published] # , created, edited
+  push:
+    branches: master
 
 jobs:
   push_to_registry:
@@ -21,4 +21,4 @@ jobs:
           repository: ${{ secrets.DOCKERHUB_REPOSITORY }}
           tag_with_ref: true
           tag_with_sha: true
-          tags: latest
+          tags: dev
