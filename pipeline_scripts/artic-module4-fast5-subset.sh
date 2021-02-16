@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source /opt/basestack_consensus/bashrc
 conda activate artic-ncov2019
 
 #---------------------------------------------------------------------------------------------------

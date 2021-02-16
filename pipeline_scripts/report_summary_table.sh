@@ -1,9 +1,9 @@
 #!/bin/bash
 
-source /root/idies/workspace/covid19/bashrc
+source /opt/basestack_consensus/bashrc
 conda activate jhu-ncov
 
-export JAVA_HOME="/root/idies/workspace/covid19/code/jdk-14"
+export JAVA_HOME="/opt/basestack_consensus/code/jdk-14"
 export PATH=$JAVA_HOME/bin:$PATH
 
 #---------------------------------------------------------------------------------------------------
@@ -130,8 +130,8 @@ if ! [[ -d "$bin_path" ]]; then
 	exit
 fi
 if [[ "$skip_igv" != "true" ]]; then
-	vcfigv_repo_path="/root/idies/workspace/covid19/code/vcfigv"
-	igv_path="/root/idies/workspace/covid19/code/igv/build/IGV-dist/"
+	vcfigv_repo_path="/opt/basestack_consensus/code/vcfigv"
+	igv_path="/opt/basestack_consensus/code/igv/build/IGV-dist/"
 	if ! [[ -d "$vcfigv_repo_path" ]]; then
 		echo -e "${RED}Error: vcfigv repository ${CYAN}$vcfigv_repo_path${RED} does not exist.${NC}"
 		usage
@@ -449,7 +449,7 @@ while read barcode label; do
 			--squish \
 			--nocombine \
 			aln="$trimmed_alignment" \
-			var=<(awk -F $'\t' 'BEGIN{OFS="\t"}{if(NR>1){ $2 = sprintf("%d", $2-1)}; print($0)}' "$vcf") \
+			var=<(awk -F $'\t' -v REF="$ref_header" 'BEGIN{OFS="\t"}{if(NR>1 && $1 == REF){ $2 = sprintf("%d", $2-1)}; print($0)}' "$vcf") \
 			genome="$reference" \
 			outprefix="$outPrefix"
 		mv "$outPrefix.bat" "$outPrefix"

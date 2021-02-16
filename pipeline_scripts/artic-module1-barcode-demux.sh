@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source /opt/basestack_consensus/bashrc
 conda activate artic-ncov2019
 
 #---------------------------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ echo_log() {
 sequencing_run="${sequencing_run%/}"
 
 # location of programs used by pipeline - double check if bashrc doesn't have to hardcoded paths
-software_path=/root/idies/workspace/covid19/code
+software_path=/opt/basestack_consensus/code
 guppy_barcoder_path="${software_path}/ont-guppy-cpu/bin"
 
 # input files, these files should be in the sequencing run directory
