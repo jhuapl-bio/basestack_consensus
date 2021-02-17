@@ -6,6 +6,7 @@
 
 ###
 
+source /opt/basestack_consensus/bashrc
 conda activate jhu-ncov
 
 VCF=$1
