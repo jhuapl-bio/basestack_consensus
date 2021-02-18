@@ -322,7 +322,7 @@ rownames(depth_plot_mean) <- sample_barcodes
 
 # identify low coverage regions
 if(!is.null(postfilt_all)) {
-  threshold <- postfilt_all$ont_depth_thresh[1]
+  threshold <- as.numeric(postfilt_all$ont_depth_thresh[1])
 } else {
   threshold <- 20
 }
@@ -1043,14 +1043,40 @@ print_igv_plot <- function(row) {
   } else {
     flags <- NULL
   }
-  if(length(flags) > 0) {
+  
+  variants <- unlist(strsplit(row$Variants, ", "))
+  
+  if(length(flags) + length(variants) > 0) {
     for(flagString in flags) {
       nt <- strsplit(flagString, "=")[[1]][1]
+      title <- paste0("\n### ", colorlevels(flag), "{[", flag, "]: ", sample, " ", flagString)
+      SNP <- variants[unlist(sapply(variants, function(s){return(gsub('[a-zA-Z]', '', s))})) %in% nt]
+      if(length(SNP) > 0) {
+        title <- paste0(title, " - ", SNP)
+      }
       alleles <- postfilt_all$ont_alleles[postfilt_all$pos == nt & postfilt_all$sample == sample]
-      cat(paste0("\n### ", colorlevels(flag), "{[", flag, "]: ", sample, " ", flagString, " - ", alleles, "}\n"))
+      cat(paste0(title, " - ", alleles, "}\n"))
       if(nt != "see full output") {
 	nt <- as.numeric(nt)-1
 	pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample_barcode,"/",genome_ref$reference$accession,".3_",nt,".png")
+        if(file.exists(pngFn)) {
+          cat(paste0("\\includegraphics[width=13cm]{",pngFn,"}\n"))
+        } else {
+          cat(paste0("\nWarning: file does not exist: ",paste(tail(strsplit(pngFn,"/")[[1]],5),collapse="/"),"\n"))
+        }
+      }
+    }
+    for(variant in variants) {
+      REF <- substr(variant, 1, 1)
+      ALT <- substr(variant, nchar(variant), nchar(variant))
+      nt <- gsub('[a-zA-Z]', '', variant)
+      alleles <- postfilt_all$ont_alleles[postfilt_all$pos == nt & postfilt_all$sample == sample]
+      if(!(nt %in% sapply(flags, function(s){return(strsplit(s, "=")[[1]][1])}))){
+        flag <- "Yes"
+        title <- paste0("\n### ", colorlevels(flag), "{[", flag, "]: ", sample, " - ", variant, " - ", alleles, "}\n")
+        cat(title)
+        nt <- as.numeric(nt)-1
+        pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample_barcode,"/",genome_ref$reference$accession,".3_",nt,".png")
         if(file.exists(pngFn)) {
           cat(paste0("\\includegraphics[width=13cm]{",pngFn,"}\n"))
         } else {
@@ -1112,7 +1138,7 @@ plot_readlen()
 ```
 
 ## Demultiplex summary
-```{r, barcode-barplot, echo=FALSE, message=FALSE, fig.height=3, fig.width=6, background="white"}
+```{r, barcode-barplot, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=6, background="white"}
 plot_barcode_barplot()
 ```
 
@@ -1263,7 +1289,7 @@ draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Run", "Barcode", "Alpha", "
 \pagebreak
 
 ## Flag matrix
-```{r, flag-matrix, results="hide", echo=FALSE, external=FALSE, fig.height=8, dev='cairo_pdf'}
+```{r, flag-matrix, results="hide", echo=FALSE, warning=FALSE, external=FALSE, fig.height=8, dev='cairo_pdf'}
 tryCatch({
   plot_flag_matrix()
 }, warning = function(w){
