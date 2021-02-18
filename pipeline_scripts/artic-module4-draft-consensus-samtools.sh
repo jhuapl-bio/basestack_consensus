@@ -232,7 +232,6 @@ if [[ -f "${consensus_dir}/${samplename}.all_callers.combined.vcf" ]] && \
 else
 	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Error: Module 4 Samtools and Merging failed."
 	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):    All Module 4 output files for ${samplename} could not be detected with file size greater than zero."
-	exit 1
 fi
 
 module4_complete_flag="TRUE"
