@@ -1,21 +1,24 @@
-case,description,status
-1,near depth threshold,Alarm
-2,allele in negative control,Alarm
-3,illumina variant callers disagree,Alarm
-4,illumina/ont allele frequency mismatch,Alarm
-5,low frequency variant in consensus,Alarm
-6,high frequency variant not in consensus,Alarm
-7,mixed illumina variant,Check
-8,variant ignored due to strand bias,Pass
-9,mixed homopolymer validated by illumina,Pass
-10,mixed variant with conflicting illumina support,Check
-11,mixed fequency due to deletions in homopolymer,Pass
-12,misc mixed variant,Check
-13,new position validated by illumina,Pass
-14,new position at high frequency,Pass
-15,new position with no illumina data,Check
-16,ignore low frequency variant,Pass
-17,accept high frequency variant,Pass
-18,ambiguous base in consensus,Check
-19,ambiguous base at key position,Pass
-20,ambiguous base due to indel,Pass
+﻿case,description,status
+COV,near depth threshold,Alarm
+NTC,allele in negative control,Alarm
+DIS-IL,illumina variant callers disagree,Alarm
+DIS,illumina/ont allele frequency mismatch,Alarm
+LFC,low frequency variant in consensus,Alarm
+HFC,high frequency variant not in consensus,Alarm
+MIX-IL,mixed illumina variant,Check
+SB,variant ignored due to strand bias,Pass
+HP,mixed homopolymer validated by illumina,Pass
+MIX-CS,mixed variant with conflicting illumina support,Check
+MIX-HP,mixed fequency due to deletions in homopolymer,Pass
+MIX-MS,misc mixed variant,Check
+NEW-IL,new position validated by illumina,Pass
+NEW-HF,new position at high frequency,Pass
+NEW-NI,new position with no illumina data,Check
+LFV,ignore low frequency variant,Pass
+HFV,accept high frequency variant,Pass
+UNK-C,ambiguous base in consensus,Check
+UNK-K,ambiguous base at key position,Pass
+UNK-V,ambiguous base due to indel,Pass
+IND,indel detected,Pass
+IND-C,indel detected in consensus,Check
+IND-FS,frameshifting indel detected in consensus,Alarm

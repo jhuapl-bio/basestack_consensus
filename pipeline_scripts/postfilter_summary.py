@@ -8,7 +8,7 @@ from Bio import SeqIO
 pd.options.mode.chained_assignment = None
 
 
-def is_complete(rundir,prefix):
+def is_complete(rundir,prefix,reflen):
     """
     Determine if a genome has passed the filters required to be marked as complete
     Return True/False and the number of unambiguous bases
@@ -18,20 +18,18 @@ def is_complete(rundir,prefix):
     if os.path.exists(genome_path):
         cons = list(SeqIO.parse(open(genome_path),"fasta"))[0]
         cons = list(cons.seq.upper())
-        assert len(cons) == 29903
         ambig = cons.count('N')
-        return(True,29903-ambig)
+        return(True,reflen-ambig)
     else:
         partial_path = os.path.join(rundir,prefix+'.partial.fasta')
         assert os.path.exists(partial_path)
         cons = list(SeqIO.parse(open(partial_path),"fasta"))[0]
         cons = list(cons.seq.upper())
-        assert len(cons) == 29903
         ambig = cons.count('N')
-        return(False,29903-ambig)
+        return(False,reflen-ambig)
     
 
-def generate_postfilter_summary(rundir):
+def generate_postfilter_summary(rundir,ref):
     """
     Generate a summary table of postfilter results
     """
@@ -48,6 +46,9 @@ def generate_postfilter_summary(rundir):
     status = []
     snps = []
     num_flagged = []
+
+    ref = list(SeqIO.parse(open(ref),"fasta"))[0]
+    reflen = len(ref)
     
     # loop through the variant data files in the postfilter run directory
     for entry in os.scandir(rundir):
@@ -57,6 +58,10 @@ def generate_postfilter_summary(rundir):
             
             # get the flags for this sample
             var = pd.read_csv(vardata,sep='\t')
+
+            # remove rows that aren't from the reference (specifically b'MN908947.3' rows) 
+            var = var[var.chrom == ref.name]
+            
             printflag = []
             snp = []
             stat = []
@@ -78,7 +83,7 @@ def generate_postfilter_summary(rundir):
                 # and get only flags to print
                 
                 # replace flags with abbreviated versions
-                for key in ['depth_flag','ntc_flag','new_flag','sb_flag','key_flag']:
+                for key in ['depth_flag','ntc_flag','new_flag','sb_flag','key_flag','indel_flag']:
                     if not pd.isna(data[key]):
                         if 'depth' in data[key]:
                             data[key]='depth'
@@ -88,6 +93,8 @@ def generate_postfilter_summary(rundir):
                             data[key]='new'
                         elif 'strand bias' in data[key]:
                             data[key]='SB'
+                        elif 'insertion' in data[key] or 'deletion' in data[key]:
+                            data[key]='indel'
                 if any(not pd.isna(data[key]) for key in ['maf_flag','mixed_flag']):
                     data['maf_flag']='MAF'
                         
@@ -100,7 +107,7 @@ def generate_postfilter_summary(rundir):
                         data['ill']='ill'
                 
                 # concatenate all flags together
-                flags_to_join=['depth_flag','ntc_flag','vc_flag','maf_flag','sb_flag','key_flag','new_flag','ill']
+                flags_to_join=['depth_flag','ntc_flag','vc_flag','maf_flag','sb_flag','key_flag','new_flag','ill','indel_flag']
                 flag_data = {key: data[key] for key in flags_to_join}
                 allflag = ', '.join([str(pos)+':'+str(x) for x in flag_data.values() if not pd.isna(x)])
                 stat.append(data['status'])
@@ -121,8 +128,8 @@ def generate_postfilter_summary(rundir):
                     snp.append(''.join([data['ref'],str(pos),'N']))
             
             # get the percent coverage for this sample
-            complete,nt = is_complete(rundir,prefix)
-            coverage.append('{:.2%}'.format(nt/29903.0))
+            complete,nt = is_complete(rundir,prefix,reflen)
+            coverage.append('{:.2%}'.format(float(nt/reflen)))
             
             # get the status for this genome
             if not complete:
@@ -188,7 +195,8 @@ def generate_postfilter_summary(rundir):
     
 def parse_arguments():
    parser = argparse.ArgumentParser()
-   parser.add_argument('--rundir', type=str, help='path postfilter results for a particular run')
+   parser.add_argument('--rundir', type=str, help='path to postfilter results for a particular run')
+   parser.add_argument('--ref', type=str, help='path to reference genome')
    args = parser.parse_args()
    return(args)
 
@@ -196,4 +204,4 @@ def parse_arguments():
 if __name__ == "__main__":
     
     args = parse_arguments()
-    generate_postfilter_summary(args.rundir)
+    generate_postfilter_summary(args.rundir,args.ref)

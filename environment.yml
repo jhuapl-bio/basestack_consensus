@@ -43,6 +43,7 @@ dependencies:
   - bioconductor-gviz
   - bioconductor-rtracklayer
   - bioconductor-trackViewer
+  - mafft
   - pip
   - pip:
     - git+https://github.com/nanoporetech/ont_fast5_api
