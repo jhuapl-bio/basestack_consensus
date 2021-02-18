@@ -26,7 +26,6 @@ RUN wget -qO- "https://yihui.name/gh/tinytex/tools/install-unx.sh" | \
     && export PATH=/opt/basestack_consensus/.TinyTeX/bin/x86_64-linux:/opt/conda/bin:$PATH \
     && tlmgr path add \
     && tlmgr install mnsymbol \
-    && tlmgr install multirow \
     && tlmgr install wrapfig \
     && tlmgr install colortbl \
     && tlmgr install pdflscape \
@@ -35,7 +34,9 @@ RUN wget -qO- "https://yihui.name/gh/tinytex/tools/install-unx.sh" | \
     && tlmgr install threeparttablex \
     && tlmgr install environ \
     && tlmgr install ulem \
-    && tlmgr install makecell 
+    && tlmgr install makecell \
+    && tlmgr update --self \
+    && tlmgr install multirow
 
 # configure directory structure exactly as it is on SciServer for ease of transition
 RUN mkdir -p /opt/basestack_consensus/code \
