@@ -338,6 +338,7 @@ while read barcode label; do
 	trimmed_alignment=$(find "$draftconsensus_path" -name "*${barcode}*.nanopolish.primertrimmed.rg.sorted.bam")
 	del_depth_file="${trimmed_alignment%.bam}.del.depth"
 	vcf=$(find "$draftconsensus_path" -name "*${barcode}*.all_callers.combined.vcf")
+	consensus_vcf=$(find "$postfilter_path" -name "*${barcode}*.consensus.combined.vcf")
 	post_filter=$(find "$postfilter_path" -name "*$barcode*.variant_data.txt")
 	final_consensus=$(find "$postfilter_path" -regextype posix-extended -regex ".*/.*$barcode.*(complete|partial).fasta")
 	echo_log "    FASTQ file: ${gather#$run_path/}"
@@ -440,8 +441,8 @@ while read barcode label; do
 	fi
 	echo_log "    creating trimmed depth file"
 	samtools depth -d 0 -a "$trimmed_alignment" > "$trimmed_depth_outfile"
-	if [[ -s "$vcf" && -s "$trimmed_alignment" && "$skip_igv" == "false" ]]; then
-		outPrefix=$(basename "${vcf%.all_callers.combined.vcf}")
+	if [[ -s "$consensus_vcf" && -s "$trimmed_alignment" && "$skip_igv" == "false" ]]; then
+		outPrefix=$(basename "${consensus_vcf%.consensus.combined.vcf}")
 		rm -rf "$outPrefix"
 		mkdir "$outPrefix"
 		java -cp "$vcfigv_repo_path/src" \
@@ -449,7 +450,7 @@ while read barcode label; do
 			--squish \
 			--nocombine \
 			aln="$trimmed_alignment" \
-			var=<(awk -F $'\t' -v REF="$ref_header" 'BEGIN{OFS="\t"}{if(NR>1 && $1 == REF){ $2 = sprintf("%d", $2-1)}; print($0)}' "$vcf") \
+			var=<(awk -F $'\t' -v REF="$ref_header" 'BEGIN{OFS="\t"}{if(NR>1){ $2 = sprintf("%d", $2-1)}; if(substr($1, 1, 1)=="#" || $1 == REF){print($0)}}' "$consensus_vcf") \
 			genome="$reference" \
 			outprefix="$outPrefix"
 		mv "$outPrefix.bat" "$outPrefix"
