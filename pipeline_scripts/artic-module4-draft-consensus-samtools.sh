@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source /opt/basestack_consensus/bashrc
 conda activate artic-ncov2019
 #---------------------------------------------------------------------------------------------------
 
@@ -85,7 +85,7 @@ manifest="${sequencing_run}/manifest.txt"
 run_configuration="${sequencing_run}/run_config.txt"
 
 # location of programs used by pipeline
-software_path="/root/idies/workspace/covid19/code"
+software_path="/opt/basestack_consensus/code"
 JAVA_PATH="${software_path}/jdk-14/bin"
 VariantValidatorPath="${software_path}/ncov/pipeline_scripts/VariantValidator"
 
@@ -232,7 +232,6 @@ if [[ -f "${consensus_dir}/${samplename}.all_callers.combined.vcf" ]] && \
 else
 	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Error: Module 4 Samtools and Merging failed."
 	echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}):    All Module 4 output files for ${samplename} could not be detected with file size greater than zero."
-	exit 1
 fi
 
 module4_complete_flag="TRUE"

@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source /opt/basestack_consensus/bashrc
 conda activate jhu-ncov
 
 # usage function
@@ -37,7 +37,7 @@ if [[ -z "$annotate" ]]; then
 fi
 
 while read barcode name; do
-    vcf="${postfilter_dir}"/"${name}"_"${barcode}".allsnps.combined.vcf
+    vcf="${postfilter_dir}"/"${name}"_"${barcode}".consensus.combined.vcf
     if [[ -s "$vcf"  ]]; then
 		"${annotate}" "${vcf}" "${snpEff_config}" "${DBNAME}" "${postfilter_dir}"
 	else

@@ -4,7 +4,6 @@ import sys
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, "/root/idies/workspace/covid19/code/ncov/pipeline_scripts")
 from samtools_funcs import collect_position_pileup
 
 def depth_near_threshold(depth,depth_threshold,coverage_flag):
@@ -51,6 +50,10 @@ def allele_in_ntc(pos,alt,depth,ntc_bamfile,snp_depth_factor):
     and the coverage in the sample is not more than snp_depth_factor * coverage in negative control
     """
     
+    # print warning if there was no NTC used on this run
+    if ntc_bamfile=="None":
+        return('NTC=None')
+
     # get the pileup at this position in the negative control
     ntc_pileup = collect_position_pileup(ntc_bamfile, pos)
     
@@ -63,40 +66,29 @@ def allele_in_ntc(pos,alt,depth,ntc_bamfile,snp_depth_factor):
     return(np.nan)
 
 
-def snp_in_nextstrain(pos,ref,alt,vcf_nextstrain,ns_snp_threshold):
+def snp_in_nextstrain(pos,ref,alt,global_vars,ns_snp_threshold):
     """
     Function that returns a flag string if a SNP has not been seen in published sequences
     Requires the SNP to be found in a specific number of published sequences
     to avoid confounding with SNPs that may be a result of sequencing errors in other samples
     """
     
-    # read in the nextstrain vcf as a dataframe
-    # note: the header is hard-coded and will need to be updated if the header is altered
-    ns_snps = pd.read_csv(vcf_nextstrain,sep='\t',skiprows=3)
-    ns_snps = ns_snps[['POS','REF','ALT','TOTAL_SAMPLES','OCCURENCES']]
+    # read in the global diversity file as a dataframe
+    # note: this only checks if a position has been mutated, not the mutation itself
+    ns_snps = pd.read_csv(global_vars,sep='\t')
+    ns_snps = ns_snps[['base','events']]
     
     # if the position has not been variable before, return false
-    if pos not in ns_snps.POS.values:
+    if pos not in ns_snps.base.values:
         return('not in nextstrain')
     
-    # if the position has been variable before
-    # check if the specific allele has been found
+    # check if it has been found enough times
     else:
-        tmp = ns_snps[ns_snps.POS==pos]
-        assert ref == tmp.REF.values[0]
-        alleles = tmp.ALT.values[0].split(',')
-        
-        if alt not in alleles:
-            return('not in nextstrain')
+        tmp = ns_snps[ns_snps.base==pos]
+        if int(tmp.events) >= ns_snp_threshold:
+            return(np.nan)
         else:
-            # if the alternate allele has been found before
-            # check if it has been found enough times
-            idx = alleles.index(alt)
-            counts = [x.split(',') if ',' in str(x) else x for x in tmp.OCCURENCES.values][0]
-            if int(counts[idx]) >= ns_snp_threshold:
-                return(np.nan)
-            else:
-                return('not in nextstrain')
+            return('not in nextstrain')
 
 
 def variant_caller_mismatch(supp_vec):
@@ -163,19 +155,15 @@ def strand_bias_detected(info,alt,strand_threshold):
         return(np.nan,strand_counts) # no bias if both are high frequency
 
 
-def ambig_in_key_position(pos,vcf_nextstrain,cons):
+def ambig_in_key_position(pos,key_vars,masked_align,var_idx):
     """ 
     Function that returns a flag string if a position is at an important site
     but is an ambiguous base ('N') in the consensus genome
     """
     
-    # read in the nextstrain vcf as a dataframe
-    # note: the header is hard-coded and will need to be updated if the header is altered
-    ns_snps = pd.read_csv(vcf_nextstrain,sep='\t',skiprows=3)
-    ns_snps = ns_snps[['POS','CLADE_FLAG']]
-    
-    key_snps = ns_snps[ns_snps['CLADE_FLAG']=='YES']
-    key_snps = list(key_snps.POS.values)
+    # load in key variants
+    key_snps = pd.read_csv(key_vars,sep='\t',header=None,names=['pos'])
+    key_snps = list(key_snps.pos.values)
     
     # no flag needed if this position is not one of the important ones
     if pos not in key_snps:
@@ -183,22 +171,22 @@ def ambig_in_key_position(pos,vcf_nextstrain,cons):
     
     # if it is an important position
     else:
-        if cons[pos-1]=='N':
+        if masked_align[1,var_idx]=='N':
             return('ambig in key position')
         else:
             return(np.nan)
         
 
-def in_homopolymer_region(pos):
+def in_homopolymer_region(pos,homopolymers):
     """ 
     Function that reports if the position is in a known homopolymer region
-    Currently uses a hard-coded list of positions, but can be expanded to take in output of other studies
     """
     
     # current homopolymer list
-    hp = [241,3037,11083,12119,18898,26730,29431,29700]
+    homopolymers = pd.read_csv(homopolymers,sep='\t',header=None,names=['pos'])
+    homopolymers = list(homopolymers.pos.values)
     
-    if pos in hp:
+    if pos in homopolymers:
         return(True)
     else:
         return(False)

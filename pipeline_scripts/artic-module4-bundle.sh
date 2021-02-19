@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source /opt/basestack_consensus/bashrc
 conda activate jhu-ncov
 
 #---------------------------------------------------------------------------------------------------
@@ -107,7 +107,7 @@ else
         nanopolish=$(which artic-module4-draft-consensus-nanopolish.sh)
         samtools=$(which artic-module4-draft-consensus-samtools.sh)
 
-        "$subset" -i "${normalized_fastq%fq}sam" -t $threads
+        #"$subset" -i "${normalized_fastq%fq}sam" -t $threads
         "$medaka" -i "$normalized_fastq" -t $threads
         "$nanopolish" -i "$normalized_fastq" -t $threads
         "$samtools" -i "$normalized_fastq"

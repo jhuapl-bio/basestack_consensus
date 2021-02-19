@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source /opt/basestack_consensus/bashrc
 conda activate nextstrain
 
 # usage function
@@ -18,7 +18,7 @@ usage() {
 #---------------------------------------------------------------------------------------------------
 
 # parse input arguments
-while getopts "hi:d:m:" OPTION
+while getopts "hi:r:c:m:" OPTION
 do
        case $OPTION in
                 h) usage; exit 1 ;;

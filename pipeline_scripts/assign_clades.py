@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python3
 """Extract sequences from a given FASTA file that match the given list of sample names.
 """
 import numpy as np

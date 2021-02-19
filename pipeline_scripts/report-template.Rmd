@@ -34,7 +34,7 @@ header-includes:
     <!-- \definecolor{variantBlue}{rgb}{0.192,0.51,0.741} -->
     <!-- \definecolor{variantRed}{rgb}{0.867,0.11,0.467} -->
 
-```{r, load-libraries, echo=FALSE, message=FALSE}
+```{r, load-libraries, echo=FALSE, message=FALSE, warning=FALSE}
 # using guidance from:
 #   https://libscie.github.io/rmarkdown-workshop/handout.html
 
@@ -253,7 +253,7 @@ summary$Consensus[summary$Sample %in% postfilt$Sample] <- as.character(postfilt$
 flagList <- summary$Consensus
 flagList <- as.character(flagList)
 flagList[flagList == ""] <- "No"
-flagList[is.na(flagList)] <- "NA"
+flagList[is.na(flagList)] <- "No"
 
 flagFill <- factor(flagList)
 levels(flagFill) <- colorlevels(levels(factor(flagList)), TRUE)
@@ -322,7 +322,7 @@ rownames(depth_plot_mean) <- sample_barcodes
 
 # identify low coverage regions
 if(!is.null(postfilt_all)) {
-  threshold <- postfilt_all$ont_depth_thresh[1]
+  threshold <- as.numeric(postfilt_all$ont_depth_thresh[1])
 } else {
   threshold <- 20
 }
@@ -628,7 +628,10 @@ plot_amplicon_hist <- function() {
   b <- barplot(h$counts, log='y', axes=F, xlab="", main="", ylab="", plot=F)
   slope <- lm(range(b) ~ range(h$mids))$coefficients[2]
   fill <- "black"
-  barplot(h$counts, col=fill, border=fill, log='y', axes=F, xlab="average amplicon depth (number of reads)", main="", ylab="", cex.lab=1, ylim=c(0.5,1e3), xlim=c(0,300*slope))
+  barplot(h$counts, col=fill, border=fill, log='y', axes=F,
+          xlab="average read depth across amplicon (average number of reads)",
+          main="",
+          ylab="", cex.lab=1, ylim=c(0.5,1e3), xlim=c(0,300*slope))
   sel_ntc <- grepl("NTC", rownames(depth_plot_mean))
   if(sum(sel_ntc)>0) {
     depth_ntc <- depth_plot_mean[sel_ntc]
@@ -1043,18 +1046,53 @@ print_igv_plot <- function(row) {
   } else {
     flags <- NULL
   }
-  if(length(flags) > 0) {
+  if(nchar(as.character(row$Variants)) > 0) {
+    variants <- strsplit(as.character(row$Variants), ", ")[[1]]
+  } else {
+    variants <- NULL
+  }
+  
+  if(length(flags) + length(variants) > 0) {
     for(flagString in flags) {
       nt <- strsplit(flagString, "=")[[1]][1]
+      title <- paste0("\n\n### ", colorlevels(flag), "{[", flag, "]: ", sample, " ", flagString)
+      SNP <- variants[unlist(sapply(variants, function(s){return(gsub('[a-zA-Z]', '', s))})) %in% nt]
+      if(length(SNP) > 0) {
+        title <- paste0(title, " - ", SNP)
+      }
       alleles <- postfilt_all$ont_alleles[postfilt_all$pos == nt & postfilt_all$sample == sample]
-      cat(paste0("\n### ", colorlevels(flag), "{[", flag, "]: ", sample, " ", flagString, " - ", alleles, "}\n"))
+      if(length(alleles) > 0) {
+        title <- paste0(title, " - ", alleles)
+      }
+      cat(paste0(title, "}\n\n"))
       if(nt != "see full output") {
-	nt <- as.numeric(nt)-1
-	pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample_barcode,"/",genome_ref$reference$accession,".3_",nt,".png")
+        nt <- as.numeric(nt)-1
+        pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample_barcode,"/",
+                        genome_ref$reference$accession,".3_",nt,".png")
         if(file.exists(pngFn)) {
           cat(paste0("\\includegraphics[width=13cm]{",pngFn,"}\n"))
         } else {
           cat(paste0("\nWarning: file does not exist: ",paste(tail(strsplit(pngFn,"/")[[1]],5),collapse="/"),"\n"))
+        }
+      }
+    }
+    if(variants[1] != "see full output") {
+      for(variant in variants) {
+        REF <- substr(variant, 1, 1)
+        ALT <- substr(variant, nchar(variant), nchar(variant))
+        nt <- gsub('[a-zA-Z]', '', variant)
+        alleles <- postfilt_all$ont_alleles[postfilt_all$pos == nt & postfilt_all$sample == sample]
+        if(!(nt %in% sapply(flags, function(s){return(strsplit(s, "=")[[1]][1])}))){
+          flag <- "Yes"
+          title <- paste0("\n### ", colorlevels(flag), "{[", flag, "]: ", sample, " - ", variant, " - ", alleles, "}\n")
+          cat(title)
+          nt <- as.numeric(nt)-1
+          pngFn <- paste0(run_path,"/artic-pipeline/run_stats/igv/",sample_barcode,"/",genome_ref$reference$accession,".3_",nt,".png")
+          if(file.exists(pngFn)) {
+            cat(paste0("\\includegraphics[width=13cm]{",pngFn,"}\n"))
+          } else {
+            cat(paste0("\nWarning: file does not exist: ",paste(tail(strsplit(pngFn,"/")[[1]],5),collapse="/"),"\n"))
+          }
         }
       }
     }
@@ -1091,6 +1129,8 @@ pandoc.table(summary, split.cells = c(3,2,7,4,6,1,1), split.table = Inf,
 
 (See section \ref{sec:flags} on page \pageref{sec:flags} for reasons for these flag calls. See section \ref{sec:pipeline_postfilter} on page \pageref{sec:pipeline_postfilter} for full flag definitions.)
 
+\pagebreak
+
 # Run summary
 \label{sec:run_summary}
 
@@ -1112,7 +1152,7 @@ plot_readlen()
 ```
 
 ## Demultiplex summary
-```{r, barcode-barplot, echo=FALSE, message=FALSE, fig.height=3, fig.width=6, background="white"}
+```{r, barcode-barplot, echo=FALSE, message=FALSE, warning=FALSE, fig.height=3, fig.width=6, background="white"}
 plot_barcode_barplot()
 ```
 
@@ -1139,8 +1179,12 @@ tryCatch({
 })
 ```
 
+\pagebreak
+
 ### Amplicon depth threshold
 \label{low_depth}
+
+Amplicons from NTCs are used to determine an average depth threshold for amplicons from experimental samples.
 
 ```{r, amplicon-histogram, echo=FALSE, fig.height=4}
 tryCatch({
@@ -1263,7 +1307,7 @@ draw_flag_table2(postfilt[,!(names(postfilt) %in% c("Run", "Barcode", "Alpha", "
 \pagebreak
 
 ## Flag matrix
-```{r, flag-matrix, results="hide", echo=FALSE, external=FALSE, fig.height=8, dev='cairo_pdf'}
+```{r, flag-matrix, results="hide", echo=FALSE, warning=FALSE, external=FALSE, fig.height=8, dev='cairo_pdf'}
 tryCatch({
   plot_flag_matrix()
 }, warning = function(w){
@@ -1276,22 +1320,37 @@ tryCatch({
 
 ## SnpEff annotation table
 ```{r, snpeff-table, echo=FALSE, results="asis"}
-pander(snpeff_report[,-1])
+tryCatch({
+  pander(snpeff_report[,-1])
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ## SNPs associated with major clades
 ```{r, snp-table, echo=FALSE, results="asis"}
-cat(paste("SNPs identified from a group of", important_positions$TOTAL_SAMPLES[1],"sequences from GISAID:\n"))
-pander(important_positions[,!(names(important_positions) %in% c("X.CHROM", "TOTAL_SAMPLES", "CONF_FLAG"))])
+tryCatch({
+  cat(paste("SNPs identified from a group of", important_positions$TOTAL_SAMPLES[1],"sequences from GISAID:\n"))
+  pander(important_positions[,!(names(important_positions) %in% c("X.CHROM", "TOTAL_SAMPLES", "CONF_FLAG"))])
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 ## Alignment screenshots
 ```{r, igv-plots, echo=FALSE, results="asis", fig.width=3}
-if(dim(postfilt)[1] > 0){
-  for(row in 1:dim(postfilt)[1]){
-    print_igv_plot(postfilt[row,])
+tryCatch({
+  if(dim(postfilt)[1] > 0){
+    for(row in 1:dim(postfilt)[1]){
+      print_igv_plot(postfilt[row,])
+    }
   }
-}
+}, warning = function(w){
+}, error = function(e) {
+}, finally = {
+})
 ```
 
 # Pipeline

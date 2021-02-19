@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source /opt/basestack_consensus/bashrc
 conda activate pangolin
 
 # usage function
@@ -34,4 +34,7 @@ while read barcode name; do
     cat "${postfilter_dir}"/"${name}"_"${barcode}".complete.fasta >> "${postfilter_dir}"/postfilt_consensus_all.fasta
 done < "$manifest"
 
-pangolin ${postfilter_dir}/postfilt_consensus_all.fasta -f -d ${pangolin_data} -o ${postfilter_dir} --tempdir $postfilter_dir
+pangolin "${postfilter_dir}/postfilt_consensus_all.fasta" \
+	-o "${postfilter_dir}" \
+	--tempdir "$postfilter_dir" \
+	-t "$THREADS"

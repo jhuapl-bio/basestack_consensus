@@ -11,41 +11,45 @@ def case_by_flags(data,maf_flag):
     # convert the maf_flag into a fraction
     maf_flag = maf_flag/100.0
     
+    # convert no NTC warning into NaN
+    if data['ntc_flag']=='NTC=None':
+        data['ntc_flag']=np.nan
+
     # situations that automatically lead to an alarm
     
     ## CASE 1
     if not pd.isna(data['depth_flag']):
-        return(1)
+        return('COV')
     
     ## CASE 2
     if not pd.isna(data['ntc_flag']):
-        return(2)
+        return('NTC')
     
     ## CASE 3
     if data['illumina_support']=='maybe':
-        return(3)
+        return('DIS-IL')
     
     ## CASE 4
     if not pd.isna(data['illumina_support']):
         if data['ont_AF']<maf_flag and data['illumina_AF']>(1-maf_flag):
-            return(4)
+            return('DIS')
         elif data['ont_AF']>(1-maf_flag) and data['illumina_AF']<maf_flag:
-            return(4)
+            return('DIS')
         
     ## CASE 5
     if data['ont_AF']<maf_flag and data['in_consensus']:
-        return(5)
+        return('LFC')
     
     ## CASE 6
     if data['ont_AF']>(1-maf_flag) and data['in_consensus']==False:
-        return (6)
+        return ('HFC')
     
     
     # situtions with mixed frequency variants
     
     ## CASE 7
     if data['illumina_support']=='mixed':
-        return(7)
+        return('MIX-IL')
     
     # at this point, illumina is yes/no/none
     
@@ -53,25 +57,25 @@ def case_by_flags(data,maf_flag):
         
         ## CASE 8
         if data['in_consensus']==False and (not pd.isna(data['sb_flag'])) and (not data['illumina_support']=='yes'):
-            return(8)
+            return('SB')
         
         ## CASE 9
         elif data['illumina_support']=='yes' and data['homopolymer'] and data['in_consensus']:
-            return(9)
+            return('HP')
         
         ## CASE 10
         elif not pd.isna(data['illumina_support']):
-            return(10)
+            return('MIX-CS')
         
         ## CASE 11
         else:
             other_allele_freq = float(int(data['ont_alleles'].split(':')[11])/data['ont_depth'])
             if (other_allele_freq-0.02 <= (1-data['ont_AF']) <= other_allele_freq+0.02) and data['homopolymer'] and data['in_consensus']:
-                return(11)
+                return('MIX-HP')
         
             ## CASE 12
             else:
-                return(12)
+                return('MIX-MS')
     
     # at this point we know the frequency is either <maf_flag or >(1-maf_flag)
     # and that the in consensus status matches the high/low status
@@ -81,15 +85,15 @@ def case_by_flags(data,maf_flag):
         
         ## CASE 13
         if data['illumina_support']=='yes' and data['in_consensus']:
-            return(13)
+            return('NEW-IL')
         
         ## CASE 14
         elif data['ont_AF']>0.9 and data['in_consensus']:
-            return(14)
+            return('NEW-HF')
         
         ## CASE 15
         elif data['in_consensus']:
-            return(15)
+            return('NEW-NI')
     
     # if there are no other worrisome flags
     # ignore low frequency variants and accept high frequency variants
@@ -98,17 +102,17 @@ def case_by_flags(data,maf_flag):
     
     ## CASE 16
     if data['ont_AF']<maf_flag and data['unambig']:
-        return(16)
+        return('LFV')
     
     ## CASE 17
     if data['ont_AF']>(1-maf_flag) and data['unambig']:
-        return(17)
+        return('HFV')
     
     # at the end, ensure we catch all remaining consensus N variants
     
     ## CASE 18
     if data['unambig']==False:
-        return(18)
+        return('UNK-C')
     
     # all cases should be covered by this point
     # we should never get here

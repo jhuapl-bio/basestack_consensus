@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source /opt/basestack_consensus/bashrc
 conda activate artic-ncov2019
 
 #---------------------------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ sequencing_run=$(dirname $(dirname $(dirname $(dirname "$normalized_fastq"))))
 #===================================================================================================
 
 # location of programs used by pipeline
-software_path=/root/idies/workspace/covid19/code
+software_path=/opt/basestack_consensus/code
 
 # input files, these files should be in the sequencing run directory
 manifest="${sequencing_run}/manifest.txt"
@@ -178,8 +178,17 @@ echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): ------ process
 
 echo_log "SAMPLE $(basename ${normalized_fastq%.covfiltered.fq}): Starting Module 4 Medaka on $normalized_fastq"
 
+if [[ -n "$(grep basecalling run_config.txt | grep _hac)" ]]; then
+	model="r941_min_high_g360"
+elif [[ -n "$(grep basecalling $run_configuration | grep _fast)" ]]; then
+	model="r941_min_fast_g303"
+else
+	model="r941_min_high_g360"
+fi
+
 artic minion \
         --medaka \
+        --medaka-model "$model" \
         --normalise 1000000 \
         --threads $threads \
         --scheme-directory "$scheme_dir" \

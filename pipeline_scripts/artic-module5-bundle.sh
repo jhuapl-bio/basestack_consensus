@@ -1,5 +1,5 @@
 #!/bin/bash
-source /root/idies/workspace/covid19/bashrc
+source /opt/basestack_consensus/bashrc
 conda activate jhu-ncov
 
 #---------------------------------------------------------------------------------------------------
@@ -80,9 +80,11 @@ postfilter_dir="${sequencing_run}/artic-pipeline/5-post-filter"
 
 # Postfiltering reference files
 # also include reference file, see CombineVariants section
-vcf_next="/root/idies/workspace/covid19/nextstrain/latest/alpha/alignments.vcf"
-case_defs="/root/idies/workspace/covid19/code/ncov/pipeline_scripts/variant_case_definitions.csv"
-amplicons="/root/idies/workspace/covid19/sequencing_runs/amplicons"
+global_vars="/opt/basestack_consensus/ncov_reference/approx_global_diversity.tsv"
+case_defs="/opt/basestack_consensus/code/ncov/pipeline_scripts/variant_case_definitions.csv"
+amplicons="/opt/basestack_consensus/sequencing_runs/amplicons"
+key_positions="/opt/basestack_consensus/ncov_reference/key_positions.txt"
+homopolymers="/opt/basestack_consensus/ncov_reference/homopolymer_positions.txt"
 
 # Posterfiltering NTC files for baselining
 control_barcode=$(awk -F $'\t' -v control_name="${control_name}" '$2 == control_name { print $1 }' "${manifest}" | head -n1)
@@ -90,21 +92,21 @@ ntc_depthfile="${consensus_dir}/${control_name}_${control_barcode}.nanopolish.pr
 ntc_bamfile="${consensus_dir}/${control_name}_${control_barcode}.nanopolish.primertrimmed.rg.sorted.bam"
 
 # CombineVariants reference files
-reference="/root/idies/workspace/covid19/ncov_reference/sequence.fasta"
-reference_annotation="/root/idies/workspace/covid19/ncov_reference/genes.gff3"
+reference="/opt/basestack_consensus/ncov_reference/sequence.fasta"
+reference_annotation="/opt/basestack_consensus/ncov_reference/genes.gff3"
 
 # Pangolin reference directory
-pangolin_data="/root/idies/workspace/covid19/ncov_reference/lineages/lineages/data"
+#pangolin_data="/opt/basestack_consensus/ncov_reference/lineages/lineages/data"
 
 # Nextstrain clade reference directory
-reference_gbk="/root/idies/workspace/covid19/ncov_reference/reference_seq.gb"
-nextstrain_clades="/root/idies/workspace/covid19/ncov_reference/clades.tsv"
+reference_gbk="/opt/basestack_consensus/ncov_reference/reference_seq.gb"
+nextstrain_clades="/opt/basestack_consensus/ncov_reference/clades.tsv"
 
 # snpEff reference file
-snpEff_config="/root/idies/workspace/covid19/ncov_reference/snpEff.config"
+snpEff_config="/opt/basestack_consensus/ncov_reference/snpEff.config"
 
 # location of programs used by pipeline
-software_path=/root/idies/workspace/covid19/code
+software_path=/opt/basestack_consensus/code
 JAVA_PATH="${software_path}/jdk-14/bin"
 
 # log file
@@ -157,17 +159,13 @@ module4_complete_flag="TRUE"
 
 # verify existence of all reference files needed for full Module 5 execution
 ref_files_found_flag="TRUE"
-if [[ ! -s "${vcf_next}" ]]; then 
-	>&2 echo "Error: Module 5 reference file not found: ${vcf_next}"
-	ref_files_found_flag="FALSE"
-fi
 
-if [[ ! -s "${case_defs}" ]]; then 
+if [[ ! -s "${case_defs}" ]]; then
 	>&2 echo "Error: Module 5 reference file not found: ${case_defs}"
 	ref_files_found_flag="FALSE"
 fi
 
-if [[ ! -s "${amplicons}" ]]; then 
+if [[ ! -s "${amplicons}" ]]; then
 	>&2 echo "Error: Module 5 reference file not found: ${amplicons}"
 	ref_files_found_flag="FALSE"
 fi
@@ -187,14 +185,14 @@ if [[ ! -s "${snpEff_config}" ]]; then
 	ref_files_found_flag="FALSE"
 fi
 
-if [[ ! -d "${pangolin_data}" ]]; then
-	>&2 echo "RUN ${sequencing_run_name}: Error: Pangolin data directory not found: ${pangolin_data}"
-	ref_files_found_flag="FALSE"
-fi
+#if [[ ! -d "${pangolin_data}" ]]; then
+#	>&2 echo "RUN ${sequencing_run_name}: Error: Pangolin data directory not found: ${pangolin_data}"
+#	ref_files_found_flag="FALSE"
+#fi
 
 if [[ ! -s "${reference_annotation}" ]]; then
 	>&2 echo "RUN ${sequencing_run_name}: Error: nCoV reference GFF not found: ${reference_annotation}"
-	ref_files_found_flag="FALSE"	
+	ref_files_found_flag="FALSE"
 fi
 
 if [[ ! -s "${reference}" ]]; then
@@ -214,11 +212,14 @@ fi
 
 # check submodule scripts are in path
 paths_found_flag="TRUE"
+
+run_postfilter=$(which artic-module5-postfilter.sh)
+python_postfilter=$(which vcf_postfilter.py)
+postfilter_summary=$(which postfilter_summary.py)
+combine=$(which artic-module5-combine.sh)
 pangolin=$(which artic-module5-pangolin.sh)
 snpeff=$(which artic-module5-snpEff.sh)
-run_postfilter=$(which artic-module5-postfilter.sh)
-combine=$(which artic-module5-combine.sh)
-nextstrain_clades=$(which artic-module5-nextstrain_clades.sh)
+assign_nextstrain_clades=$(which artic-module5-nextstrain_clades.sh)
 
 if [[ -z "${pangolin}" ]]; then
 	echo  "RUN ${sequencing_run_name}: Error: artic-module5-pangolin.sh is not in your path! Please add this script to your path and rerun"
@@ -226,7 +227,17 @@ if [[ -z "${pangolin}" ]]; then
 fi
 
 if [[ -z "${snpeff}" ]]; then
-	echo  "RUN ${sequencing_run_name}: Error: artic-module5-snpEff.sh is not in your path! Please add this script to your path and rerun"
+	echo  "RUN ${sequencing_run_name}: Error: artic-module5-combine.sh is not in your path! Please add this script to your path and rerun"
+	paths_found_flag="FALSE"
+fi
+
+if [[ -z "$postfilter_summary" ]]; then
+	echo  "RUN ${sequencing_run_name}: Error: postfilter_summary.py is not in your path! Please add this script to your path and rerun"
+	paths_found_flag="FALSE"
+fi
+
+if [[ -z "$python_postfilter" ]]; then
+	echo  "RUN ${sequencing_run_name}: Error: vcf_postfilter.py is not in your path! Please add this script to your path and rerun"
 	paths_found_flag="FALSE"
 fi
 
@@ -240,16 +251,10 @@ if [[ -z "${combine}" ]]; then
 	paths_found_flag="FALSE"
 fi
 
-if [[ -z "${nextstrain_clades}" ]]; then
-	echo  "RUN ${sequencing_run_name}: Error: artic-module5-nextstrain_clades.sh is not in your path! Please add this script to your path and rerun"
-	paths_found_flag="FALSE"
-fi
-
-
 # create logs folder after successful completion of Module 4 for all samples and location of software/ref files for module 5 execution
 if [[ "${module4_complete_flag}" == "TRUE" ]] && [[ "${ref_files_found_flag}" == "TRUE" ]] && [[ "${paths_found_flag}" == "TRUE" ]]; then
 	mkdir -p "${postfilter_dir}/logs"
-	conda env export > "${logfile%.log}-env.yml"
+#	conda env export > "${logfile%.log}-env.yml"
 else
 	exit 1
 fi
@@ -288,12 +293,14 @@ echo_log "RUN ${sequencing_run_name}: ------ processing Postfiltering and Annota
 
 echo_log "RUN ${sequencing_run_name}: Starting Module 5 Postfilter Submodule 1 on ${sequencing_run}"
 
-"${run_postfilter}" \
+"$run_postfilter" \
 	-i "${consensus_dir}" \
 	-d "${ntc_depthfile}" \
 	-b "${ntc_bamfile}" \
-	-v "${vcf_next}" \
+	-v "${global_vars}" \
 	-c "${case_defs}" \
+	-p "${homopolymers}" \
+	-k "${key_positions}" \
 	-r "${reference}" \
 	-a "${amplicons}" \
 	-m "${manifest}" \
@@ -308,7 +315,7 @@ variant_data_tracker=()
 variant_fail_flag="FALSE"
 while read barcode name; do
 	if  [[ "$name" != "${control_name}" ]]; then
-		if [[ ! -s "${postfilter_dir}/${name}_${barcode}.variant_data.txt" ]]; then
+		if [ ! -s "${postfilter_dir}/${name}_${barcode}.variant_data.txt" ]; then
 			echo_log "RUN ${sequencing_run_name}: Error: Sample ${name} failed to generate variant data output.  See logs."
 			echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}*variant_data.txt does not exist."
 			variant_fail_flag="TRUE"
@@ -324,20 +331,21 @@ if [[ ${#variant_data_tracker[@]} -ge 1 ]]; then
 	if [[ "${variant_fail_flag}" == "TRUE"  ]]; then
 		echo_log "     At least one sample failed to produce any variant data.  See log for details"
 	fi
-	
+
 	echo_log "RUN ${sequencing_run_name}: Starting Module 5 Postfilter Summarization on ${sequencing_run}"
 
-	python "$software_path/ncov/pipeline_scripts/postfilter_summary.py" --rundir "${postfilter_dir}" 2>> "${logfile}"
+	python "${postfilter_summary}" --rundir "${postfilter_dir}" --ref "${reference}" 2>> "${logfile}"
 
 	echo_log "RUN ${sequencing_run_name}: Module 5 Postfilter Summarization completed for ${sequencing_run}"
 else
 	echo_log "RUN ${sequencing_run_name}: Error: Module 5 Summarization not performed.  No valid variant data found to summarize."
+	exit 1
 fi
 #---------------------------------------------------------------------------------------------------
 # module 5 Combine Variants
 #---------------------------------------------------------------------------------------------------
 
-echo_log "RUN ${sequencing_run_name}: Combing variants for each sample..."
+echo_log "RUN ${sequencing_run_name}: Combining variants for each sample..."
 
 "${combine}" \
 	-i "${postfilter_dir}" \
@@ -354,7 +362,7 @@ combine_variants_complete_flag="TRUE"
 while read barcode name; do
 	if  [[ "$name" != "${control_name}" ]]; then
 		if [[ " ${variant_data_tracker[@]} " =~ " ${name} " ]]; then
-			if [[ ! -s "${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf" ]]; then
+			if [ ! -s "${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf" ]; then
 				echo_log "RUN ${sequencing_run_name}: Error: Variants must be combined for all samples prior to running Pangolin and snpEff."
 				echo_log "RUN ${sequencing_run_name}:     ${postfilter_dir}/${name}_${barcode}.consensus.combined.vcf does not exist"
 				combine_variants_complete_flag="FALSE"
@@ -371,7 +379,7 @@ if [[ "${combine_variants_complete_flag}" == "TRUE" ]]; then
 		-i "${postfilter_dir}" \
 		-d "${pangolin_data}" \
 		-m "$manifest" 2>> "${logfile}"
-	"${nextstrain_clades}" \
+	"${assign_nextstrain_clades}" \
 		-i "${postfilter_dir}" \
 		-r "${reference_gbk}" \
 		-c "${nextstrain_clades}" \
@@ -402,7 +410,7 @@ fi
 
 if [[ ! -s "${postfilter_dir}/final_snpEff_report.txt" ]]; then
 	echo_log "RUN ${sequencing_run_name}: Error: snpEff output file - ${postfilter_dir}/final_snpEff_report.txt not detected or empty."
-	module5_complete_flag="FALSE"
+#	module5_complete_flag="FALSE"
 fi
 
 if [[ "${module5_complete_flag}" == "TRUE" ]]; then
