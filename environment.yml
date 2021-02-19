@@ -15,7 +15,7 @@ dependencies:
   - snpeff=4.3.1t
   - seqtk=1.3
   - samtools=1.9
-  - r-essentials=3.6.0
+  - r-essentials=4.0
   - xorg-libxtst=1.2.3
   - xorg-libxrender
   - xorg-libxi
