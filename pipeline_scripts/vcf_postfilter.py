@@ -164,7 +164,8 @@ def check_ambiguous_positions(cov_dict,masked_align,df,depth_threshold,masked_si
                 description='ambiguous base due to variant calling issue'
             
             # set up the data
-            data={}; data['run_id']=runid; data['sample']=samplename; data['barcode']=barcode; data['chrom']=chrom
+            data={}; data['run_id']=runid; data['barcode']=barcode; data['chrom']=chrom
+            data['sample'] = samplename.replace('_' + data['barcode'], '')
             data['pos']= pos; data['alt']='N'
             data['ref']= masked_align[0,np.where(masked_align[2,:]==str(pos))[0][0]].upper()
             data['consensus_base']='N'; data['in_consensus']=False; data['unambig']=False
@@ -296,9 +297,9 @@ def main():
         data = tmp.to_dict('records')[0]
         
         # add some basic data to this record
-        data['sample'] = args.samplename
         data['run_id'] = (args.depthfile).split('/')[-4]
         data['barcode'] = (args.depthfile).split('/')[-1].split('.')[0].split('_')[1]
+        data['sample'] = args.samplename.replace('_' + data['barcode'], '')
         
         # store information from info column and remove it from dictionary
         info = dict(item.split("=") for item in data['info'].split(";"))
@@ -346,7 +347,6 @@ def main():
         
         # add basic data to this record
         
-        data['sample'] = (args.depthfile).split('/')[-1].split('.')[0].split('_')[0]
         data['ont_depth'] = depth
         data['illumina_depth'] = [illumina_depth if illumina else np.nan][0]
         data['ont_depth_thresh'] = depth_threshold
