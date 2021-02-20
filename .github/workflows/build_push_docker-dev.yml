@@ -2,7 +2,7 @@ name: Build and push Docker image upon release
 
 on:
   push:
-    branches: main
+    branches: staging
 
 jobs:
   push_to_registry:
