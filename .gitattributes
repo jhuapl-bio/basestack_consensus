@@ -1,0 +1,11 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+# This will convert to native OS line ending on checkout and commit as LF (!CRLF) on commit
+* text=auto
+# Denote all files that are truly binary and should not be modified.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.xz binary
+*.7z binary
+*.gz binary
+*.zip binary

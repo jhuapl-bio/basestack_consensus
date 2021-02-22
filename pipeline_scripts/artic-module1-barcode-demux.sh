@@ -78,6 +78,13 @@ guppy_barcoder_path="${software_path}/ont-guppy-cpu/bin"
 # input files, these files should be in the sequencing run directory
 run_configuration="${sequencing_run}/run_config.txt"
 barcode_file=$(awk '/barcoding/{ print $2 }' "${run_configuration}")
+
+if [[ "$barcode_file" == "barcode_arrs_pcr12-JHUAPL_IAV.cfg" ]]; then
+    require_barcodes_both_ends=""
+else
+    require_barcodes_both_ends="--require_barcodes_both_ends"
+fi
+
 fastq_dir="${sequencing_run}/fastq_pass"
 manifest="${sequencing_run}/manifest.txt"
 
@@ -185,14 +192,14 @@ echo_log "RUN $(basename ${sequencing_run}): ------ processing pipeline output -
 echo_log "RUN $(basename ${sequencing_run}): Starting guppy demux module 1"
 
 "$guppy_barcoder_path/guppy_barcoder" \
-	--require_barcodes_both_ends \
+	"${require_barcode_both_ends}" \
 	-i "$fastq_dir" \
 	-s "$demux_dir" \
 	--recursive \
 	--arrangements_files "$barcode_file" 2>> "$logfile"
 
 while read barcode name; do
-    demux_output="$demux_dir"/"${barcode/NB/barcode}"
+    demux_output="$demux_dir"/"${barcode/[BN][CB]/barcode}"
     correct_output="$demux_dir"/"${barcode}"
     if [[ -d "$demux_output" ]]; then
         mv "$demux_output" "$correct_output"

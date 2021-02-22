@@ -131,8 +131,12 @@ RUN conda env create -f /root/idies/workspace/covid19/code/ncov/environment.yml 
 COPY ./ /root/idies/workspace/covid19/code/ncov/
 RUN cp -r /root/idies/workspace/covid19/code/ncov/covid19 /root/idies/workspace/ \
     && ln -s /root/idies/workspace/covid19/code/ncov/igv-genomes /root/idies/workspace/covid19 \
-    && cp /root/idies/workspace/covid19/code/ncov/barcode_arrs_nb96.cfg /root/idies/workspace/covid19/code/ont-guppy-cpu/data/barcoding/ \
-    && cp /root/idies/workspace/covid19/code/ncov/barcodes_masked.fasta /root/idies/workspace/covid19/code/ont-guppy-cpu/data/barcoding/
+    && cp /root/idies/workspace/covid19/code/ncov/config/guppy/barcode_arrs_pcr12-JHUAPL_IAV.cfg /root/idies/workspace/covid19/code/ont-guppy-cpu/data/barcoding/ \
+    && cp /root/idies/workspace/covid19/code/ncov/config/guppy/barcode_arrs_nb96.cfg /root/idies/workspace/covid19/code/ont-guppy-cpu/data/barcoding/ \
+    && cp /root/idies/workspace/covid19/code/ncov/config/guppy/barcodes_masked.fasta /root/idies/workspace/covid19/code/ont-guppy-cpu/data/barcoding/ \
+    && cp /root/idies/workspace/covid19/code/ncov/config/guppy/barcodes_masked-JHUAPL_IAV.fasta /root/idies/workspace/covid19/code/ont-guppy-cpu/data/barcoding/ \
+    && cp -r /root/idies/workspace/covid19/code/ncov/primer_schemes/IAV-H1 /root/idies/workspace/covid19/code/artic-ncov2019/primer_schemes/ \
+    && cp -r /root/idies/workspace/covid19/code/ncov/primer_schemes/IAV-H3 /root/idies/workspace/covid19/code/artic-ncov2019/primer_schemes/
 
 #################################################################
 # copy 13-gene genome.json over into RAMPART directory (which has a 9-gene file by default)
