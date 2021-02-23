@@ -308,7 +308,26 @@ else
 	echo_log "Demux count already present - will not overwrite it"
 fi
 
-ont_depth_thresh=$(head -n2 "$postfilt_all" | awk -F $'\t' '{if(NR==1){for(i=1; i<=NF; i++){if($i=="ont_depth_thresh"){col=i;}}}else{print $col}}')
+# identify max ONT depth threshold from postfilt_all (default to 20 if non-numeric)
+ont_depth_thresh=$(awk -F $'\t' '{
+	if(NR==1) {
+		for(i=1; i<=NF; i++) {
+			if($i=="ont_depth_thresh") {
+				col=i;
+			}
+		}
+	} else {
+		if($col > thresh) {
+			thresh = $col
+		}
+	}
+} END {
+	if(thresh+1-1 == thresh) {
+		print(thresh);
+	} else {
+		print(20);
+	}
+}' "$postfilt_all")
 echo_log "Depth threshold: $ont_depth_thresh"
 
 echo_log "Reading manifest"
