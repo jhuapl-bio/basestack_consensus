@@ -2,7 +2,7 @@ name: Build and push Docker image upon release
 
 on:
   push:
-    branches: main
+    branches: staging
 
 jobs:
   push_to_registry:
@@ -21,4 +21,4 @@ jobs:
           repository: ${{ secrets.DOCKERHUB_REPOSITORY }}
           tag_with_ref: true
           tag_with_sha: true
-          tags: dev
+          tags: staging
