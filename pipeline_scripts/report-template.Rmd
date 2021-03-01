@@ -321,9 +321,12 @@ for(i in sample_barcodes) {
 rownames(depth_plot_mean) <- sample_barcodes
 
 # identify low coverage regions
+threshold <- NULL
 if(!is.null(postfilt_all)) {
-  threshold <- as.numeric(postfilt_all$ont_depth_thresh[1])
-} else {
+  numeric_thresholds <- !is.na(as.numeric(postfilt_all$ont_depth_thresh))
+  threshold <- max(as.numeric(postfilt_all$ont_depth_thresh[numeric_thresholds]))
+}
+if(!is.integer(threshold)) {
   threshold <- 20
 }
 #below_threshold <- function(v) { return(v<=threshold) }
