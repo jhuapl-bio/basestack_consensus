@@ -47,12 +47,13 @@ GIT_DIR="$script_path/../.git"
 export GIT_DIR
 hash=$(git rev-parse --short HEAD)
 
-primerscheme_path="$bin_path/../../artic-ncov2019/primer_schemes"
-protocol="nCoV-2019/V3"
+scheme_dir="/opt/basestack_consensus/primer_schemes"
+protocol=$(awk '{if($1 == "primers"){ print $2; }}' "${run_configuration}")
+organism=$(echo "$protocol" | cut -d"/" -f1)
+reference="$scheme_dir/$protocol/$organism.reference.fasta"
 protocol_path="$bin_path/../../artic-ncov2019/rampart"
 nextstrain_path="$bin_path/../../../nextstrain"
-reference="$primerscheme_path/$protocol/nCoV-2019.reference.fasta"
-bed="$primerscheme_path/$protocol/nCoV-2019.bed"
+bed="$scheme_dir/$protocol/$organism.bed"
 
 stats_base="artic-pipeline/run_stats"
 demux_base="artic-pipeline/1-barcode-demux"
