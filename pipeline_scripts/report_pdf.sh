@@ -47,12 +47,8 @@ GIT_DIR="$script_path/../.git"
 export GIT_DIR
 hash=$(git rev-parse --short HEAD)
 
-primerscheme_path="$bin_path/../../artic-ncov2019/primer_schemes"
-protocol="nCoV-2019/V3"
 protocol_path="$bin_path/../../artic-ncov2019/rampart"
 nextstrain_path="$bin_path/../../../nextstrain"
-reference="$primerscheme_path/$protocol/nCoV-2019.reference.fasta"
-bed="$primerscheme_path/$protocol/nCoV-2019.bed"
 
 stats_base="artic-pipeline/run_stats"
 demux_base="artic-pipeline/1-barcode-demux"
@@ -88,38 +84,13 @@ if ! [[ -d "$run_path" ]]; then
 	exit
 fi
 
-run_info="$run_path/run_info.txt"
-if ! [[ -s "$run_info" ]]; then
-	echo -e "${RED}Error: run info file ${CYAN}$run_info${RED} does not exist.${NC}"
-	usage
-	exit
-fi
-
-run_title=$(grep "title" "${run_path}/run_info.txt" | cut -f2)
-
 if [[ -z "$out_file" ]]; then
 	out_file="$run_path/artic-pipeline/report.pdf"
 fi
 out_rmd="${out_file%.pdf}.Rmd"
 
-if ! [[ -s "$reference" ]]; then
-	echo -e "${RED}Error: reference sequence ${CYAN}$reference${RED} does not exist.${NC}"
-	usage
-	exit
-else
-	ref_header=$(head -n1 "$reference" | cut -c2-)
-	ref_length=$("$bin_path/fix_fasta.sh" "$reference" | tail -n1 | awk '{print length($1)}')
-fi
-
 if ! [[ -d "$bin_path" ]]; then
 	echo -e "${RED}Error: reference sequence ${CYAN}$reference${RED} does not exist.${NC}"
-	usage
-	exit
-fi
-
-vcfigv_repo_path="$bin_path/../../vcfigv"
-if ! [[ -d "$vcfigv_repo_path" ]]; then
-	echo -e "${RED}Error: vcfigv repository ${CYAN}$vcfigv_repo_path${RED} does not exist.${NC}"
 	usage
 	exit
 fi

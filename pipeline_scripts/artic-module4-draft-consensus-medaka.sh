@@ -83,10 +83,10 @@ manifest="${sequencing_run}/manifest.txt"
 run_configuration="${sequencing_run}/run_config.txt"
 
 # location for primer schemes
-scheme_dir="${software_path}/artic-ncov2019/primer_schemes"
+scheme_dir="/opt/basestack_consensus/primer_schemes"
 
 # primer protocol
-protocol=$(awk '/primers/{ print $2 }' "${run_configuration}")
+protocol=$(awk '{if($1 == "primers"){ print $2; }}' "${run_configuration}")
 
 # Output directories
 consensus_dir="${sequencing_run}/artic-pipeline/4-draft-consensus"

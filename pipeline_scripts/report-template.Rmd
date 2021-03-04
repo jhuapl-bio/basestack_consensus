@@ -1369,15 +1369,21 @@ guppy_barcoder \
 ```
 
 ## Length filtering
-```
-while read barcode name; do
-  artic guppyplex \
-    --skip-quality-check \
-    --min-length 400 \
-    --max-length 700 \
-    --directory "$demux_dir"/"$barcode" \
-    --prefix "$gather_dir"/"$name"
-done < "$manifest"
+```{r, length-protocol, echo=FALSE, results="asis"}
+gather_config_fn <- paste0(run_path,"/artic-pipeline/2-length-filter/gather-config.yml")
+gather_config <- read.table(gather_config_fn, sep=" ")
+
+filter_min <- gather_config[gather_config[,1] == "filterMin:",2]
+filter_max <- gather_config[gather_config[,1] == "filterMax:",2]
+
+print("while read barcode name; do")
+print("  artic guppyplex \\")
+print("    --skip-quality-check \\")
+print(paste0("    --min-length ",filter_min," \\"))
+print(paste0("    --max-length ",filter_max," \\"))
+print("    --directory \"$demux_dir\"/\"$barcode\" \\")
+print("    --prefix \"$gather_dir\"/\"$name\"")
+print("done < \"$manifest\"")
 ```
 
 ## Amplicon normalization
