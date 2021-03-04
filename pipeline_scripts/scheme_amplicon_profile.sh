@@ -1,8 +1,10 @@
 #!/bin/bash
+source /opt/basestack_consensus/bashrc
+conda activate jhu-ncov
 
 scheme="$1"
 
-awk -F $'\t' 'BEGIN{
+gawk -F $'\t' 'BEGIN{
 	printf "amplicon\tprimer_f_start\tprimer_f_stop\tunique_start\tunique_stop\tprimer_r_start\tprimer_r_stop\tmask_start\tmask_stop\n"
 } {
 	n = split($4, a, "_");
