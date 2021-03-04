@@ -52,9 +52,9 @@ RUN wget https://download.java.net/java/GA/jdk14/076bab302c7b4508975440c56f6cc26
     && rm samtools-1.10.tar.bz2 \
     && git clone https://github.com/mkirsche/vcfigv \
     && rm -rf vcfigv/.git \
-    && wget --no-check-certificate https://americas.oxfordnanoportal.com/software/analysis/ont-guppy-cpu_3.6.1_linux64.tar.gz \
-    && tar -xzf ont-guppy-cpu_3.6.1_linux64.tar.gz \
-    && rm ont-guppy-cpu_3.6.1_linux64.tar.gz \
+    && wget --no-check-certificate https://mirror.oxfordnanoportal.com/software/analysis/ont-guppy-cpu_4.2.2_linux64.tar.gz \
+    && tar -xzf ont-guppy-cpu_4.2.2_linux64.tar.gz \
+    && rm ont-guppy-cpu_4.2.2_linux64.tar.gz \
     && git clone --recurse-submodules https://github.com/artic-network/artic-ncov2019 \
     && rm -rf artic-ncov2019/.git \
     && git clone https://github.com/cov-lineages/pangolin.git \
@@ -148,7 +148,8 @@ WORKDIR /opt/basestack_consensus
 RUN /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/code/ncov/pipeline_scripts/CoverageNormalization/src"/*.java \
     && /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/code/ncov/pipeline_scripts/VariantValidator/src"/*.java \
     && /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/code/vcfigv/src"/*.java \
-    && /opt/conda/envs/jhu-ncov/bin/samtools faidx "/opt/basestack_consensus/code/artic-ncov2019/primer_schemes/nCoV-2019/V3/nCoV-2019.reference.fasta"
+    && /opt/conda/envs/jhu-ncov/bin/samtools faidx "/opt/basestack_consensus/code/artic-ncov2019/primer_schemes/nCoV-2019/V3/nCoV-2019.reference.fasta" \
+	&& cp -r /opt/basestack_consensus/code/ncov/primer_schemes /opt/basestack_consensus
 
 #ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "jhu-ncov"]
 
