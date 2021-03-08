@@ -177,10 +177,10 @@ filter_min=$(echo "$amplicon_min" | awk '{printf("%d", $0*0.9)}')
 filter_max=$(echo "$amplicon_max" | awk '{printf("%d", $0+200)}')
 
 gather_config="$gather_dir/gather-config.yml"
-printf "amplicon min: $amplicon_min\n" > "$gather_config"
-printf "amplicon max: $amplicon_max\n" >> "$gather_config"
-printf "filter min: $filter_min\n" >> "$gather_config"
-printf "filter max: $filter_max\n" >> "$gather_config"
+printf "ampliconMin: $amplicon_min\n" > "$gather_config"
+printf "ampliconMax: $amplicon_max\n" >> "$gather_config"
+printf "filterMin: $filter_min\n" >> "$gather_config"
+printf "filterMax: $filter_max\n" >> "$gather_config"
 
 artic guppyplex \
 	--skip-quality-check \
