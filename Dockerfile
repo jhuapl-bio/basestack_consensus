@@ -52,9 +52,9 @@ RUN wget https://download.java.net/java/GA/jdk14/076bab302c7b4508975440c56f6cc26
     && rm samtools-1.10.tar.bz2 \
     && git clone https://github.com/mkirsche/vcfigv \
     && rm -rf vcfigv/.git \
-    && wget --no-check-certificate https://mirror.oxfordnanoportal.com/software/analysis/ont-guppy-cpu_4.2.2_linux64.tar.gz \
-    && tar -xzf ont-guppy-cpu_4.2.2_linux64.tar.gz \
-    && rm ont-guppy-cpu_4.2.2_linux64.tar.gz \
+    && wget --no-check-certificate https://mirror.oxfordnanoportal.com/software/analysis/ont-guppy-cpu_4.4.1_linux64.tar.gz \
+    && tar -xzf ont-guppy-cpu_4.4.1_linux64.tar.gz \
+    && rm ont-guppy-cpu_4.4.1_linux64.tar.gz \
     && git clone --recurse-submodules https://github.com/artic-network/artic-ncov2019 \
     && rm -rf artic-ncov2019/.git \
     && git clone https://github.com/cov-lineages/pangolin.git \
