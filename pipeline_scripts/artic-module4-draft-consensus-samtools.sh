@@ -90,9 +90,10 @@ JAVA_PATH="${software_path}/jdk-14/bin"
 VariantValidatorPath="${software_path}/ncov/pipeline_scripts/VariantValidator"
 
 # reference sequence
-scheme_dir="$software_path/artic-ncov2019/primer_schemes"
-protocol=$(awk '/primers/{ print $2 }' "${sequencing_run}/run_config.txt")
-reference="$scheme_dir/$protocol/nCoV-2019.reference.fasta"
+scheme_dir="/opt/basestack_consensus/primer_schemes"
+protocol=$(awk '{if($1 == "primers"){ print $2; }}' "${run_configuration}")
+organism=$(echo "$protocol" | cut -d"/" -f1)
+reference="$scheme_dir/$protocol/$organism.reference.fasta"
 
 # Output directories and files
 mpileup="${consensus_dir}/${samplename}.mpileup"

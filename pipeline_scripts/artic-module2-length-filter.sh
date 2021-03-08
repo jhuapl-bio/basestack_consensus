@@ -34,7 +34,6 @@ usage() {
 #---------------------------------------------------------------------------------------------------
 
 # parse input arguments
-# parse input arguments
 while getopts "hi:" OPTION
 do
        case $OPTION in
@@ -75,6 +74,7 @@ sequencing_run="${sequencing_run%/}"
 
 # input files, these files should be located in the sequencing run directory
 manifest="${sequencing_run}/manifest.txt"
+run_configuration="${sequencing_run}/run_config.txt"
 
 # grabbing sample name from manifest given input barcode directory
 barcode=$(basename "${barcode_dir}")
@@ -82,6 +82,9 @@ name=$(grep "${barcode}" "${manifest}" | cut -d $'\t' -f 2)
 
 # Output directories
 gather_dir="${sequencing_run}/artic-pipeline/2-length-filter"
+
+# location for primer schemes
+scheme_dir="/opt/basestack_consensus/primer_schemes"
 
 # log file
 logfile="${gather_dir}"/logs/module2-"${name}"-$(date +"%F-%H%M%S").log
@@ -100,7 +103,7 @@ if [[ ! -d "${sequencing_run}" ]]; then
     exit 1
 fi
 
-if [[ ! -s "${sequencing_run}/run_config.txt" ]]; then
+if [[ ! -s "${run_configuration}" ]]; then
     >&2 echo "Error: Require a run_config.txt file in the sequencing run directory"
     exit 1
 fi
@@ -159,10 +162,30 @@ echo_log "SAMPLE: ${name}: ------ processing pipeline output ------"
 
 echo_log "SAMPLE: ${name}: Starting artic guppyplex module 2 on $sequencing_run, sample ${name}"
 
+# grab protocol and BED file
+protocol=$(awk '{if($1 == "primers"){ print $2; }}' "${run_configuration}")
+organism=$(echo "$protocol" | cut -d"/" -f1)
+reference="$scheme_dir/$protocol/$organism.reference.fasta"
+bed="$scheme_dir/$protocol/$organism.bed"
+
+amplicons="$gather_dir/amplicons.txt"
+scheme_amplicon_profile.sh "$bed" > "$amplicons"
+
+read amplicon_min amplicon_max <<< $(awk 'BEGIN{min=999999999; max=0}{len=($7-$2);if(len<min){min=len} if(len>max){max=len}}END{print min, max}' <(tail -n+2 "$amplicons"))
+
+filter_min=$(echo "$amplicon_min" | awk '{printf("%d", $0*0.9)}')
+filter_max=$(echo "$amplicon_max" | awk '{printf("%d", $0+200)}')
+
+gather_config="$gather_dir/gather-config.yml"
+printf "ampliconMin: $amplicon_min\n" > "$gather_config"
+printf "ampliconMax: $amplicon_max\n" >> "$gather_config"
+printf "filterMin: $filter_min\n" >> "$gather_config"
+printf "filterMax: $filter_max\n" >> "$gather_config"
+
 artic guppyplex \
 	--skip-quality-check \
-	--min-length 400 \
-	--max-length 700 \
+	--min-length "$filter_min" \
+	--max-length "$filter_max" \
 	--directory "${barcode_dir}" \
     --prefix "${gather_dir}/${name}" 2>> "$logfile"
 
