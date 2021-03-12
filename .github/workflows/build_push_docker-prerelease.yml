@@ -2,11 +2,11 @@ name: Build and push Docker image for pre-release
 
 on:
   push:
-    branches: staging
+    branches: prerelease
 
 jobs:
   push_to_registry:
-    name: Build and push Docker image to Docker Hub
+    name: Build and push Docker image for pre-release
     runs-on: ubuntu-latest
     steps:
 
@@ -21,4 +21,4 @@ jobs:
           repository: ${{ secrets.DOCKERHUB_REPOSITORY }}
           tag_with_ref: true
           tag_with_sha: true
-          tags: staging
+          tags: prerelease

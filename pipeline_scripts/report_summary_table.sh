@@ -57,11 +57,6 @@ GIT_DIR="$script_path/../.git"
 export GIT_DIR
 hash=$(git rev-parse --short HEAD)
 
-primerscheme_path="$bin_path/../../artic-ncov2019/primer_schemes"
-protocol="nCoV-2019/V3"
-reference="$primerscheme_path/$protocol/nCoV-2019.reference.fasta"
-bed="$primerscheme_path/$protocol/nCoV-2019.bed"
-
 stats_base="artic-pipeline/run_stats"
 demux_base="artic-pipeline/1-barcode-demux"
 lengthfilter_base="artic-pipeline/2-length-filter"
@@ -79,11 +74,11 @@ while getopts "hi:sm:b:p:r:o:1:2:3:4:5:6:" OPTION
 do
 	case $OPTION in
 		h) usage; exit 1 ;;
-		i) run_path=$OPTARG ;;
+		i) sequencing_run=$OPTARG ;;
 		s) skip_igv="true" ;;
 		m) manifest=$OPTARG ;;
 		b) bin_path=$OPTARG ;;
-		p) run_path=$OPTARG ;;
+		p) sequencing_run=$OPTARG ;;
 		r) reference=$OPTARG ;;
 		o) stats_path=$OPTARG ;;
 		1) demux_path=$OPTARG ;;
@@ -100,20 +95,27 @@ done
 # QUALITY CHECKING
 #===================================================================================================
 
-if ! [[ -d "$run_path" ]]; then
-	echo -e "${RED}Error: run path ${CYAN}$run_path${RED} does not exist.${NC}"
+if ! [[ -d "$sequencing_run" ]]; then
+	echo -e "${RED}Error: run path ${CYAN}$sequencing_run${RED} does not exist.${NC}"
 	usage
 	exit
 fi
 
 if ! [[ -s "$manifest" ]]; then
-	manifest="$run_path/manifest.txt"
+	manifest="$sequencing_run/manifest.txt"
 	if ! [[ -s "$manifest" ]]; then
 		echo -e "${RED}Error: manifest file ${CYAN}$manifest${RED} does not exist.${NC}"
 		usage
 		exit
 	fi
 fi
+
+run_configuration="${sequencing_run}/run_config.txt"
+scheme_dir="/opt/basestack_consensus/primer_schemes"
+protocol=$(awk '{if($1 == "primers"){ print $2; }}' "${run_configuration}")
+organism=$(echo "$protocol" | cut -d"/" -f1)
+reference="$scheme_dir/$protocol/$organism.reference.fasta"
+bed="$scheme_dir/$protocol/$organism.bed"
 
 if ! [[ -s "$reference" ]]; then
 	echo -e "${RED}Error: reference sequence ${CYAN}$reference${RED} does not exist.${NC}"
@@ -139,13 +141,13 @@ if [[ "$skip_igv" != "true" ]]; then
 	fi
 fi
 if [[ -z "$stats_path" ]]; then
-	stats_path="$run_path/$stats_base"
+	stats_path="$sequencing_run/$stats_base"
 fi
 if ! [[ -d "$stats_path" ]]; then
 	mkdir -p "$stats_path"
 fi
 if [[ -z "$demux_path" ]]; then
-	demux_path="$run_path/$demux_base"
+	demux_path="$sequencing_run/$demux_base"
 fi
 if ! [[ -d "$demux_path" ]]; then
 	echo -e "${RED}Error: demux path ${CYAN}$demux_path${RED} does not exist.${NC}"
@@ -153,7 +155,7 @@ if ! [[ -d "$demux_path" ]]; then
 	exit
 fi
 if [[ -z "$lengthfilter_path" ]]; then
-	lengthfilter_path="$run_path/$lengthfilter_base"
+	lengthfilter_path="$sequencing_run/$lengthfilter_base"
 fi
 if ! [[ -d "$lengthfilter_path" ]]; then
 	echo -e "${RED}Error: length filter path ${CYAN}$lengthfilter_path${RED} does not exist.${NC}"
@@ -161,7 +163,7 @@ if ! [[ -d "$lengthfilter_path" ]]; then
 	exit
 fi
 if [[ -z "$normalize_path" ]]; then
-	normalize_path="$run_path/$normalize_base"
+	normalize_path="$sequencing_run/$normalize_base"
 fi
 if ! [[ -d "$normalize_path" ]]; then
 	echo -e "${RED}Error: normalization path ${CYAN}$normalize_path${RED} does not exist.${NC}"
@@ -169,7 +171,7 @@ if ! [[ -d "$normalize_path" ]]; then
 	exit
 fi
 if [[ -z "$draftconsensus_path" ]]; then
-	draftconsensus_path="$run_path/$draftconsensus_base"
+	draftconsensus_path="$sequencing_run/$draftconsensus_base"
 fi
 if ! [[ -d "$draftconsensus_path" ]]; then
 	echo -e "${RED}Error: draft consensus path ${CYAN}$draftconsensus_path${RED} does not exist.${NC}"
@@ -177,7 +179,7 @@ if ! [[ -d "$draftconsensus_path" ]]; then
 	exit
 fi
 if [[ -z "$nextstrain_path" ]]; then
-	nextstrain_path="$run_path/$nextstrain_base"
+	nextstrain_path="$sequencing_run/$nextstrain_base"
 fi
 if ! [[ -d "$nextstrain_path" ]]; then
 	echo -e "${RED}Error: nextstrain path ${CYAN}$nextstrain_path${RED} does not exist.${NC}"
@@ -185,7 +187,7 @@ if ! [[ -d "$nextstrain_path" ]]; then
 #	exit
 fi
 if [[ -z "$postfilter_path" ]]; then
-	postfilter_path="$run_path/$postfilter_base"
+	postfilter_path="$sequencing_run/$postfilter_base"
 fi
 if ! [[ -d "$postfilter_path" ]]; then
 	echo -e "${RED}Error: post-filter path ${CYAN}$postfilter_path${RED} does not exist.${NC}"
@@ -266,13 +268,13 @@ echo_log "recording software version numbers"
 echo_log "current git hash: $hash"
 echo_log "  guppy barcoder: "
 echo_log "input arguments"
-echo_log "  sequencing run folder: ${CYAN}$run_path${NC}"
-echo_log "    1)    barcode demux: ├── ${CYAN}${demux_path#$run_path}${NC}"
-echo_log "    2)    length filter: ├── ${CYAN}${lengthfilter_path#$run_path}${NC}"
-echo_log "    3)    normalization: ├── ${CYAN}${normalize_path#$run_path}${NC}"
-echo_log "    4)  draft consensus: ├── ${CYAN}${draftconsensus_path#$run_path}${NC}"
-echo_log "    5)      post-filter: ├── ${CYAN}${postfilter_path#$run_path}${NC}"
-echo_log "    6)       nextstrain: └── ${CYAN}${nextstrain_path#$run_path}${NC}"
+echo_log "  sequencing run folder: ${CYAN}$sequencing_run${NC}"
+echo_log "    1)    barcode demux: ├── ${CYAN}${demux_path#$sequencing_run}${NC}"
+echo_log "    2)    length filter: ├── ${CYAN}${lengthfilter_path#$sequencing_run}${NC}"
+echo_log "    3)    normalization: ├── ${CYAN}${normalize_path#$sequencing_run}${NC}"
+echo_log "    4)  draft consensus: ├── ${CYAN}${draftconsensus_path#$sequencing_run}${NC}"
+echo_log "    5)      post-filter: ├── ${CYAN}${postfilter_path#$sequencing_run}${NC}"
+echo_log "    6)       nextstrain: └── ${CYAN}${nextstrain_path#$sequencing_run}${NC}"
 echo_log "  manifest: ${CYAN}$manifest${NC}"
 echo_log "  reference sequence: ${CYAN}$reference${NC}"
 echo_log "  working directory: ${CYAN}$workdir${NC}"
@@ -280,10 +282,10 @@ echo_log "  threads: ${CYAN}1${NC}"
 echo_log "output arguments"
 echo_log "  log file: ${CYAN}$logfile${NC}"
 echo_log "  amplicons: ${CYAN}${amplicons}${NC}"
-echo_log "  summary file: ${CYAN}${summary#$run_path}${NC}"
-echo_log "  demux file: ${CYAN}${demuxfile#$run_path}${NC}"
-echo_log "  depth file: ${CYAN}${depthfile#$run_path}${NC}"
-echo_log "  mutation file: ${CYAN}${mutations_table#$run_path}${NC}"
+echo_log "  summary file: ${CYAN}${summary#$sequencing_run}${NC}"
+echo_log "  demux file: ${CYAN}${demuxfile#$sequencing_run}${NC}"
+echo_log "  depth file: ${CYAN}${depthfile#$sequencing_run}${NC}"
+echo_log "  mutation file: ${CYAN}${mutations_table#$sequencing_run}${NC}"
 echo_log "------ processing pipeline output ------"
 
 scheme_amplicon_profile.sh "$bed" > "$amplicons"
@@ -360,15 +362,15 @@ while read barcode label; do
 	consensus_vcf=$(find "$postfilter_path" -name "*${barcode}*.consensus.combined.vcf")
 	post_filter=$(find "$postfilter_path" -name "*$barcode*.variant_data.txt")
 	final_consensus=$(find "$postfilter_path" -regextype posix-extended -regex ".*/.*$barcode.*(complete|partial).fasta")
-	echo_log "    FASTQ file: ${gather#$run_path/}"
-	echo_log "    full alignment: ${alignment#$run_path/}"
-	echo_log "    normalized alignment: ${normalized_alignment#$run_path/}"
-	echo_log "    primer trimmed alignment: ${trimmed_alignment#$run_path/}"
-	echo_log "    depth file: ${del_depth_file#$run_path/}"
-	echo_log "    variant file: ${vcf#$run_path/}"
-	echo_log "    draft consensus: ${draft_consensus#$run_path/}"
-	echo_log "    variant data: ${post_filter#$run_path/}"
-	echo_log "    final consensus: ${final_consensus#$run_path/}"
+	echo_log "    FASTQ file: ${gather#$sequencing_run/}"
+	echo_log "    full alignment: ${alignment#$sequencing_run/}"
+	echo_log "    normalized alignment: ${normalized_alignment#$sequencing_run/}"
+	echo_log "    primer trimmed alignment: ${trimmed_alignment#$sequencing_run/}"
+	echo_log "    depth file: ${del_depth_file#$sequencing_run/}"
+	echo_log "    variant file: ${vcf#$sequencing_run/}"
+	echo_log "    draft consensus: ${draft_consensus#$sequencing_run/}"
+	echo_log "    variant data: ${post_filter#$sequencing_run/}"
+	echo_log "    final consensus: ${final_consensus#$sequencing_run/}"
 	echo_log "    barcode stats:"
 	echo_log "      number of reads: $length_filter"
 	echo_log "      aligned reads: $aligned_reads"
@@ -591,7 +593,7 @@ fi
 # BUILD MARKDOWN FILE
 #===================================================================================================
 
-report_pdf.sh -i "$run_path"
+report_pdf.sh -i "$sequencing_run"
 
 #---------------------------------------------------------------------------------------------------
 
