@@ -60,9 +60,10 @@ RUN wget https://download.java.net/java/GA/jdk14/076bab302c7b4508975440c56f6cc26
     && git clone https://github.com/cov-lineages/pangolin.git \
     && rm -rf pangolin/.git
 
+
 # install conda environments
-RUN conda env create -f artic-ncov2019/environment.yml \
-    && sed -i 's/  - python=3.6/  - python=3.7/' pangolin/environment.yml \
+RUN conda config --set channel_priority strict && conda env create -f artic-ncov2019/environment.yml 
+RUN sed -i 's/  - python=3.6/  - python=3.7/' pangolin/environment.yml \
     && conda env create -f pangolin/environment.yml \
     && conda activate pangolin \
     && cd pangolin \
