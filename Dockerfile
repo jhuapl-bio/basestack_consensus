@@ -170,7 +170,14 @@ RUN /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/cod
         fullname=$(basename -- $file); \
         exts=${fullname#*.}; name=${fullname%%.*}; \
         protocol=${file#/}; protocol=${protocol%%/*};    \
-            if [ $protocol != $name ]; then cp primer_schemes/$file primer_schemes/$(dirname $file)/$protocol.$exts; fi; \
+            if [ $protocol != $name ]; then \
+                output=primer_schemes/$(dirname $file)/$protocol.$exts; \
+                cp primer_schemes/$file $output; \
+                sed -Ei "s/$name/$protocol/g" $output; \
+            fi; \
+            if [ ! -s primer_schemes/$(dirname $file)/$protocol.bed ]; then \
+                cp primer_schemes/$(dirname $file)/${protocol}".scheme.bed" primer_schemes/$(dirname $file)/$protocol".bed"; \
+            fi; \
         done
 
 
