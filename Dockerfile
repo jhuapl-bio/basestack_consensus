@@ -4,16 +4,43 @@ FROM continuumio/miniconda3:4.9.2
 # Make RUN commands use `bash --login` (always source ~/.bashrc on each RUN)
 SHELL ["/bin/bash", "--login", "-c"]
 
+WORKDIR /opt/basestack_consensus/code
 # install apt dependencies and update conda
-RUN apt-get update && apt-get install git -y \
+RUN apt-get update --allow-releaseinfo-change && apt-get install git -y \
     && apt-get install -y apt-transport-https ca-certificates wget unzip bzip2 libfontconfig1 \
     && update-ca-certificates \
     && apt-get -qq -y remove curl \
     && apt-get -qq -y autoremove \
     && apt-get autoclean \
-    && rm -rf /var/lib/apt/lists/* /var/log/dpkg.log 
+    && apt-get install -y build-essential zlib1g-dev libbz2-dev liblzma-dev
+
+
+# install openjdk
+RUN wget https://download.java.net/java/GA/jdk14/076bab302c7b4508975440c56f6cc26a/36/GPL/openjdk-14_linux-x64_bin.tar.gz \
+    && tar -xzf openjdk-14_linux-x64_bin.tar.gz \
+    && rm openjdk-14_linux-x64_bin.tar.gz \
+    && wget https://github.com/samtools/samtools/releases/download/1.10/samtools-1.10.tar.bz2 \
+    && tar -xjf samtools-1.10.tar.bz2 \
+    && rm samtools-1.10.tar.bz2 \
+    && git clone https://github.com/mkirsche/vcfigv \
+    && rm -rf vcfigv/.git \
+    && wget --no-check-certificate https://mirror.oxfordnanoportal.com/software/analysis/ont-guppy-cpu_4.2.2_linux64.tar.gz \
+    && tar -xzf ont-guppy-cpu_4.2.2_linux64.tar.gz \
+    && rm ont-guppy-cpu_4.2.2_linux64.tar.gz  \
+    && git clone --recurse-submodules https://github.com/artic-network/artic-ncov2019 \
+    && rm -rf artic-ncov2019/.git \
+    && git clone https://github.com/cov-lineages/pangolin.git \
+    && rm -rf pangolin/.git
+
+WORKDIR /opt/basestack_consensus/code/samtools-1.10
+#Compile samtools
+RUN ./configure --without-curses && \           
+    make && \
+    make install
+
 
 ENV PATH /opt/conda/bin:$PATH
+
 
 RUN conda install -y python=3 \
     && conda update -y conda \
@@ -42,28 +69,11 @@ RUN wget -qO- "https://yihui.name/gh/tinytex/tools/install-unx.sh" | \
 RUN mkdir -p /opt/basestack_consensus/code \
     && chmod g+s /opt/basestack_consensus/code
 
-# install openjdk
 WORKDIR /opt/basestack_consensus/code
-RUN wget https://download.java.net/java/GA/jdk14/076bab302c7b4508975440c56f6cc26a/36/GPL/openjdk-14_linux-x64_bin.tar.gz \
-    && tar -xzf openjdk-14_linux-x64_bin.tar.gz \
-    && rm openjdk-14_linux-x64_bin.tar.gz \
-    && wget https://github.com/samtools/samtools/releases/download/1.10/samtools-1.10.tar.bz2 \
-    && tar -xjf samtools-1.10.tar.bz2 \
-    && rm samtools-1.10.tar.bz2 \
-    && git clone https://github.com/mkirsche/vcfigv \
-    && rm -rf vcfigv/.git \
-    && wget --no-check-certificate https://mirror.oxfordnanoportal.com/software/analysis/ont-guppy-cpu_4.2.2_linux64.tar.gz \
-    && tar -xzf ont-guppy-cpu_4.2.2_linux64.tar.gz \
-    && rm ont-guppy-cpu_4.2.2_linux64.tar.gz \
-    && git clone --recurse-submodules https://github.com/artic-network/artic-ncov2019 \
-    && rm -rf artic-ncov2019/.git \
-    && git clone https://github.com/cov-lineages/pangolin.git \
-    && rm -rf pangolin/.git
-
-
 # install conda environments
-RUN conda config --set channel_priority strict && conda env create -f artic-ncov2019/environment.yml 
-RUN sed -i 's/  - python=3.6/  - python=3.7/' pangolin/environment.yml \
+RUN conda config --set channel_priority strict 
+RUN conda env create -f artic-ncov2019/environment.yml && \
+    sed -i 's/ - python=3.6/  - python=3.7/' pangolin/environment.yml \
     && conda env create -f pangolin/environment.yml \
     && conda activate pangolin \
     && cd pangolin \
@@ -143,14 +153,28 @@ RUN cp /opt/basestack_consensus/ncov_reference/genome.json /opt/basestack_consen
 # set up final environment and default working directory
 RUN chmod -R 755 /opt/basestack_consensus/code/ncov/pipeline_scripts/ \
     && ln -sf /bin/bash /bin/sh
-WORKDIR /opt/basestack_consensus
 
+
+
+
+WORKDIR /opt/basestack_consensus
 # compile java files
 RUN /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/code/ncov/pipeline_scripts/CoverageNormalization/src"/*.java \
     && /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/code/ncov/pipeline_scripts/VariantValidator/src"/*.java \
     && /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/code/vcfigv/src"/*.java \
-    && /opt/conda/envs/jhu-ncov/bin/samtools faidx "/opt/basestack_consensus/code/artic-ncov2019/primer_schemes/nCoV-2019/V3/nCoV-2019.reference.fasta" \
-	&& cp -r /opt/basestack_consensus/code/ncov/primer_schemes /opt/basestack_consensus
+    && samtools faidx "/opt/basestack_consensus/code/artic-ncov2019/primer_schemes/nCoV-2019/V3/nCoV-2019.reference.fasta" \
+    && mkdir -p /opt/basestack_consensus/primer_schemes \
+    && cp -r /opt/basestack_consensus/code/artic-ncov2019/primer_schemes/* /opt/basestack_consensus/primer_schemes/ \
+	&& cp -r /opt/basestack_consensus/code/ncov/primer_schemes/* /opt/basestack_consensus/primer_schemes/ \
+    && for file in $( find primer_schemes/* -regex ".*V[0-9]+\/.*" -type f \( -not -name "*README*" -regex ".*\(bed\)\|.*\(fasta\)" \) | cut -sd / -f2- ); do \
+        fullname=$(basename -- $file); \
+        exts=${fullname#*.}; name=${fullname%%.*}; \
+        protocol=${file#/}; protocol=${protocol%%/*};    \
+            if [ $protocol != $name ]; then cp primer_schemes/$file primer_schemes/$(dirname $file)/$protocol.$exts; fi; \
+        done
 
-#ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "jhu-ncov"]
 
+
+# ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "jhu-ncov"]
+
+# RUN conda activate jhu-ncov && ldconfig /usr/local/lib
