@@ -38,6 +38,7 @@ if [[ "$(uname -s)" = 'Linux' ]]; then
 else
     BINDIR=$(dirname "$(readlink "$0" || echo "$(echo "$0" | sed -e 's,\\,/,g')")")
 fi
+echo  "Calling java classes from: $BINDIR../additional_scripts"
 
 # get known directory names
 for i in `ls "$postfilter_dir"/*variant_data.txt`
@@ -49,12 +50,12 @@ do
 
     consensusvcf="$postfilter_dir/$samplename.consensus.vcf"
     allvcf="$postfilter_dir/$samplename.allsnps.vcf"
-    java -cp "$BINDIR/VariantValidator/src" TableToVcf table_file="$i" consensus_file="$consensusvcf" all_file="$allvcf"
+    java -cp "$BINDIR/../additional_scripts/VariantValidator/src" TableToVcf table_file="$i" consensus_file="$consensusvcf" all_file="$allvcf"
 
     consensuscombinedvcf="$postfilter_dir/$samplename.consensus.combined.vcf"
     allcombinedvcf="$postfilter_dir/$samplename.allsnps.combined.vcf"
-    java -cp "$BINDIR/VariantValidator/src" CombineVariants vcf_file="$consensusvcf" out_file="$consensuscombinedvcf" genome_file="$reference" gene_file="$reference_annotation"
-    java -cp "$BINDIR/VariantValidator/src" CombineVariants vcf_file="$allvcf" out_file="$allcombinedvcf" genome_file="$reference" gene_file="$reference_annotation"
+    java -cp "$BINDIR/../additional_scripts/VariantValidator/src" CombineVariants vcf_file="$consensusvcf" out_file="$consensuscombinedvcf" genome_file="$reference" gene_file="$reference_annotation"
+    java -cp "$BINDIR/../additional_scripts/VariantValidator/src" CombineVariants vcf_file="$allvcf" out_file="$allcombinedvcf" genome_file="$reference" gene_file="$reference_annotation"
 done
 
 

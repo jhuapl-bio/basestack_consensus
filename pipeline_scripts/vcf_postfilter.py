@@ -196,7 +196,7 @@ def make_final_fasta(masked_align,samplename,unambig_thresh,outdir):
     # save new consensus sequence and output to file
     cons = ''.join(masked_consensus).upper()
     new_record = SeqRecord(Seq(cons),id=samplename,description="")
-    
+    print(unambig, unambig_thresh, samplename, ": samplename...........................")
     # save new output file depending on unambig threshold
     if unambig > unambig_thresh:
         filepath = os.path.join(outdir,samplename+'.complete.fasta')

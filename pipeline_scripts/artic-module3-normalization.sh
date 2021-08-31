@@ -77,7 +77,7 @@ sequencing_run=$(dirname $(dirname $(dirname "$fastq")))
 software_path=/opt/basestack_consensus/code
 JAVA_PATH="${software_path}/jdk-14/bin"
 samtools_path="${software_path}/samtools-1.10/bin"
-NormalizeCoveragePath="${software_path}/ncov/pipeline_scripts/CoverageNormalization"
+NormalizeCoveragePath="${software_path}/ncov/additional_scripts/CoverageNormalization"
 
 # input files and directories
 base=$(basename "${fastq%.fastq}")

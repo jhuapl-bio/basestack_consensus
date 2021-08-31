@@ -80,14 +80,6 @@ RUN conda env create -f artic-ncov2019/environment.yml && \
     && python setup.py install \
     && conda clean --all --yes
 
-WORKDIR /opt/basestack_consensus/code/ncov/pipeline_scripts
-RUN git clone https://github.com/mkirsche/CoverageNormalization.git \
-    && git clone https://github.com/mkirsche/VariantValidator.git
-
-# compile java libraries
-ENV PATH="/opt/basestack_consensus/code/ncov/pipeline_scripts:${PATH}"
-ENV PATH="/opt/basestack_consensus/code/jdk-14/bin:${PATH}"
-ENV PATH="/opt/basestack_consensus/code/ont-guppy-cpu/bin:${PATH}"
 
 ##################################################################
 # configure IGV screenshots in report
@@ -155,12 +147,20 @@ RUN chmod -R 755 /opt/basestack_consensus/code/ncov/pipeline_scripts/ \
     && ln -sf /bin/bash /bin/sh
 
 
+WORKDIR /opt/basestack_consensus/code/ncov/additional_scripts
+RUN git clone https://github.com/mkirsche/CoverageNormalization.git \
+    && git clone https://github.com/mkirsche/VariantValidator.git
 
+# compile java libraries
+ENV PATH="/opt/basestack_consensus/code/ncov/additional_scripts:${PATH}"
+ENV PATH="/opt/basestack_consensus/code/ncov/pipeline_scripts:${PATH}"
+ENV PATH="/opt/basestack_consensus/code/jdk-14/bin:${PATH}"
+ENV PATH="/opt/basestack_consensus/code/ont-guppy-cpu/bin:${PATH}"
 
 WORKDIR /opt/basestack_consensus
 # compile java files
-RUN /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/code/ncov/pipeline_scripts/CoverageNormalization/src"/*.java \
-    && /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/code/ncov/pipeline_scripts/VariantValidator/src"/*.java \
+RUN /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/code/ncov/additional_scripts/CoverageNormalization/src"/*.java \
+    && /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/code/ncov/additional_scripts/VariantValidator/src"/*.java \
     && /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/code/vcfigv/src"/*.java \
     && samtools faidx "/opt/basestack_consensus/code/artic-ncov2019/primer_schemes/nCoV-2019/V3/nCoV-2019.reference.fasta" \
     && mkdir -p /opt/basestack_consensus/primer_schemes \
@@ -174,6 +174,9 @@ RUN /opt/basestack_consensus/code/jdk-14/bin/javac "/opt/basestack_consensus/cod
                 output=primer_schemes/$(dirname $file)/$protocol.$exts; \
                 cp primer_schemes/$file $output; \
                 sed -Ei "s/$name/$protocol/g" $output; \
+            fi; \
+            if [ $protocol == 'nCoV-2019' ]; then \    
+                cp /opt/basestack_consensus/code/ncov/covid19/ncov_reference/sequence.fasta primer_schemes/$(dirname $file)/${protocol}.reference.fasta; \
             fi; \
             if [ ! -s primer_schemes/$(dirname $file)/$protocol.bed ]; then \
                 cp primer_schemes/$(dirname $file)/${protocol}".scheme.bed" primer_schemes/$(dirname $file)/$protocol".bed"; \

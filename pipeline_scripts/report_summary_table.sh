@@ -353,6 +353,7 @@ while read barcode label; do
 		aligned_reads=0
 	fi
 	normalized_alignment=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.sorted.bam" ! -name "*trimmed*")
+	echo $normalized_alignment"_________"$draftconsensus_path" "$barcode
 	normalized_reads=$(samtools idxstats "$normalized_alignment" | grep "$ref_header" | cut -f3)
 	draft_consensus=$(find "$draftconsensus_path" -name "*$barcode*.nanopolish.consensus.fasta")
 	consensus_length=$(($ref_length - $(tail -n+2 "$draft_consensus" | grep -o N | wc -l)))
@@ -481,7 +482,6 @@ while read barcode label; do
 		mv "$outPrefix" "$igv_out_path"
 	fi
 done < "$manifest"
-
 printf "\tuncalled\t%'d\tNA\tNA\tNA\tNA\n" $(grep unclassified "$stats_path/demux_count.txt" | cut -f1) >> "$outfile"
 
 echo_log "Consolidating depth"

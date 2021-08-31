@@ -49,7 +49,7 @@ hash=$(git rev-parse --short HEAD)
 
 protocol_path="$bin_path/../../artic-ncov2019/rampart"
 nextstrain_path="$bin_path/../../../nextstrain"
-
+resource_path="$bin_path/../../../sequencing_runs"
 stats_base="artic-pipeline/run_stats"
 demux_base="artic-pipeline/1-barcode-demux"
 lengthfilter_base="artic-pipeline/2-length-filter"
@@ -206,6 +206,7 @@ sed -e "s@<RUN_PATH>@${run_path}@" \
 	-e "s@<RUN_TITLE>@${run_title}@" \
 	-e "s@<PROTOCOL_PATH>@${protocol_path}@" \
 	-e "s@<NEXTSTRAIN_PATH>@${nextstrain_path}@" \
+	-e "s@<RESOURCE_PATH>@${resource_path}@" \
 	"$bin_path/report-template.Rmd" > "$out_rmd"
 
 Rscript -e "rmarkdown::render('"$out_rmd"')"

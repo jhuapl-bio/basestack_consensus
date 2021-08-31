@@ -31,3 +31,12 @@ docker container run \
 ```sh
 artic-module1-barcode-demux.sh -i /opt/basestack_consensus/sequencing_runs/example-run
 ```
+
+
+# misc
+
+To run a dev process on the image on a mounted path, do: 
+
+`docker container run -it --rm -v $ROOT_DATA_PATH:/opt/run-data -v $PWD:/opt/basestack_consensus/code/ncov --name basestack_consensus jhuaplbio/basestack_consensus`
+
+where `$ROOT_DATA_PATH` is the path to the run directory. The pipeline will output to `artic-pipeline` in that folder
