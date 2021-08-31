@@ -49,8 +49,8 @@ RUN conda install -y python=3 \
 # install TeX libraries
 WORKDIR /opt/basestack_consensus
 RUN wget -qO- "https://yihui.name/gh/tinytex/tools/install-unx.sh" | \
-    sed 's@TEXDIR=${TINYTEX_DIR:-~/.TinyTeX}@TEXDIR=${TINYTEX_DIR:-/opt/basestack_consensus/.TinyTeX}@' | sh \
-    && export PATH=/opt/basestack_consensus/.TinyTeX/bin/x86_64-linux:/opt/conda/bin:$PATH \
+    sed 's@TEXDIR=${TINYTEX_DIR:-~/.TinyTeX}@TEXDIR=${TINYTEX_DIR:-/opt/basestack_consensus/.TinyTeX}@' | sh 
+RUN export PATH=/opt/basestack_consensus/.TinyTeX/bin/x86_64-linux:/opt/conda/bin:$PATH \
     && tlmgr path add \
     && tlmgr install mnsymbol \
     && tlmgr install wrapfig \
