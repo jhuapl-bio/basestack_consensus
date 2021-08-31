@@ -1370,21 +1370,26 @@ guppy_barcoder \
 ```
 
 ## Length filtering
-```{r, length-protocol, echo=FALSE, results="asis"}
+```{r, length-protocol, echo=FALSE, results='asis'}
 gather_config_fn <- paste0(run_path,"/artic-pipeline/2-length-filter/gather-config.yml")
 gather_config <- read.table(gather_config_fn, sep=" ")
 
+amplicon_min <- gather_config[gather_config[,1] == "ampliconMin:",2]
+amplicon_max <- gather_config[gather_config[,1] == "ampliconMax:",2]
 filter_min <- gather_config[gather_config[,1] == "filterMin:",2]
 filter_max <- gather_config[gather_config[,1] == "filterMax:",2]
 
-print("while read barcode name; do")
-print("  artic guppyplex \\")
-print("    --skip-quality-check \\")
-print(paste0("    --min-length ",filter_min," \\"))
-print(paste0("    --max-length ",filter_max," \\"))
-print("    --directory \"$demux_dir\"/\"$barcode\" \\")
-print("    --prefix \"$gather_dir\"/\"$name\"")
-print("done < \"$manifest\"")
+cat(paste0("Shortest amplicon: ", amplicon_min, " nt\n\n"))
+cat(paste0("Longest amplicon: ", amplicon_max, " nt\n\n"))
+
+cat("```\n")
+cat("artic guppyplex \\\n")
+cat("  --skip-quality-check \\\n")
+cat(paste0("  --min-length ",filter_min," \\\n"))
+cat(paste0("  --max-length ",filter_max," \\\n"))
+cat("  --directory \"$demux_dir\"/\"$barcode\" \\\n")
+cat("  --prefix \"$gather_dir\"/\"$name\"\n")
+cat("```\n")
 ```
 
 ## Amplicon normalization

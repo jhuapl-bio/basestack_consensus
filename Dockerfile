@@ -70,6 +70,7 @@ RUN mkdir -p /opt/basestack_consensus/code \
     && chmod g+s /opt/basestack_consensus/code
 
 WORKDIR /opt/basestack_consensus/code
+
 # install conda environments
 RUN conda config --set channel_priority strict 
 RUN conda env create -f artic-ncov2019/environment.yml && \
