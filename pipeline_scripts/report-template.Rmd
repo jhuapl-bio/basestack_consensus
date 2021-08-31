@@ -4,6 +4,7 @@ author: "<RUN_TITLE>"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 params:
   run_path: "<RUN_PATH>"
+  resource_path: "<RESOURCE_PATH>"
   protocol_path: "<PROTOCOL_PATH>"
   nextstrain_path: "<NEXTSTRAIN_PATH>"
 always_allow_html: true
@@ -78,7 +79,7 @@ library(reshape2, quietly=TRUE)
 run_path <- params$run_path
 protocol_path <- params$protocol_path
 nextstrain_path <- params$nextstrain_path
-
+resource_path <- params$resource_path
 #-------------------------------------------------
 # set up colors
 flagColors <- c("Yes" = "#238B2B", "Yes*" = "#74C476", "Maybe" = "#DAA520", "No" = "#EE2C2C", "NA" = "#B3B3B3")
@@ -99,7 +100,7 @@ flagColorsTeX <- c("Yes" = "\\textcolor{myDarkGreen}", "Yes*" = "\\textcolor{myL
 # run information
 run_config <- read.table(paste0(run_path,"/run_config.txt"))
 manifest <- read.table(paste0(run_path,"/manifest.txt"))
-problematic_sites <- read.vcfR(paste0(run_path,"/../problematic_sites_sarsCov2.vcf"), verbose = FALSE, skip=24)
+problematic_sites <- read.vcfR(paste0(resource_path,"/problematic_sites_sarsCov2.vcf"), verbose = FALSE, skip=24)
 genome_ref <- rjson::fromJSON(file=paste0(protocol_path, "/genome.json"))
 important_positions <- read.table(paste0(nextstrain_path,"/latest/alpha/clade_related_snps.txt"), sep="\t", header=TRUE, comment.char="")
 common_positions <- read.vcfR(paste0(nextstrain_path,"/latest/alpha/alignments.vcf"), verbose = FALSE, skip=3)

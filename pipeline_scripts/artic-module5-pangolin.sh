@@ -36,5 +36,4 @@ done < "$manifest"
 
 pangolin "${postfilter_dir}/postfilt_consensus_all.fasta" \
 	-o "${postfilter_dir}" \
-	--tempdir "$postfilter_dir" \
-	-t "$THREADS"
+	--tempdir "$postfilter_dir" 

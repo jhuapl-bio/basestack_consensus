@@ -87,7 +87,7 @@ run_configuration="${sequencing_run}/run_config.txt"
 # location of programs used by pipeline
 software_path="/opt/basestack_consensus/code"
 JAVA_PATH="${software_path}/jdk-14/bin"
-VariantValidatorPath="${software_path}/ncov/pipeline_scripts/VariantValidator"
+VariantValidatorPath="${software_path}/ncov/additional_scripts/VariantValidator"
 
 # reference sequence
 scheme_dir="/opt/basestack_consensus/primer_schemes"
