@@ -122,7 +122,7 @@ if ! [[ -s "$reference" ]]; then
 	usage
 	exit
 else
-	ref_header=$(head -n1 "$reference" | cut -c2-)
+	ref_header=$(head -n1 "$reference" |  cut -c2- | cut -f1 -d' ')
 	ref_length=$("$bin_path/fix_fasta.sh" "$reference" | tail -n1 | awk '{print length($1)}')
 fi
 
